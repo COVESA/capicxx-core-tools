@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.genivi.commonapi.core.feature"
+      label="%featureName"
+      version="2.0.0.qualifier"
+      provider-name="%providerName">
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <requires>
+      <import plugin="org.eclipse.core.resources" version="3.8.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.core.runtime" version="3.8.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtend2.lib" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.generator" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.util" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.franca.core.dsl" version="0.8.0" match="greaterOrEqual"/>
+      <import plugin="javax.inject"/>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.core.expressions" version="3.4.400" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.builder" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.ui" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.ui.ecore" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="com.google.inject" version="3.0.0" match="greaterOrEqual"/>
+   </requires>
+
+   <plugin
+         id="org.genivi.commonapi.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="org.genivi.commonapi.core.ui"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>

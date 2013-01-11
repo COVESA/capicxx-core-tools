@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="org.genivi.commonapi.core.ui.CommandExecutableExtensionFactory:org.genivi.commonapi.core.ui.handler.GenerationCommand"
+            commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand">
+      </handler>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            id="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+            name="Generate C++ Code">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.menus">
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.eclipse.ui.popup.any?after=additions">
+         <menu
+               id="org.genivi.commonapi.core.ui.popup.menu"
+               label="Common API">
+         </menu>
+      </menuContribution>
+      <menuContribution
+            allPopups="false"
+            locationURI="popup:org.genivi.commonapi.core.ui.popup.menu">
+         <command
+               commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+               label="Generate C++ Code"
+               style="push">
+            <visibleWhen
+                  checkEnabled="false">
+               <reference
+                     definitionId="org.genivi.commonapi.core.ui.FrancaIDL.Resources.selected">
+               </reference>
+            </visibleWhen>
+         </command>
+      </menuContribution>
+   </extension>
+   <extension
+         point="org.eclipse.core.expressions.definitions">
+      <definition
+            id="org.genivi.commonapi.core.ui.FrancaIDL.Resources.selected">
+         <or>
+            <reference
+                  definitionId="org.franca.core.dsl.FrancaIDL.Editor.opened">
+            </reference>
+            <iterate>
+               <adapt
+                     type="org.eclipse.core.resources.IResource">
+                  <test
+                        property="org.eclipse.core.resources.name"
+                        value="*.fidl">
+                  </test>
+               </adapt>
+            </iterate>
+         </or>
+      </definition>
+   </extension>
+</plugin>
