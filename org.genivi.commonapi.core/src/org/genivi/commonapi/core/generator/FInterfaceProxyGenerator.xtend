@@ -100,6 +100,7 @@ class FInterfaceProxyGenerator {
         #include "«fInterface.proxyBaseHeaderFile»"
         «IF fInterface.hasAttributes»
             #include <CommonAPI/AttributeExtension.h>
+            #include <CommonAPI/Factory.h>
         «ENDIF»
 
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -227,7 +228,8 @@ class FInterfaceProxyGenerator {
         }
 
         «fInterface.model.generateNamespaceEndDeclaration»
-        
+
+        «IF fInterface.hasAttributes»
         namespace CommonAPI {
         template<template<typename > class _AttributeExtension>
         struct DefaultAttributeProxyFactoryHelper<«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»,
@@ -237,6 +239,7 @@ class FInterfaceProxyGenerator {
             > class_t;
         };
         }
+        «ENDIF»
         
 
         #endif // «fInterface.defineName»_PROXY_H_
