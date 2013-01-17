@@ -12,6 +12,7 @@ import org.franca.core.franca.FInterface
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
+    @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
 	def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
@@ -57,6 +58,12 @@ class FInterfaceGenerator {
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
+        
+        namespace CommonAPI {
+        	
+        	«fInterface.generateTypeWriters»
+        	
+        }
 
         #endif // «fInterface.defineName»_H_
     '''
