@@ -12,6 +12,7 @@ import org.franca.core.franca.FTypeCollection
 
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
+    @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
 	def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess) {
@@ -56,6 +57,12 @@ class FTypeCollectionGenerator {
         } // namespace «fTypeCollection.name»
 
         «fTypeCollection.model.generateNamespaceEndDeclaration»
+        
+        namespace CommonAPI {
+        	
+        	«fTypeCollection.generateTypeWriters»
+        	
+        }
 
         #endif // «fTypeCollection.defineName»_H_
     '''

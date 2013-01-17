@@ -113,7 +113,7 @@ class FTypeGenerator {
                 return static_cast<«fEnumerationType.backingType.primitiveTypeName»>(lhs) < static_cast<«fEnumerationType.backingType.primitiveTypeName»>(rhs);
             }
         };
-
+        
         «FOR base : fEnumerationType.baseList BEFORE "\n" SEPARATOR "\n"»
             «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "==")»
             «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "!=")»
@@ -121,8 +121,6 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent) ''' '''
-
-
     def dispatch generateFTypeImplementation(FTypeDef fTypeDef, FModelElement parent) ''''''
     def dispatch generateFTypeImplementation(FArrayType fArrayType, FModelElement parent) ''''''
     def dispatch generateFTypeImplementation(FMapType fMap, FModelElement parent) ''''''
