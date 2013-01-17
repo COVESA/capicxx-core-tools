@@ -50,6 +50,15 @@ interface TestInterface {
 			DerivedTypeCollection.TestMap testMapOutValue
 		}
 	}
+	
+	method testUnionMethod {
+		in {
+			DerivedTypeCollection.TestUnionIn inParam
+		}
+		out {
+			DerivedTypeCollection.TestUnionOut outParam
+		}
+	}
 
 	broadcast TestPredefinedTypeBroadcast {
 		out {

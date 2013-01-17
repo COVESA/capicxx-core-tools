@@ -79,57 +79,8 @@ class FTypeGenerator {
         struct «name»Comparator;
     '''
     
-    /*
-     * TODO
-     * 
-     *   - Remove "Value" suffix for Variant members (Avoid fidl convention name clashing)
-     * 
-     *   - Full serialization over CommonAPI::*Stream!
-     * 
-     *   - Very inefficient setters, since contents of std::shared_ptr is always being copied!
-     *     The FUnionType could be implemented as something like a "std::union_ptr<>", whose
-     *     contents could be swapped.
-     */
     def dispatch generateFTypeDeclaration(FUnionType fUnionType) '''
-        class «fUnionType.name»: public «fUnionType.baseVariantName» {
-         public:
-            «fUnionType.name»() = default;
-            «FOR parent : fUnionType.baseList»
-                «FOR element : parent.elements»
-                    «fUnionType.name»(const «element.type.getNameReference(fUnionType)»& «element.name»Value);
-                «ENDFOR»
-            «ENDFOR»
-            «FOR element : fUnionType.elements»
-                «fUnionType.name»(const «element.type.getNameReference(fUnionType)»& «element.name»Value);
-            «ENDFOR»
-
-            virtual ~«fUnionType.name»() { }
-
-            «FOR element : fUnionType.elements»
-                void set«element.name.toFirstUpper»Value(const std::shared_ptr<«element.type.getNameReference(fUnionType)»>& «element.name»Value);
-            «ENDFOR»
-
-            «FOR element : fUnionType.elements»
-                const std::shared_ptr<«element.type.getNameReference(fUnionType)»>& get«element.name.toFirstUpper»Value() const;
-            «ENDFOR»
-
-            «FOR element : fUnionType.elements»
-                inline bool is«element.name.toFirstUpper»Type() const;
-            «ENDFOR»
-
-            «FOR element : fUnionType.elements»
-                static const uint32_t «element.name.toFirstUpper»Type;
-            «ENDFOR»
-
-         protected:
-            enum class Type: uint32_t {
-                _FIRST_TYPE«fUnionType.base?.generateLastTypeReference(fUnionType)»,
-                «FOR element : fUnionType.elements»
-                    «element.name.toUpperCase»,
-                «ENDFOR»
-                _LAST_TYPE
-            };
-        };
+        typedef CommonAPI::Variant<«fUnionType.elements.map[type.getNameReference(fUnionType)].join(", ")»>  «fUnionType.name»;        
     '''
 
 
@@ -169,13 +120,7 @@ class FTypeGenerator {
         «ENDFOR»
     '''
 
-    def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent) '''
-        «FOR element : fUnionType.elements»
-            bool «fUnionType.getClassNamespace(parent)»::is«element.name.toFirstUpper»Type() const {
-                return getType() == «element.name.toFirstUpper»Type;
-            }
-        «ENDFOR»
-    '''
+    def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent) ''' '''
 
 
     def dispatch generateFTypeImplementation(FTypeDef fTypeDef, FModelElement parent) ''''''
@@ -225,44 +170,10 @@ class FTypeGenerator {
         }
     '''
 
-    def dispatch generateFTypeImplementation(FUnionType fUnionType, FModelElement parent) '''
-    «FOR element : fUnionType.elements»
-        const uint32_t «fUnionType.getClassNamespace(parent)»::«element.name.toFirstUpper»Type = static_cast<uint32_t>(Type::«element.name.toUpperCase»);
-    «ENDFOR»
-
-    «FOR base : fUnionType.baseList»
-        «FOR element : base.elements»
-            «fUnionType.getClassNamespace(parent)»::«fUnionType.name»(const «element.type.getNameReference(fUnionType)»& «element.name»Value):
-                    «base.getRelativeNameReference(fUnionType)»(«element.name»Value) {
-            }
-        «ENDFOR»
-    «ENDFOR»
-    «FOR element : fUnionType.elements»
-        «fUnionType.getClassNamespace(parent)»::«fUnionType.name»(const «element.type.getNameReference(fUnionType)»& «element.name»Value):
-                type_(«element.name.toFirstUpper»Type),
-                value_(std::make_shared<«element.type.getNameReference(fUnionType)»>(«element.name»Value)) {
-        }
-    «ENDFOR»
-
-    «FOR element : fUnionType.elements»
-        void «fUnionType.getClassNamespace(parent)»::set«element.name.toFirstUpper»Value(const std::shared_ptr<«element.type.getNameReference(fUnionType)»>& «element.name»Value) {
-            type_ = «element.name.toFirstUpper»Type;
-            value_ = std::make_shared<«element.type.getNameReference(fUnionType)»>(*«element.name»Value.get());
-        }
-    «ENDFOR»
-
-    «FOR element : fUnionType.elements»
-        const std::shared_ptr<«element.type.getNameReference(fUnionType)»>& «fUnionType.getClassNamespace(parent)»::get«element.name.toFirstUpper»Value() const {
-            return (type_ == «element.name.toFirstUpper»Type) ?
-                    std::static_pointer_cast<«element.type.getNameReference(fUnionType)»>(value_) :
-                    std::shared_ptr<«element.type.getNameReference(fUnionType)»>();
-        }
-    «ENDFOR»
-    '''
+    def dispatch generateFTypeImplementation(FUnionType fUnionType, FModelElement parent) ''' '''
 
     def hasImplementation(FType fType) {
-        return (fType instanceof FStructType) ||
-                (fType instanceof FUnionType);
+        return (fType instanceof FStructType);
     }
 
     def generateRequiredTypeIncludes(FInterface fInterface) '''
@@ -358,15 +269,6 @@ class FTypeGenerator {
         return call
     }
 
-    def private generateLastTypeReference(FUnionType parent, FUnionType source) {
-        " = " + parent.getRelativeNameReference(source) + "::Type::_LAST_TYPE"
-    }
-
-    def private getBaseVariantName(FUnionType fUnionType) {
-        if (fUnionType.base != null)
-            return fUnionType.base.getRelativeNameReference(fUnionType)
-        return "CommonAPI::SerializableVariant"
-    }
 
     def private isFEnumerationType(FMapType fMap) {
         fMap.keyType.derived instanceof FEnumerationType
@@ -402,18 +304,6 @@ class FTypeGenerator {
             return static_cast<«fEnumerationType.backingType.primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.backingType.primitiveTypeName»>(rhs);
         }
     '''
-
-    def private getBaseList(FUnionType fUnionType) {
-        val baseList = new LinkedList<FUnionType>
-        var currentBase = fUnionType.base
-        
-        while (currentBase != null) {
-            baseList.add(0, currentBase)
-            currentBase = currentBase.base
-        }
-
-        return baseList
-    }
 
     def private getBaseList(FEnumerationType fEnumerationType) {
         val baseList = new LinkedList<FEnumerationType>

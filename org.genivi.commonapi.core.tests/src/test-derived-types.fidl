@@ -54,6 +54,18 @@ typeCollection DerivedTypeCollection {
 	array TestArrayTestStruct of TestStruct
 
 	map TestMap { UInt32 to TestArrayTestStruct }
+	
+	union TestUnionIn {
+		TestEnum enum
+		Int16 int
+		String text
+	}
+	
+	union TestUnionOut {
+		TestEnumExtended enum
+		Int16 int
+		String text
+	}
 }
 
 
