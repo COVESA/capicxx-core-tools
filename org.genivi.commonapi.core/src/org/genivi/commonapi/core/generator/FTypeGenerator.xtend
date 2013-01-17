@@ -28,6 +28,13 @@ import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FInterface
 import java.util.HashSet
+import org.eclipse.emf.ecore.EObject
+import org.franca.core.franca.FEnumerationType
+import org.franca.core.franca.FVersion
+import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FMapType
+import org.franca.core.franca.FUnionType
 
 class FTypeGenerator {
 	@Inject private extension FrancaGeneratorExtensions
@@ -45,19 +52,28 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType) '''
-        struct «fStructType.name»: «fStructType.baseStructName» {
+		struct «fStructType.name»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
                 «element.type.getNameReference(fStructType)» «element.name»;
             «ENDFOR»
-            
+
             «fStructType.name»() = default;
             «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
 
-            virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
-            virtual void writeToOutputStream(CommonAPI::OutputStream& outputStream) const;
-        };
-    '''
+			virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
+			virtual void writeToOutputStream(CommonAPI::OutputStream& outputStream) const;
 
+			static inline void writeToTypeOutputStream(CommonAPI::TypeOutputStream& typeOutputStream) {
+            	«IF fStructType.base != null»
+					«fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
+            	«ENDIF»
+				«FOR element : fStructType.elements»
+					«element.type.typeStreamSignature»
+            	«ENDFOR»
+			}
+		};
+    '''
+    
     def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType) {
         fEnumerationType.generateDeclaration(fEnumerationType.name)
     }
