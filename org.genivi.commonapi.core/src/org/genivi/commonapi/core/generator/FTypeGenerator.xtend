@@ -35,6 +35,7 @@ import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FUnionType
+import com.google.common.base.Functions$ConstantFunction
 
 class FTypeGenerator {
 	@Inject private extension FrancaGeneratorExtensions
@@ -96,8 +97,20 @@ class FTypeGenerator {
     '''
     
     def dispatch generateFTypeDeclaration(FUnionType fUnionType) '''
-        typedef CommonAPI::Variant<«fUnionType.elements.map[type.getNameReference(fUnionType)].join(", ")»>  «fUnionType.name»;        
+		typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
     '''
+    
+    def private getElementNames(FUnionType fUnion) {
+   		var names = "";
+    	if (fUnion.base != null) {
+    		names = fUnion.base.getElementNames
+    	}
+    	if (names != "") {
+    		names = ", " + names
+    	}
+    	names = fUnion.elements.map[type.getNameReference(fUnion)].join(", ") + names
+    	return names
+    }
 
 
     def dispatch generateFTypeInlineImplementation(FTypeDef fTypeDef, FModelElement parent) ''''''

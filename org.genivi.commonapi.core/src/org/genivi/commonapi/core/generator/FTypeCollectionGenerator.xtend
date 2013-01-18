@@ -62,6 +62,8 @@ class FTypeCollectionGenerator {
         	
         	«fTypeCollection.generateTypeWriters»
         	
+        	«fTypeCollection.generateVaraintComparators»
+        	
         }
 
         #endif // «fTypeCollection.defineName»_H_

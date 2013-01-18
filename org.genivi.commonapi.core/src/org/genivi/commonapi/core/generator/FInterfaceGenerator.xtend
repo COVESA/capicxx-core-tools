@@ -63,6 +63,7 @@ class FInterfaceGenerator {
         	
         	«fInterface.generateTypeWriters»
         	
+        	«fInterface.generateVaraintComparators»
         }
 
         #endif // «fInterface.defineName»_H_
