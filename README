@@ -1,0 +1,94 @@
+GENIVI_CommonAPI-D-Bus
+======================
+:Author: Juergen Gehring - juergen.gehring@bmw.de, Manfred Bathelt - manfred.bathelt@bmw.de
+:doctitle: GENIVI_CommonAPI-D-Bus
+
+Copyright
+---------
+Copyright (C) 2013, GENIVI Alliance, Inc.
+Copyright (C) 2013, BMW AG
+
+This file is part of GENIVI Project IPC Common API.
+ 
+Contributions are licensed to the GENIVI Alliance under one or more
+Contribution License Agreements or MPL 2.0 .
+ 
+(C) Copyright
+This Source Code Form is subject to the terms of the
+Mozilla Public License, v. 2.0. If a  copy of the MPL was not distributed with
+this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+For further information see https://collab.genivi.org/wiki/display/genivi/SysInfraEGCommonIDLCommonAPIGuide
+
+== License
+This project is licensed under MPL 2.0
+
+Contribution is done under GENIVI CLA or MPL2.0. 
+
+== Version
+The current version can be taken from the git.
+
+== Common API Overview
+
+Common API and its machanism specific bindings (e.g. Common API D-Bus) provide a set of libraries and tools to work with 
+RPC communication in a way independent of wich mechanism is used. It consist currently consists of four subprojects:
+----
+CommonAPI - This is the base C++ library, which provides the application interface for users and can 
+            load runtime bindings such as dbus. 
+CommonAPI-Tools - The eclipse based tools for CommonAPI. This is essentially the code generator for 
+                  Franca -> Common API C++ code.
+                  (This is the current package.) 
+CommonAPI-D-Bus - This is the D-Bus binding C++ library, which provides the necesary code to communicate 
+                  over D-Bus. This is invisible to the application code, and simply needs to be linked against.
+CommonAPI-D-Bus-Tools - The eclipse based tools for CommonAPI D-Bus. This is the code generator for 
+                        Franca -> Common API D-Bus C++ code.
+----
+== Usage Instructions
+
+The simplest way to use the CommonAPI Tools is to add the update site ZIP available in the CommonAPI-D-Bus-Tools project 
+under  org.genivi.commonapi.dbus.feature/org.genivi.commonapi.dbus.updatesite.zip to you Eclipse. This is available under:
+
+Help->Install New Software->Add Button
+
+There click Browse and navigate to to the update site. In the Software selection window, select the entire "GENIVI Common API" Tree.
+
+After the software has been installed in Eclipse you can right-click on any .fidl file and generate C++ code for CommonAPI D-Bus 
+by selecting the "CommonAPI->Generate Common API Code" option.
+
+== Build Instructions
+
+These are Eclipse Plug-In projects which require Xtext2 and Franca as dependencies within Eclipse. 
+
+To build first import the three projects
+----
+org.genivi.commonapi.core.
+org.genivi.commonapi.core.ui
+org.genivi.commonapi.core.feature
+----
+
+in to Eclipse. Then simply build the workspace. Then right-click on the .feature project and select "Run as Eclipse Application" to launch 
+the built projects.
+
+== Working on the code & contribution
+
+.First get the code from the git:
+        git clone 
+
+.Get an overview of all branches:
+        git branch
+
+.Switch to the branch you want to work on (master is the feature branch) and verify that it has switched (* changed)
+        git checkout <your branch>
+        git branch
+
+.Best practice is to create a local branch based on the current branch:
+        git branch working_branch
+
+Start working, best practice is to commit smaller, compilable pieces during the development process that makes it easier to handle later on.
+
+.If you want to commit you changes, send them to the author, you can create a patch like this:
+        git format-patch working_branch <your branch>
+
+This creates a set of patches that are published via the mailing list.The patches will be discussed and then merged & uploaded on the git by the maintainer.
+
+Patches can be accepted either under GENIVI Cla or MPL 2.0 (see section License). Please be sure that the signed-off-by is set correctly. For more, check out http://gerrit.googlecode.com/svn/documentation/2.0/user-signedoffby.html
