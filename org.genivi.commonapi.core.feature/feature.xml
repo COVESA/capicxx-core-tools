@@ -27,6 +27,7 @@
       <import plugin="org.eclipse.xtext.ui" version="2.3.1" match="greaterOrEqual"/>
       <import plugin="org.eclipse.xtext.ui.ecore" version="2.3.1" match="greaterOrEqual"/>
       <import plugin="com.google.inject" version="3.0.0" match="greaterOrEqual"/>
+      <import plugin="org.genivi.commonapi.core" version="1.0.0" match="greaterOrEqual"/>
    </requires>
 
    <plugin
