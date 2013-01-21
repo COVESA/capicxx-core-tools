@@ -46,11 +46,13 @@ CommonAPI-D-Bus-Tools - The eclipse based tools for CommonAPI D-Bus. This is the
 == Usage Instructions
 
 The simplest way to use the CommonAPI Tools is to add the update site ZIP available in the CommonAPI-D-Bus-Tools project 
-under  org.genivi.commonapi.dbus.feature/org.genivi.commonapi.dbus.updatesite.zip to you Eclipse. This is available under:
+under org.genivi.commonapi.dbus.feature/org.genivi.commonapi.dbus.updatesite.zip to you Eclipse. This is available under:
 
 Help->Install New Software->Add Button
 
-There click Browse and navigate to to the update site. In the Software selection window, select the entire "GENIVI Common API" Tree.
+There click Browse and navigate to the update site. 
+
+In the Software selection window, select the entire "GENIVI Common API" Tree.
 
 After the software has been installed in Eclipse you can right-click on any .fidl file and generate C++ code for CommonAPI D-Bus 
 by selecting the "CommonAPI->Generate Common API Code" option.
