@@ -30,7 +30,7 @@ The current version can be taken from the git.
 
 == Common API Overview
 
-Common API and its machanism specific bindings (e.g. Common API D-Bus) provide a set of libraries and tools to work with 
+Common API and its mechanism specific bindings (e.g. Common API D-Bus) provide a set of libraries and tools to work with 
 RPC communication in a way independent of wich mechanism is used. It consist currently consists of four subprojects:
 ----
 CommonAPI - This is the base C++ library, which provides the application interface for users and can 
@@ -52,7 +52,12 @@ Help->Install New Software->Add Button
 
 There click Browse and navigate to the update site. 
 
-In the Software selection window, select the entire "GENIVI Common API" Tree.
+In order for dependencies to be resolved you must have a franca update site zip 
+(available from https://code.google.com/a/eclipselabs.org/p/franca/downloads/list) and the xtext update site url 
+(http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/) also added to your eclipse sources in the same manner. 
+
+Then select "All available sites" in the site selection dropdown box, and in the Software selection window, 
+select the entire "GENIVI Common API" Tree.   
 
 After the software has been installed in Eclipse you can right-click on any .fidl file and generate C++ code for CommonAPI D-Bus 
 by selecting the "CommonAPI->Generate Common API Code" option.
