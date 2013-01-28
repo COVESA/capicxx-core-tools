@@ -92,7 +92,7 @@ class FTypeCommonAreaGenerator {
 		}
 	}
 	
-	def generateVaraintComparators(FTypeCollection fTypes) '''
+	def generateVariantComparators(FTypeCollection fTypes) '''
     	«FOR type: fTypes.types»
     		«IF type.isFUnionType»
     		  «FOR base : type.getFUnionType.baseList»

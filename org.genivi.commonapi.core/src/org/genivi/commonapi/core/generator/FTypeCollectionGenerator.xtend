@@ -62,7 +62,7 @@ class FTypeCollectionGenerator {
         	
         	«fTypeCollection.generateTypeWriters»
         	
-        	«fTypeCollection.generateVaraintComparators»
+        	«fTypeCollection.generateVariantComparators»
         	
         }
 
