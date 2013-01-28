@@ -60,9 +60,8 @@ class FInterfaceGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
         
         namespace CommonAPI {
-        	
         	«fInterface.generateTypeWriters»
-        	
+
         	«fInterface.generateVariantComparators»
         }
 

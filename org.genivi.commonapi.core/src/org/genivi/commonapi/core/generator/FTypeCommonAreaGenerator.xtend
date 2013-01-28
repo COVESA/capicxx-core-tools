@@ -49,46 +49,65 @@ class FTypeCommonAreaGenerator {
     def generateTypeWriters(FTypeCollection fTypes) '''
     	«FOR type: fTypes.types»
     		«IF type.isFEnumerationType»
-    			«generateTypeWriterImplementation(type.getFEnumerationType, type.name, fTypes, fTypes.name)»
+    			«generateStreamImplementation(type.getFEnumerationType, type.name, fTypes, fTypes.name)»
     		«ENDIF»
     	«ENDFOR»
     '''
+
 	def private List<String> getNamespaceAsList(FModel fModel) {
         newArrayList(fModel.name.split("\\."))
     }
     
-    def FModel getModel(FModelElement fModelElement) {
+    def private FModel getModel(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
             return (fModelElement.eContainer as FModel)
         return (fModelElement.eContainer as FModelElement).model
     }
     
-    def generateTypeWriterImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) '''
+    def private getWithNamespace(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) {
+        parent.model.namespaceAsList.join("::") + "::" + fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)
+    }
+
+    def private generateStreamImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) '''
         template<>
-        struct BasicTypeWriter<«parent.model.namespaceAsList.join("::") + "::" + fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»> {
-        	inline static void writeType (CommonAPI::TypeOutputStream& typeStream) {
-        		typeStream.«fEnumerationType.generateTypeOutput»;
-        	}
+        struct BasicTypeWriter<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
+            inline static void writeType (CommonAPI::TypeOutputStream& typeStream) {
+                typeStream.write«fEnumerationType.generateTypeOutput»Type();
+            }
+        };
+
+        template<>
+        struct InputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
+            static void beginReadVector(InputStream& inputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
+                inputStream.beginRead«fEnumerationType.generateTypeOutput»Vector();
+            }
+        };
+
+        template <>
+        struct OutputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
+            static void beginWriteVector(OutputStream& outputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
+                outputStream.beginWrite«fEnumerationType.generateTypeOutput»Vector(vectorValue.size());
+            }
         };
     '''
 
     def private generateTypeOutput(FEnumerationType fEnumerationType) {
 		if (fEnumerationType.backingType.primitiveTypeName.equals("int8_t")) {
-			return "writeInt8EnumType()";			
+			return "Int8Enum";			
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int16_t")) {
-			return "writeInt16EnumType()";
+			return "Int16Enum";
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int32_t")) {
-			return "writeInt32EnumType()";
+			return "Int32Enum";
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int64_t")) {
-			return "writeInt64EnumType()";
+			return "Int64Enum";
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint8_t")) {
-			return "writeUInt8EnumType()";		
+			return "UInt8Enum";		
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint16_t")) {
-			return "writeUInt16EnumType()";
+			return "UInt16Enum";
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint32_t")) {
-			return "writeUInt32EnumType()";
+			return "UInt32Enum";
 		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint64_t")) {
-			return "writeUInt64EnumType()";
+			return "UInt64Enum";
 		}
 	}
 	
