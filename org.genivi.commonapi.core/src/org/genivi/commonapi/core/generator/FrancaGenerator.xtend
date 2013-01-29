@@ -14,7 +14,7 @@ import org.eclipse.emf.ecore.plugin.EcorePlugin
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.eclipse.xtext.generator.IGenerator
-import org.franca.core.dsl.FrancaIDLHelpers
+import org.franca.core.dsl.FrancaPersistenceManager
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
@@ -35,11 +35,13 @@ class FrancaGenerator implements IGenerator {
     @Inject private extension FInterfaceProxyGenerator
     @Inject private extension FInterfaceStubGenerator
 
-	override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
-	    val isFrancaIDLResource = input.URI.fileExtension.equals(FrancaIDLHelpers::instance.fileExtension)
+    @Inject private FrancaPersistenceManager francaPersistenceManager
+
+    override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
+        val isFrancaIDLResource = input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)
         checkArgument(isFrancaIDLResource, "Unknown input: " + input)
 
-        val fModel = FrancaIDLHelpers::instance.loadModel(input.filePath)
+        val fModel = francaPersistenceManager.loadModel(input.filePath)
         val allReferencedFTypes = fModel.allReferencedFTypes
         val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
         
