@@ -37,7 +37,7 @@ class FInterfaceGenerator {
          public:
             virtual ~«fInterface.name»() { }
 
-            static inline const char* getInterfaceName();
+            static inline const char* getInterfaceId();
             static inline CommonAPI::Version getInterfaceVersion();
             «FOR type : fInterface.types»
 
@@ -45,7 +45,7 @@ class FInterfaceGenerator {
             «ENDFOR»
         };
         
-        const char* «fInterface.name»::getInterfaceName() {
+        const char* «fInterface.name»::getInterfaceId() {
             return "«fInterface.fullyQualifiedName»";
         }
 
