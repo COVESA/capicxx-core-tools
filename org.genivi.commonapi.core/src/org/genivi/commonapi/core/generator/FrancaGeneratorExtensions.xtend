@@ -220,12 +220,16 @@ class FrancaGeneratorExtensions {
     
     def generateStubSignature(FMethod fMethod) {
         var signature = fMethod.inArgs.map[type.getNameReference(fMethod.model) + ' ' + name].join(', ')
+        if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
+            signature = signature + ', '
 
         if (fMethod.hasError)
-            signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
+            signature = signature + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
+        if (fMethod.hasError && !fMethod.outArgs.empty)
+            signature = signature + ', '
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map[type.getNameReference(fMethod.model) + '& ' + name].join(', ')
+            signature = signature + fMethod.outArgs.map[type.getNameReference(fMethod.model) + '& ' + name].join(', ')
 
         return signature
     }

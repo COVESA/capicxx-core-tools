@@ -60,6 +60,8 @@ class FInterfaceStubGenerator {
 
         class «fInterface.stubClassName» : public CommonAPI::Stub<«fInterface.stubAdapterClassName» , «fInterface.stubRemoteEventClassName»> {
          public:
+            virtual ~«fInterface.stubClassName»() { }
+
             «FOR attribute : fInterface.attributes»
                 virtual const «attribute.type.getNameReference(fInterface.model)»& «attribute.stubClassGetMethodName»() = 0;
             «ENDFOR»
