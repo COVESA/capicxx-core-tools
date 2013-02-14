@@ -28,14 +28,6 @@ import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FInterface
 import java.util.HashSet
-import org.eclipse.emf.ecore.EObject
-import org.franca.core.franca.FEnumerationType
-import org.franca.core.franca.FVersion
-import org.franca.core.franca.FArrayType
-import org.franca.core.franca.FArrayType
-import org.franca.core.franca.FMapType
-import org.franca.core.franca.FUnionType
-import com.google.common.base.Functions$ConstantFunction
 
 class FTypeGenerator {
 	@Inject private extension FrancaGeneratorExtensions
