@@ -52,10 +52,16 @@
             <iterate>
                <adapt
                      type="org.eclipse.core.resources.IResource">
-                  <test
-                        property="org.eclipse.core.resources.name"
-                        value="*.fidl">
-                  </test>
+                  <or>
+                     <test
+                           property="org.eclipse.core.resources.name"
+                           value="*.fidl">
+                     </test>
+                     <test
+                           property="org.eclipse.core.resources.name"
+                           value="*.fdepl">
+                     </test>
+                  </or>
                </adapt>
             </iterate>
          </or>
