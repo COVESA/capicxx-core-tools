@@ -214,4 +214,17 @@ class FTypeCommonAreaGenerator {
 
         return baseList
     }
+    
+    def generateHashers(FTypeCollection fTypes) '''
+        «FOR type: fTypes.types»
+            «IF type.isFEnumerationType»
+                template<>
+                struct hash<commonapi::tests::DerivedTypeCollection::TestEnum> {
+                    inline size_t operator()(const «type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»& «type.name.toFirstLower») const {
+                        return static_cast<«type.getFEnumerationType.backingType.primitiveTypeName»>(«type.name.toFirstLower»);
+                    }
+                };
+            «ENDIF»
+        «ENDFOR»
+    '''
 }

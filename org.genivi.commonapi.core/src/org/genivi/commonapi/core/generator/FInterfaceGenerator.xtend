@@ -64,6 +64,11 @@ class FInterfaceGenerator {
 
         	«fInterface.generateVariantComparators»
         }
+        
+        
+        namespace std {
+            «fInterface.generateHashers»
+        }
 
         #endif // «fInterface.defineName»_H_
     '''

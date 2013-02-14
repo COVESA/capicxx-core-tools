@@ -63,7 +63,11 @@ class FTypeCollectionGenerator {
         	«fTypeCollection.generateTypeWriters»
         	
         	«fTypeCollection.generateVariantComparators»
-        	
+        }
+        
+        
+        namespace std {
+            «fTypeCollection.generateHashers»
         }
 
         #endif // «fTypeCollection.defineName»_H_
