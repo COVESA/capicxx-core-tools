@@ -215,12 +215,14 @@ class FTypeCommonAreaGenerator {
         return baseList
     }
     
+    def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»'''
+    
     def generateHashers(FTypeCollection fTypes) '''
         «FOR type: fTypes.types»
             «IF type.isFEnumerationType»
                 template<>
-                struct hash<commonapi::tests::DerivedTypeCollection::TestEnum> {
-                    inline size_t operator()(const «type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»& «type.name.toFirstLower») const {
+                struct hash<«type.getFQN(fTypes)»> {
+                    inline size_t operator()(const «type.getFQN(fTypes)»& «type.name.toFirstLower») const {
                         return static_cast<«type.getFEnumerationType.backingType.primitiveTypeName»>(«type.name.toFirstLower»);
                     }
                 };

@@ -41,7 +41,7 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeDeclaration(FMapType fMap) '''
-        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»«fMap.generateComparatorType»> «fMap.name»;
+        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»> «fMap.name»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType) '''
@@ -289,12 +289,8 @@ class FTypeGenerator {
     }
 
 
-    def private isFEnumerationType(FMapType fMap) {
-        fMap.keyType.derived instanceof FEnumerationType
-    }
     def private generateKeyType(FMapType fMap) '''«fMap.keyType.getNameReference(fMap.eContainer)»'''
     def private generateValueType(FMapType fMap) ''', «fMap.valueType.getNameReference(fMap.eContainer)»'''
-    def private generateComparatorType(FMapType fMap) '''«IF fMap.isFEnumerationType», «fMap.generateKeyType»Comparator«ENDIF»'''
 
     def private getBaseStructName(FStructType fStructType) {
         if (fStructType.base != null)

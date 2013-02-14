@@ -97,7 +97,7 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 virtual const «attribute.type.getNameReference(fInterface.model)»& «attribute.stubClassGetMethodName»();
-                void «attribute.stubDefaultClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
+                virtual void «attribute.stubDefaultClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
 
             «ENDFOR»
 
@@ -112,9 +112,9 @@ class FInterfaceStubGenerator {
 
          protected:
             «FOR attribute : fInterface.attributes»
-                void «attribute.stubRemoteEventClassChangedMethodName»();
-                bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
-                bool «attribute.stubDefaultClassValidateMethodName»(const «attribute.type.getNameReference(fInterface.model)»& value);
+                virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                virtual bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
+                virtual bool «attribute.stubDefaultClassValidateMethodName»(const «attribute.type.getNameReference(fInterface.model)»& value);
 
             «ENDFOR»
             
