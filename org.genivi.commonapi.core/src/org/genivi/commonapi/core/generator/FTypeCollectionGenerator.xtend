@@ -9,7 +9,8 @@ package org.genivi.commonapi.core.generator
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FTypeCollection
-
+    
+    
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FTypeCommonAreaGenerator
@@ -34,10 +35,7 @@ class FTypeCollectionGenerator {
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
 
         namespace «fTypeCollection.name» {
-        «FOR type : fTypeCollection.types»
-
-            «type.generateFTypeDeclaration»
-        «ENDFOR»
+            «fTypeCollection.generateFTypeDeclarations»
 
         «FOR type : fTypeCollection.types»
            «type.generateFTypeInlineImplementation(type)»
@@ -72,6 +70,7 @@ class FTypeCollectionGenerator {
 
         #endif // «fTypeCollection.defineName»_H_
     '''
+
 
     def private generateSource(FTypeCollection fTypeCollection) '''
         «generateCommonApiLicenseHeader»

@@ -39,10 +39,7 @@ class FInterfaceGenerator {
 
             static inline const char* getInterfaceId();
             static inline CommonAPI::Version getInterfaceVersion();
-            «FOR type : fInterface.types»
-
-                «type.generateFTypeDeclaration»
-            «ENDFOR»
+            «fInterface.generateFTypeDeclarations»
         };
         
         const char* «fInterface.name»::getInterfaceId() {
@@ -72,6 +69,8 @@ class FInterfaceGenerator {
 
         #endif // «fInterface.defineName»_H_
     '''
+    
+
 
     def private generateSource(FInterface fInterface) '''
         «generateCommonApiLicenseHeader»

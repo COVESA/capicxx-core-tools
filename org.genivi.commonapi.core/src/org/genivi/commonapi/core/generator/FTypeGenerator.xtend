@@ -22,15 +22,134 @@ import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FUnionType
-
-import static org.genivi.commonapi.core.generator.FTypeGenerator.*
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FInterface
 import java.util.HashSet
+import org.eclipse.emf.common.util.EList
+import java.util.Comparator
+import java.util.Set
+
+import static org.genivi.commonapi.core.generator.FTypeGenerator.*
+
+class TypeListSorter implements Comparator<FType> {
+    @Inject private extension FTypeGenerator
+    
+    override compare(FType lhs, FType rhs) {
+        if(lhs == rhs) return 0
+        if(lhs.referencedTypes.contains(rhs)) {
+            return 1
+        }
+        if(rhs.referencedTypes.contains(lhs)) {
+            return -1
+        }
+        return 1
+    }
+
+    override equals(Object obj) {
+        throw new UnsupportedOperationException()
+    }
+}
 
 class FTypeGenerator {
 	@Inject private extension FrancaGeneratorExtensions
+	@Inject private extension TypeListSorter typeListSorter
+	
+
+    def generateFTypeDeclarations(FTypeCollection fTypeCollection) '''
+        «FOR type: fTypeCollection.types.sortTypes(fTypeCollection)»
+            «type.generateFTypeDeclaration»
+        «ENDFOR»
+    '''
+
+    def private sortTypes(EList<FType> typeList, FTypeCollection containingTypeCollection) {
+        var typeBlobs = new LinkedList<Set<FType>>()
+        for(type: typeList) {
+            var Set<FType> containingBlob
+
+            for(blob: typeBlobs) {
+                if(blob.contains(type) || !type.referencedTypes.filter[blob.contains(it)].empty) {
+                    containingBlob = blob
+                }
+            }
+            
+            if(containingBlob == null) {
+                var newBlob = new HashSet<FType>()
+                newBlob.add(type)
+                newBlob.addAll(type.referencedTypes.filter[containingTypeCollection.types.contains(it)])
+                typeBlobs.add(newBlob)
+            } else {
+                containingBlob.add(type)
+                containingBlob.addAll(type.referencedTypes.filter[containingTypeCollection.types.contains(it)])
+            }
+        }
+        
+        var sortedTypes = new LinkedList<FType>()
+        for(blob: typeBlobs) {
+            var sortedBlob = blob.toList
+            sortedBlob = sortedBlob.sort(typeListSorter)
+            sortedTypes.addAll(sortedBlob)
+        }
+        
+        return sortedTypes
+    }
+
+    def dispatch List<FType> getReferencedTypes(FStructType fType) {
+        var references = fType.elements.map[it.type.derived].filter[it != null].toList
+        if(fType.base != null) {
+            references.add(fType.base)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
+
+    def dispatch List<FType> getReferencedTypes(FEnumerationType fType) {
+        var references = new LinkedList<FType>()
+        if(fType.base != null) {
+            references.add(fType.base)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
+
+    def dispatch List<FType> getReferencedTypes(FArrayType fType) {
+        var references = new LinkedList<FType>()
+        if(fType.elementType.derived != null) {
+            references.add(fType.elementType.derived)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
+    
+    def dispatch List<FType> getReferencedTypes(FUnionType fType) {
+        var references = fType.elements.map[it.type.derived].filter[it != null].toList
+        if(fType.base != null) {
+            references.add(fType.base)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
+    
+    def dispatch List<FType> getReferencedTypes(FMapType fType) {
+        var references = new LinkedList<FType>()
+        if(fType.keyType.derived != null) {
+            references.add(fType.keyType.derived)
+        }
+        if(fType.valueType.derived != null) {
+            references.add(fType.valueType.derived)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
+    
+    def dispatch List<FType> getReferencedTypes(FTypeDef fType) {
+        var references = new LinkedList<FType>()
+        if(fType.actualType.derived != null) {
+            references.add(fType.actualType.derived)
+        }
+        references.addAll(references.map[it.referencedTypes].flatten.toList)
+        return references
+    }
 
     def dispatch generateFTypeDeclaration(FTypeDef fTypeDef) '''
         typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.name»;
@@ -45,7 +164,7 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType) '''
-		struct «fStructType.name»: «fStructType.baseStructName» {
+        struct «fStructType.name»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
                 «element.type.getNameReference(fStructType)» «element.name»;
             «ENDFOR»
@@ -53,18 +172,18 @@ class FTypeGenerator {
             «fStructType.name»() = default;
             «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
 
-			virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
-			virtual void writeToOutputStream(CommonAPI::OutputStream& outputStream) const;
+            virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
+            virtual void writeToOutputStream(CommonAPI::OutputStream& outputStream) const;
 
-			static inline void writeToTypeOutputStream(CommonAPI::TypeOutputStream& typeOutputStream) {
-            	«IF fStructType.base != null»
-					«fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
-            	«ENDIF»
-				«FOR element : fStructType.elements»
-					«element.type.typeStreamSignature»
-            	«ENDFOR»
-			}
-		};
+            static inline void writeToTypeOutputStream(CommonAPI::TypeOutputStream& typeOutputStream) {
+                «IF fStructType.base != null»
+                    «fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
+                «ENDIF»
+                «FOR element : fStructType.elements»
+                    «element.type.typeStreamSignature»
+                «ENDFOR»
+            }
+        };
     '''
     
     def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType) {
@@ -87,11 +206,11 @@ class FTypeGenerator {
         // XXX Definition of a comparator still is necessary for GCC 4.4.1, topic is fixed since 4.5.1
         struct «name»Comparator;
     '''
-    
+
     def dispatch generateFTypeDeclaration(FUnionType fUnionType) '''
 		typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
     '''
-    
+
     def private getElementNames(FUnionType fUnion) {
    		var names = "";
     	if (fUnion.base != null) {
