@@ -1,6 +1,6 @@
 
 
-specification org.genivi.commonapi.dbus.deployment
+specification org.genivi.commonapi.core.deployment.deployment
 {
 	for interfaces {
 		EnumBackingType: {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (default: UInt32);

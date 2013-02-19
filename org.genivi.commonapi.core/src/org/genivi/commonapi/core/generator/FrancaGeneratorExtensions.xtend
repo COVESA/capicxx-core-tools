@@ -8,11 +8,8 @@ package org.genivi.commonapi.core.generator
 
 import com.google.common.primitives.Ints
 import java.util.List
-import org.eclipse.core.runtime.Path
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.plugin.EcorePlugin
-import org.eclipse.emf.ecore.resource.Resource
-import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FModel
@@ -22,13 +19,18 @@ import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FEnumerationType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
 
 import static com.google.common.base.Preconditions.*
+import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FUnionType
+import org.eclipse.emf.ecore.resource.Resource
+import org.eclipse.core.runtime.Path
 
 class FrancaGeneratorExtensions {
     def getFullyQualifiedName(FModelElement fModelElement) {
@@ -45,6 +47,17 @@ class FrancaGeneratorExtensions {
         if (fModelElement.eContainer instanceof FModel)
             return (fModelElement.eContainer as FModel)
         return (fModelElement.eContainer as FModelElement).model
+    }
+    
+    def FInterface getContainingInterface(FModelElement fModelElement) {
+        if (fModelElement.eContainer == null) {
+            return null
+        }
+        if (fModelElement.eContainer instanceof FInterface) {
+            return (fModelElement.eContainer as FInterface)
+        }
+        
+        return (fModelElement.eContainer as FModelElement).containingInterface
     }
 
     def getDirectoryPath(FModel fModel) {
@@ -352,8 +365,28 @@ class FrancaGeneratorExtensions {
         (fMethodErrors.eContainer as FMethod).name + 'Error'
     }
 
-    def getBackingType(FEnumerationType fEnumerationType) {
-        return FBasicTypeId::INT32        
+    def getBackingType(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        if(fEnumerationType.containingInterface != null) {
+            switch(deploymentAccessor.getEnumBackingType(fEnumerationType.containingInterface)) {
+                case EnumBackingType::UInt8:
+                    return FBasicTypeId::UINT8
+                case EnumBackingType::UInt16:
+                    return FBasicTypeId::UINT16
+                case EnumBackingType::UInt32:
+                    return FBasicTypeId::UINT32
+                case EnumBackingType::UInt64:
+                    return FBasicTypeId::UINT64
+                case EnumBackingType::Int8:
+                    return FBasicTypeId::INT8
+                case EnumBackingType::Int16:
+                    return FBasicTypeId::INT16
+                case EnumBackingType::Int32:
+                    return FBasicTypeId::INT32
+                case EnumBackingType::Int64:
+                    return FBasicTypeId::INT64
+            }
+        }
+        return FBasicTypeId::INT32
     }
 
     def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {
@@ -375,52 +408,13 @@ class FrancaGeneratorExtensions {
         }
     }
     
-    def String typeStreamSignature(FTypeRef fTypeRef) {
+    def String typeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         if (fTypeRef.derived != null)
-            return fTypeRef.derived.typeStreamFTypeSignature
-        return fTypeRef.predefined.typeStreamSignature
+            return fTypeRef.derived.typeStreamFTypeSignature(deploymentAccessor)
+        return fTypeRef.predefined.basicTypeStreamSignature
     }
     
-    def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef) {
-        return fTypeDef.actualType.typeStreamSignature
-    }
-
-    def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType) {
-        return 'typeOutputStream.beginWriteVectorType();\n' + 
-        fArrayType.elementType.typeStreamSignature + '\n' + 
-        'typeOutputStream.endWriteVectorType();'
-    }
-
-    def private dispatch String typeStreamFTypeSignature(FMapType fMap) {
-    	return 'typeOutputStream.beginWriteMapType();\n' + 
-    	fMap.keyType.typeStreamSignature + '\n' + fMap.valueType.typeStreamSignature + '\n' + 
-    	'typeOutputStream.endWriteMapType();'
-    }
-
-    def private dispatch String typeStreamFTypeSignature(FStructType fStructType) {
-    	return 'typeOutputStream.beginWriteStructType();\n' + 
-    	fStructType.elementsTypeStreamSignature + '\n' + 
-    	'typeOutputStream.endWriteStructType();'   	
-    }
-
-    def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType) {
-        return fEnumerationType.backingType.typeStreamSignature
-    }
-
-    def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType) {
-    	return 'typeOutputStream.writeVariantType();'
-    }
-
-    def private String getElementsTypeStreamSignature(FStructType fStructType) {
-        var signature = fStructType.elements.map[type.typeStreamSignature].join
-
-        if (fStructType.base != null)
-            signature = fStructType.base.elementsTypeStreamSignature + signature
-
-        return signature
-    }
-    
-    def private String typeStreamSignature(FBasicTypeId fBasicTypeId) {
+    def private String getBasicTypeStreamSignature(FBasicTypeId fBasicTypeId) {
         switch fBasicTypeId {
             case FBasicTypeId::BOOLEAN: return "typeOutputStream.writeBoolType();"
             case FBasicTypeId::INT8: return "typeOutputStream.writeInt8Type();"
@@ -433,9 +427,48 @@ class FrancaGeneratorExtensions {
             case FBasicTypeId::UINT64: return "typeOutputStream.writeUInt64Type();"
             case FBasicTypeId::FLOAT: return "typeOutputStream.writeFloatType();"
             case FBasicTypeId::DOUBLE: return "typeOutputStream.writeDoubleType();"
-	        case FBasicTypeId::STRING: return "typeOutputStream.writeStringType();"
+            case FBasicTypeId::STRING: return "typeOutputStream.writeStringType();"
             case FBasicTypeId::BYTE_BUFFER: return "typeOutputStream.writeByteBufferType();"
         }
+    }
+    
+    def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        return fTypeDef.actualType.typeStreamSignature(deploymentAccessor)
+    }
+
+    def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        return 'typeOutputStream.beginWriteVectorType();\n' + 
+        fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' + 
+        'typeOutputStream.endWriteVectorType();'
+    }
+
+    def private dispatch String typeStreamFTypeSignature(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    	return 'typeOutputStream.beginWriteMapType();\n' + 
+    	fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' + fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' + 
+    	'typeOutputStream.endWriteMapType();'
+    }
+
+    def private dispatch String typeStreamFTypeSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    	return 'typeOutputStream.beginWriteStructType();\n' +
+    	fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
+    	'typeOutputStream.endWriteStructType();'
+    }
+
+    def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        return fEnumerationType.getBackingType(deploymentAccessor).basicTypeStreamSignature
+    }
+
+    def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    	return 'typeOutputStream.writeVariantType();'
+    }
+
+    def private String getElementsTypeStreamSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor)].join
+
+        if (fStructType.base != null)
+            signature = fStructType.base.getElementsTypeStreamSignature(deploymentAccessor) + signature
+
+        return signature
     }
     
     def generateCppNamespace(FModel fModel) '''

@@ -26,45 +26,139 @@ import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FUnionType
+import org.franca.deploymodel.dsl.FDeployPersistenceManager
+import org.franca.deploymodel.core.FDModelExtender
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
+import org.franca.deploymodel.core.FDeployedInterface
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
     @Inject private extension FInterfaceGenerator
     @Inject private extension FInterfaceProxyGenerator
     @Inject private extension FInterfaceStubGenerator
+    @Inject private extension FrancaGeneratorExtensions
 
     @Inject private FrancaPersistenceManager francaPersistenceManager
+    @Inject private FDeployPersistenceManager fDeployPersistenceManager
+
 
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
-        val isFrancaIDLResource = input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)
-        checkArgument(isFrancaIDLResource, "Unknown input: " + input)
+        if(input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)) {
+            doGenerateStandardFrancaComponents(input, fileSystemAccess)
+        } else if (input.URI.fileExtension.equals("fdepl" /* fDeployPersistenceManager.fileExtension */)) {
+            doGenerateDeployedFrancaComponents(input, fileSystemAccess)
+        } else {
+            checkArgument(false, "Unknown input: " + input)
+        }
 
+
+//        mainStubGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
+//        automakeGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
+//        initTypeGeneration
+//        for (fInterface: basicModel.interfaces) {
+//            generateInterface(fInterface, deploymentAccessor, fileSystemAccess)
+//        }
+//        finalizeTypeGeneration(fileSystemAccess, outputLocation)
+    }
+
+
+    def private doGenerateStandardFrancaComponents(Resource input, IFileSystemAccess fileSystemAccess) {
         val fModel = francaPersistenceManager.loadModel(input.filePath)
-        val allReferencedFTypes = fModel.allReferencedFTypes
-        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
-        
-        val generateTypeCollections = new HashSet<FTypeCollection>
-        generateTypeCollections.addAll(fModel.typeCollections)
-        allReferencedFTypes.filter[eContainer instanceof FTypeCollection].forEach[generateTypeCollections.add(eContainer as FTypeCollection)]
 
-        val generateInterfaces = fModel.allReferencedFInterfaces
+        val deploymentAccessor = new DeploymentInterfacePropertyAccessorWrapper(null) as DeploymentInterfacePropertyAccessor
+
+
+        val allReferencedFTypes = fModel.allReferencedFTypes
+        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[eContainer as FTypeCollection]
+        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
+
+        val generateTypeCollections = fModel.typeCollections.toSet
+        generateTypeCollections.addAll(allFTypeTypeCollections)
+
+        val generateInterfaces = fModel.allReferencedFInterfaces.toSet
         generateInterfaces.addAll(allFTypeFInterfaces)
 
-        val generateInterfaceProxies = fModel.interfaces
-        
-        val generateInterfaceStubs = fModel.interfaces
 
-        generateTypeCollections.forEach[generate(fileSystemAccess)]
-        generateInterfaces.forEach[generate(fileSystemAccess)]
-        generateInterfaceProxies.forEach[generateProxy(fileSystemAccess)]
-        generateInterfaceStubs.forEach[generateStub(fileSystemAccess)]
-	}
+
+        generateTypeCollections.forEach[generate(it, fileSystemAccess, deploymentAccessor)]
+        generateInterfaces.forEach[
+            generate(it, fileSystemAccess, deploymentAccessor)
+        ]
+        fModel.interfaces.forEach[
+            it.generateProxy(fileSystemAccess, deploymentAccessor)
+            it.generateStub(fileSystemAccess)
+        ]
+    }    
+    
+
+    def private doGenerateDeployedFrancaComponents(Resource input, IFileSystemAccess access) {
+        var fDeployedModel = fDeployPersistenceManager.loadModel(input.filePathUrl);
+        val fModelExtender = new FDModelExtender(fDeployedModel);
+
+        checkArgument(fModelExtender.getFDInterfaces().size > 0, "No Interfaces were deployed, nothing to generate.")
+        val fModel = fModelExtender.getFDInterfaces().get(0).target.model
+
+        val allReferencedFTypes = fModel.allReferencedFTypes
+        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[eContainer as FTypeCollection]
+        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
+
+        val generateTypeCollections = fModel.typeCollections.toSet
+        generateTypeCollections.addAll(allFTypeTypeCollections)
+
+        val generateInterfaces = fModel.allReferencedFInterfaces.toSet
+        generateInterfaces.addAll(allFTypeFInterfaces)
+
+        val deployedInterfaces = fModelExtender.getFDInterfaces()        
+        val defaultDeploymentAccessor = new DeploymentInterfacePropertyAccessorWrapper(null) as DeploymentInterfacePropertyAccessor
+
+        generateTypeCollections.forEach[generate(it, access, defaultDeploymentAccessor)]
+
+        generateInterfaces.forEach[
+            val currentInterface = it
+            var DeploymentInterfacePropertyAccessor deploymentAccessor
+            if(deployedInterfaces.exists[it.target == currentInterface]) {
+                deploymentAccessor = new DeploymentInterfacePropertyAccessor(new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
+            } else {
+                deploymentAccessor = defaultDeploymentAccessor
+            }
+            generate(it, access, deploymentAccessor)
+        ]
+
+        fModel.interfaces.forEach[
+            val currentInterface = it
+            var DeploymentInterfacePropertyAccessor deploymentAccessor
+            if(deployedInterfaces.exists[it.target == currentInterface]) {
+                deploymentAccessor = new DeploymentInterfacePropertyAccessor(new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
+            } else {
+                deploymentAccessor = defaultDeploymentAccessor
+            }
+            it.generateProxy(access, deploymentAccessor)
+            it.generateStub(access)
+        ]
+
+        return;
+    }
+
+	
+	
+	
+
+    private var String filePrefix = "file://"
+    def private getFilePathUrl(Resource resource) {
+        val filePath = resource.filePath
+        return filePrefix + filePath
+    }
+	
+	
+	
 
 	def private getFilePath(Resource resource) {
-        if (resource.URI.file)
+        if (resource.URI.file) {
             return resource.URI.toFileString
+        }
         
         val platformPath = new Path(resource.URI.toPlatformString(true))
         val file = EcorePlugin::workspaceRoot.getFile(platformPath)

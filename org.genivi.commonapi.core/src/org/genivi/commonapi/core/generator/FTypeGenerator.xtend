@@ -30,14 +30,15 @@ import java.util.HashSet
 import org.eclipse.emf.common.util.EList
 
 import static com.google.common.base.Preconditions.*
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FTypeGenerator {
     @Inject private extension FrancaGeneratorExtensions
 
 
-    def generateFTypeDeclarations(FTypeCollection fTypeCollection) '''
+    def generateFTypeDeclarations(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «FOR type: fTypeCollection.types.sortTypes(fTypeCollection)»
-            «type.generateFTypeDeclaration»
+            «type.generateFTypeDeclaration(deploymentAccessor)»
 
         «ENDFOR»
     '''
@@ -136,19 +137,19 @@ class FTypeGenerator {
     }
 
 
-    def dispatch generateFTypeDeclaration(FTypeDef fTypeDef) '''
+    def dispatch generateFTypeDeclaration(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.name»;
     '''
 
-    def dispatch generateFTypeDeclaration(FArrayType fArrayType) '''
+    def dispatch generateFTypeDeclaration(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.name»;
     '''
 
-    def dispatch generateFTypeDeclaration(FMapType fMap) '''
+    def dispatch generateFTypeDeclaration(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»> «fMap.name»;
     '''
 
-    def dispatch generateFTypeDeclaration(FStructType fStructType) '''
+    def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         struct «fStructType.name»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
                 «element.type.getNameReference(fStructType)» «element.name»;
@@ -165,18 +166,18 @@ class FTypeGenerator {
                     «fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
                 «ENDIF»
                 «FOR element : fStructType.elements»
-                    «element.type.typeStreamSignature»
+                    «element.type.typeStreamSignature(deploymentAccessor)»
                 «ENDFOR»
             }
         };
     '''
     
-    def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType) {
-        fEnumerationType.generateDeclaration(fEnumerationType.name)
+    def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        generateDeclaration(fEnumerationType, fEnumerationType.name, deploymentAccessor)
     }
 
-    def generateDeclaration(FEnumerationType fEnumerationType, String name) '''
-        enum class «name»: «fEnumerationType.backingType.primitiveTypeName» {
+    def generateDeclaration(FEnumerationType fEnumerationType, String name, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        enum class «name»: «fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName» {
             «FOR parent : fEnumerationType.baseList SEPARATOR ',\n'»
                 «FOR enumerator : parent.enumerators SEPARATOR ','»
                     «enumerator.name» = «parent.getRelativeNameReference(fEnumerationType)»::«enumerator.name»
@@ -192,7 +193,7 @@ class FTypeGenerator {
         struct «name»Comparator;
     '''
 
-    def dispatch generateFTypeDeclaration(FUnionType fUnionType) '''
+    def dispatch generateFTypeDeclaration(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
     '''
 
@@ -209,43 +210,44 @@ class FTypeGenerator {
     }
 
 
-    def dispatch generateFTypeInlineImplementation(FTypeDef fTypeDef, FModelElement parent) ''''''
-    def dispatch generateFTypeInlineImplementation(FArrayType fArrayType, FModelElement parent) ''''''
-    def dispatch generateFTypeInlineImplementation(FMapType fMap, FModelElement parent) ''''''
+    def dispatch generateFTypeInlineImplementation(FTypeDef fTypeDef, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) ''''''
+    def dispatch generateFTypeInlineImplementation(FArrayType fArrayType, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) ''''''
+    def dispatch generateFTypeInlineImplementation(FMapType fMap, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) ''''''
 
-    def dispatch generateFTypeInlineImplementation(FStructType fStructType, FModelElement parent) '''
+    def dispatch generateFTypeInlineImplementation(FStructType fStructType, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         bool operator==(const «fStructType.getClassNamespace(parent)»& lhs, const «fStructType.getClassNamespace(parent)»& rhs);
         inline bool operator!=(const «fStructType.getClassNamespace(parent)»& lhs, const «fStructType.getClassNamespace(parent)»& rhs) {
             return !(lhs == rhs);
         }
     '''
 
-    def dispatch generateFTypeInlineImplementation(FEnumerationType fEnumerationType, FModelElement parent) {
-        fEnumerationType.generateInlineImplementation(fEnumerationType.name, parent, parent.name)
+    def dispatch generateFTypeInlineImplementation(FEnumerationType fEnumerationType, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        fEnumerationType.generateInlineImplementation(fEnumerationType.name, parent, parent.name, deploymentAccessor)
     }
 
-    def generateInlineImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) '''
+    def generateInlineImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         inline CommonAPI::InputStream& operator>>(CommonAPI::InputStream& inputStream, «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& enumValue) {
-            return inputStream.readEnumValue<«fEnumerationType.backingType.primitiveTypeName»>(enumValue);
+            return inputStream.readEnumValue<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(enumValue);
         }
 
         inline CommonAPI::OutputStream& operator<<(CommonAPI::OutputStream& outputStream, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& enumValue) {
-            return outputStream.writeEnumValue(static_cast<«fEnumerationType.backingType.primitiveTypeName»>(enumValue));
+            return outputStream.writeEnumValue(static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(enumValue));
         }
 
         struct «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»Comparator {
             inline bool operator()(const «enumerationName»& lhs, const «enumerationName»& rhs) const {
-                return static_cast<«fEnumerationType.backingType.primitiveTypeName»>(lhs) < static_cast<«fEnumerationType.backingType.primitiveTypeName»>(rhs);
+                return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) < static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
             }
         };
         
         «FOR base : fEnumerationType.baseList BEFORE "\n" SEPARATOR "\n"»
-            «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "==")»
-            «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "!=")»
+            «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "==", deploymentAccessor)»
+            «fEnumerationType.generateInlineOperatorWithName(enumerationName, base, parent, parentName, "!=", deploymentAccessor)»
         «ENDFOR»
     '''
 
-    def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent) ''' '''
+    def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) ''''''
+
     def dispatch generateFTypeImplementation(FTypeDef fTypeDef, FModelElement parent) ''''''
     def dispatch generateFTypeImplementation(FArrayType fArrayType, FModelElement parent) ''''''
     def dispatch generateFTypeImplementation(FMapType fMap, FModelElement parent) ''''''
@@ -415,12 +417,12 @@ class FTypeGenerator {
         return elements
     }
 
-    def private generateInlineOperatorWithName(FEnumerationType fEnumerationType, String enumerationName, FEnumerationType base, FModelElement parent, String parentName, String operator) '''
+    def private generateInlineOperatorWithName(FEnumerationType fEnumerationType, String enumerationName, FEnumerationType base, FModelElement parent, String parentName, String operator, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getRelativeNameReference(fEnumerationType)»& rhs) {
-            return static_cast<«fEnumerationType.backingType.primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.backingType.primitiveTypeName»>(rhs);
+            return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
         }
         inline bool operator«operator»(const «base.getRelativeNameReference(fEnumerationType)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
-            return static_cast<«fEnumerationType.backingType.primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.backingType.primitiveTypeName»>(rhs);
+            return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
         }
     '''
 

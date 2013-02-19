@@ -9,21 +9,21 @@ package org.genivi.commonapi.core.generator
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FTypeCollection
-    
-    
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess) {
-        fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader)
+	def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor))
 
         if (fTypeCollection.hasSourceFile)
             fileSystemAccess.generateFile(fTypeCollection.sourcePath, fTypeCollection.generateSource)
 	}
 
-    def private generateHeader(FTypeCollection fTypeCollection) '''
+    def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
         #ifndef «fTypeCollection.defineName»_H_
         #define «fTypeCollection.defineName»_H_
@@ -35,10 +35,10 @@ class FTypeCollectionGenerator {
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
 
         namespace «fTypeCollection.name» {
-            «fTypeCollection.generateFTypeDeclarations»
+            «fTypeCollection.generateFTypeDeclarations(deploymentAccessor)»
 
         «FOR type : fTypeCollection.types»
-           «type.generateFTypeInlineImplementation(type)»
+           «type.generateFTypeInlineImplementation(type, deploymentAccessor)»
         «ENDFOR»
 
         
@@ -58,14 +58,14 @@ class FTypeCollectionGenerator {
         
         namespace CommonAPI {
         	
-        	«fTypeCollection.generateTypeWriters»
+        	«fTypeCollection.generateTypeWriters(deploymentAccessor)»
         	
         	«fTypeCollection.generateVariantComparators»
         }
-        
-        
+
+
         namespace std {
-            «fTypeCollection.generateHashers»
+            «fTypeCollection.generateHashers(deploymentAccessor)»
         }
 
         #endif // «fTypeCollection.defineName»_H_

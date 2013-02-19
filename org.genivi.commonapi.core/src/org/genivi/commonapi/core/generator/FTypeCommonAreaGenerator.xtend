@@ -19,6 +19,8 @@ import org.franca.core.franca.FUnionType
 import java.util.LinkedList
 import java.util.ArrayList
 import org.franca.core.franca.FTypeRef
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
 
 class FTypeCommonAreaGenerator {
 	@Inject private extension FrancaGeneratorExtensions
@@ -46,10 +48,10 @@ class FTypeCommonAreaGenerator {
         return fType as FUnionType
     }
     
-    def generateTypeWriters(FTypeCollection fTypes) '''
+    def generateTypeWriters(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
     	«FOR type: fTypes.types»
     		«IF type.isFEnumerationType»
-    			«generateStreamImplementation(type.getFEnumerationType, type.name, fTypes, fTypes.name)»
+    			«generateStreamImplementation(type.getFEnumerationType, type.name, fTypes, fTypes.name, deploymentAccessor)»
     		«ENDIF»
     	«ENDFOR»
     '''
@@ -68,47 +70,51 @@ class FTypeCommonAreaGenerator {
         parent.model.namespaceAsList.join("::") + "::" + fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)
     }
 
-    def private generateStreamImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) '''
+    def private generateStreamImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         template<>
         struct BasicTypeWriter<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
             inline static void writeType (CommonAPI::TypeOutputStream& typeStream) {
-                typeStream.write«fEnumerationType.generateTypeOutput»Type();
+                typeStream.write«fEnumerationType.generateTypeOutput(deploymentAccessor)»Type();
             }
         };
 
         template<>
         struct InputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
             static void beginReadVector(InputStream& inputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
-                inputStream.beginRead«fEnumerationType.generateTypeOutput»Vector();
+                inputStream.beginRead«fEnumerationType.generateTypeOutput(deploymentAccessor)»Vector();
             }
         };
 
         template <>
         struct OutputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
             static void beginWriteVector(OutputStream& outputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
-                outputStream.beginWrite«fEnumerationType.generateTypeOutput»Vector(vectorValue.size());
+                outputStream.beginWrite«fEnumerationType.generateTypeOutput(deploymentAccessor)»Vector(vectorValue.size());
             }
         };
     '''
 
-    def private generateTypeOutput(FEnumerationType fEnumerationType) {
-		if (fEnumerationType.backingType.primitiveTypeName.equals("int8_t")) {
-			return "Int8Enum";			
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int16_t")) {
-			return "Int16Enum";
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int32_t")) {
-			return "Int32Enum";
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("int64_t")) {
-			return "Int64Enum";
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint8_t")) {
-			return "UInt8Enum";		
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint16_t")) {
-			return "UInt16Enum";
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint32_t")) {
-			return "UInt32Enum";
-		} else if (fEnumerationType.backingType.primitiveTypeName.equals("uint64_t")) {
-			return "UInt64Enum";
-		}
+    def private generateTypeOutput(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        if(fEnumerationType.containingInterface != null) {
+            switch(deploymentAccessor.getEnumBackingType(fEnumerationType.containingInterface)) {
+                case EnumBackingType::UInt8:
+                    return "UInt8Enum"
+                case EnumBackingType::UInt16:
+                    return "UInt16Enum"
+                case EnumBackingType::UInt32:
+                    return "UInt32Enum"
+                case EnumBackingType::UInt64:
+                    return "UInt64Enum"
+                case EnumBackingType::Int8:
+                    return "Int8Enum"
+                case EnumBackingType::Int16:
+                    return "Int16Enum"
+                case EnumBackingType::Int32:
+                    return "Int32Enum"
+                case EnumBackingType::Int64:
+                    return "Int64Enum"
+            }
+        }
+        return "Int32Enum"
 	}
 	
 	def generateVariantComparators(FTypeCollection fTypes) '''
@@ -217,13 +223,13 @@ class FTypeCommonAreaGenerator {
     
     def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»'''
     
-    def generateHashers(FTypeCollection fTypes) '''
+    def generateHashers(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «FOR type: fTypes.types»
             «IF type.isFEnumerationType»
                 template<>
                 struct hash<«type.getFQN(fTypes)»> {
                     inline size_t operator()(const «type.getFQN(fTypes)»& «type.name.toFirstLower») const {
-                        return static_cast<«type.getFEnumerationType.backingType.primitiveTypeName»>(«type.name.toFirstLower»);
+                        return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.name.toFirstLower»);
                     }
                 };
             «ENDIF»

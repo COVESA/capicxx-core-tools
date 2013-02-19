@@ -9,20 +9,21 @@ package org.genivi.commonapi.core.generator
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FInterface
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
-        fileSystemAccess.generateFile(fInterface.headerPath, fInterface.generateHeader)
+	def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        fileSystemAccess.generateFile(fInterface.headerPath, fInterface.generateHeader(deploymentAccessor))
 
         if (fInterface.hasSourceFile)
             fileSystemAccess.generateFile(fInterface.sourcePath, fInterface.generateSource)
 	}
 
-    def private generateHeader(FInterface fInterface) '''
+    def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
@@ -39,7 +40,7 @@ class FInterfaceGenerator {
 
             static inline const char* getInterfaceId();
             static inline CommonAPI::Version getInterfaceVersion();
-            «fInterface.generateFTypeDeclarations»
+            «fInterface.generateFTypeDeclarations(deploymentAccessor)»
         };
         
         const char* «fInterface.name»::getInterfaceId() {
@@ -51,20 +52,20 @@ class FInterfaceGenerator {
         }
 
         «FOR type : fInterface.types»
-           «type.generateFTypeInlineImplementation(fInterface)»
+           «type.generateFTypeInlineImplementation(fInterface, deploymentAccessor)»
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
         
         namespace CommonAPI {
-        	«fInterface.generateTypeWriters»
+        	«fInterface.generateTypeWriters(deploymentAccessor)»
 
         	«fInterface.generateVariantComparators»
         }
-        
-        
+
+
         namespace std {
-            «fInterface.generateHashers»
+            «fInterface.generateHashers(deploymentAccessor)»
         }
 
         #endif // «fInterface.defineName»_H_

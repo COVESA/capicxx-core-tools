@@ -15,17 +15,18 @@ import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 
 import static com.google.common.base.Preconditions.*
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
-        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader)
+	def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader(deploymentAccessor))
         fileSystemAccess.generateFile(fInterface.proxyHeaderPath, fInterface.generateProxyHeader)
 	}
 
-    def private generateProxyBaseHeader(FInterface fInterface) '''
+    def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
@@ -49,7 +50,7 @@ class FInterfaceProxyGenerator {
         class «fInterface.proxyBaseClassName»: virtual public CommonAPI::Proxy {
          public:
             «FOR method : fInterface.methods.filter[errors != null]»
-                «method.errors.generateDeclaration(method.errors.errorName)»
+                «method.errors.generateDeclaration(method.errors.errorName, deploymentAccessor)»
 
             «ENDFOR»
             «FOR attribute : fInterface.attributes»
@@ -87,7 +88,7 @@ class FInterfaceProxyGenerator {
         };
 
         «FOR method : fInterface.methods.filter[errors != null]»
-            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.proxyBaseClassName)»
+            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.proxyBaseClassName, deploymentAccessor)»
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»

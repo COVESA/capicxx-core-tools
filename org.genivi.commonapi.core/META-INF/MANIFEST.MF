@@ -14,4 +14,5 @@ Require-Bundle: org.eclipse.core.resources;bundle-version="3.8.0",
  org.franca.deploymodel.dsl;bundle-version="0.8.0"
 Import-Package: javax.inject;version="1.0.0"
 Bundle-RequiredExecutionEnvironment: J2SE-1.5
-Export-Package: org.genivi.commonapi.core.generator
+Export-Package: org.genivi.commonapi.core.deployment,
+ org.genivi.commonapi.core.generator
