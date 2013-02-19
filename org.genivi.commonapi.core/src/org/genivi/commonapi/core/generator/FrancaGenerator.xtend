@@ -33,6 +33,10 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
 import org.franca.deploymodel.core.FDeployedInterface
+import org.franca.deploymodel.dsl.fDeploy.FDInterface
+import java.util.List
+import java.util.LinkedList
+import java.util.Set
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -46,14 +50,26 @@ class FrancaGenerator implements IGenerator {
 
 
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
+        var FModel fModel
+        var List<FDInterface> deployedInterfaces
+
         if(input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)) {
-            doGenerateStandardFrancaComponents(input, fileSystemAccess)
+            fModel = francaPersistenceManager.loadModel(input.filePath)
+            deployedInterfaces = new LinkedList<FDInterface>()
+
         } else if (input.URI.fileExtension.equals("fdepl" /* fDeployPersistenceManager.fileExtension */)) {
-            doGenerateDeployedFrancaComponents(input, fileSystemAccess)
+            var fDeployedModel = fDeployPersistenceManager.loadModel(input.filePathUrl);
+            val fModelExtender = new FDModelExtender(fDeployedModel);
+
+            checkArgument(fModelExtender.getFDInterfaces().size > 0, "No Interfaces were deployed, nothing to generate.")
+            fModel = fModelExtender.getFDInterfaces().get(0).target.model
+            deployedInterfaces = fModelExtender.getFDInterfaces()
+
         } else {
             checkArgument(false, "Unknown input: " + input)
         }
 
+        doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess)
 
 //        mainStubGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
 //        automakeGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
@@ -63,44 +79,9 @@ class FrancaGenerator implements IGenerator {
 //        }
 //        finalizeTypeGeneration(fileSystemAccess, outputLocation)
     }
-
-
-    def private doGenerateStandardFrancaComponents(Resource input, IFileSystemAccess fileSystemAccess) {
-        val fModel = francaPersistenceManager.loadModel(input.filePath)
-
-        val deploymentAccessor = new DeploymentInterfacePropertyAccessorWrapper(null) as DeploymentInterfacePropertyAccessor
-
-
-        val allReferencedFTypes = fModel.allReferencedFTypes
-        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[eContainer as FTypeCollection]
-        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
-
-        val generateTypeCollections = fModel.typeCollections.toSet
-        generateTypeCollections.addAll(allFTypeTypeCollections)
-
-        val generateInterfaces = fModel.allReferencedFInterfaces.toSet
-        generateInterfaces.addAll(allFTypeFInterfaces)
-
-
-
-        generateTypeCollections.forEach[generate(it, fileSystemAccess, deploymentAccessor)]
-        generateInterfaces.forEach[
-            generate(it, fileSystemAccess, deploymentAccessor)
-        ]
-        fModel.interfaces.forEach[
-            it.generateProxy(fileSystemAccess, deploymentAccessor)
-            it.generateStub(fileSystemAccess)
-        ]
-    }    
     
 
-    def private doGenerateDeployedFrancaComponents(Resource input, IFileSystemAccess access) {
-        var fDeployedModel = fDeployPersistenceManager.loadModel(input.filePathUrl);
-        val fModelExtender = new FDModelExtender(fDeployedModel);
-
-        checkArgument(fModelExtender.getFDInterfaces().size > 0, "No Interfaces were deployed, nothing to generate.")
-        val fModel = fModelExtender.getFDInterfaces().get(0).target.model
-
+    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess access) {
         val allReferencedFTypes = fModel.allReferencedFTypes
         val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[eContainer as FTypeCollection]
         val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
@@ -111,7 +92,6 @@ class FrancaGenerator implements IGenerator {
         val generateInterfaces = fModel.allReferencedFInterfaces.toSet
         generateInterfaces.addAll(allFTypeFInterfaces)
 
-        val deployedInterfaces = fModelExtender.getFDInterfaces()        
         val defaultDeploymentAccessor = new DeploymentInterfacePropertyAccessorWrapper(null) as DeploymentInterfacePropertyAccessor
 
         generateTypeCollections.forEach[generate(it, access, defaultDeploymentAccessor)]
