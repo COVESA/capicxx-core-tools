@@ -21,6 +21,7 @@ import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FEnumerationType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$DefaultEnumBackingType
 
 import static com.google.common.base.Preconditions.*
 import org.franca.core.franca.FBasicTypeId
@@ -31,6 +32,7 @@ import org.franca.core.franca.FStructType
 import org.franca.core.franca.FUnionType
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.core.runtime.Path
+
 
 class FrancaGeneratorExtensions {
     def getFullyQualifiedName(FModelElement fModelElement) {
@@ -366,8 +368,29 @@ class FrancaGeneratorExtensions {
     }
 
     def getBackingType(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        if(fEnumerationType.containingInterface != null) {
-            switch(deploymentAccessor.getEnumBackingType(fEnumerationType.containingInterface)) {
+        if(deploymentAccessor.getEnumBackingType(fEnumerationType) == EnumBackingType::UseDefault) {
+            if(fEnumerationType.containingInterface != null) {
+                switch(deploymentAccessor.getDefaultEnumBackingType(fEnumerationType.containingInterface)) {
+                    case DefaultEnumBackingType::UInt8:
+                        return FBasicTypeId::UINT8
+                    case DefaultEnumBackingType::UInt16:
+                        return FBasicTypeId::UINT16
+                    case DefaultEnumBackingType::UInt32:
+                        return FBasicTypeId::UINT32
+                    case DefaultEnumBackingType::UInt64:
+                        return FBasicTypeId::UINT64
+                    case DefaultEnumBackingType::Int8:
+                        return FBasicTypeId::INT8
+                    case DefaultEnumBackingType::Int16:
+                        return FBasicTypeId::INT16
+                    case DefaultEnumBackingType::Int32:
+                        return FBasicTypeId::INT32
+                    case DefaultEnumBackingType::Int64:
+                        return FBasicTypeId::INT64
+                }
+            }
+        } else {
+            switch(deploymentAccessor.getEnumBackingType(fEnumerationType)) {
                 case EnumBackingType::UInt8:
                     return FBasicTypeId::UINT8
                 case EnumBackingType::UInt16:
@@ -386,7 +409,6 @@ class FrancaGeneratorExtensions {
                     return FBasicTypeId::INT64
             }
         }
-        return FBasicTypeId::INT32
     }
 
     def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {

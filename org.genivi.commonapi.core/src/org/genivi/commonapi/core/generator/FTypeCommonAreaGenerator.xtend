@@ -20,7 +20,6 @@ import java.util.LinkedList
 import java.util.ArrayList
 import org.franca.core.franca.FTypeRef
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
 
 class FTypeCommonAreaGenerator {
 	@Inject private extension FrancaGeneratorExtensions
@@ -94,27 +93,7 @@ class FTypeCommonAreaGenerator {
     '''
 
     def private generateTypeOutput(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        if(fEnumerationType.containingInterface != null) {
-            switch(deploymentAccessor.getEnumBackingType(fEnumerationType.containingInterface)) {
-                case EnumBackingType::UInt8:
-                    return "UInt8Enum"
-                case EnumBackingType::UInt16:
-                    return "UInt16Enum"
-                case EnumBackingType::UInt32:
-                    return "UInt32Enum"
-                case EnumBackingType::UInt64:
-                    return "UInt64Enum"
-                case EnumBackingType::Int8:
-                    return "Int8Enum"
-                case EnumBackingType::Int16:
-                    return "Int16Enum"
-                case EnumBackingType::Int32:
-                    return "Int32Enum"
-                case EnumBackingType::Int64:
-                    return "Int64Enum"
-            }
-        }
-        return "Int32Enum"
+        return fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName.split("_").get(0).toUpperCase.replace("NT", "nt") + "Enum"
 	}
 	
 	def generateVariantComparators(FTypeCollection fTypes) '''

@@ -6,6 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.deployment;
 
+import org.franca.core.franca.FEnumerationType;
 import org.franca.core.franca.FInterface;
 import org.franca.deploymodel.core.FDeployedInterface;
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor;
@@ -19,9 +20,16 @@ public class DeploymentInterfacePropertyAccessorWrapper extends DeploymentInterf
 		encapsulate = (target == null); 
 	}
 	
-	public DeploymentInterfacePropertyAccessor.EnumBackingType getEnumBackingType(FInterface obj) {
+	public DefaultEnumBackingType getDefaultEnumBackingType(FInterface obj) {
 		if(encapsulate) {
-			return DeploymentInterfacePropertyAccessor.EnumBackingType.Int32;
+			return DefaultEnumBackingType.Int32;
+		}
+		return super.getDefaultEnumBackingType(obj);
+	}
+
+	public EnumBackingType getEnumBackingType (FEnumerationType obj) {
+		if(encapsulate) {
+			return EnumBackingType.UseDefault;
 		}
 		return super.getEnumBackingType(obj);
 	}
