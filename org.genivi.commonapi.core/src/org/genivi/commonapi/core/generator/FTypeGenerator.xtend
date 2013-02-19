@@ -62,12 +62,17 @@ class FTypeGenerator {
     def private hasNoCircularDependencies(EList<FType> types) {
         for(currentType: types) {
             var Set<FType> currentTypeSet = new HashSet<FType>
+            val Set<FType> fullDependencySet = new HashSet<FType>
             currentTypeSet.add(currentType)
+            fullDependencySet.add(currentType)
             while(!currentTypeSet.empty) {
                 currentTypeSet = currentTypeSet.map[it.directlyReferencedTypes].flatten.toSet
-                if(currentTypeSet.contains(currentType)) {
-                    return false
+                for(knownType: fullDependencySet) {
+                    if(currentTypeSet.contains(knownType)) {
+                        return false
+                    }
                 }
+                fullDependencySet.addAll(currentTypeSet)
             }
         }
         return true
