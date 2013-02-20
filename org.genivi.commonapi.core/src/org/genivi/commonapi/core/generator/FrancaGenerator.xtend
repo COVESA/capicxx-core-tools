@@ -121,18 +121,13 @@ class FrancaGenerator implements IGenerator {
         return;
     }
 
-	
-	
-	
 
     private var String filePrefix = "file://"
-    def private getFilePathUrl(Resource resource) {
+    def getFilePathUrl(Resource resource) {
         val filePath = resource.filePath
         return filePrefix + filePath
     }
-	
-	
-	
+
 
 	def private getFilePath(Resource resource) {
         if (resource.URI.file) {

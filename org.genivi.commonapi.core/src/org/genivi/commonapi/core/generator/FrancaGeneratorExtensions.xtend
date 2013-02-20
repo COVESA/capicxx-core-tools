@@ -408,6 +408,7 @@ class FrancaGeneratorExtensions {
             case EnumBackingType::Int64:
                 return FBasicTypeId::INT64
         }
+        return FBasicTypeId::INT32
     }
 
     def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {
