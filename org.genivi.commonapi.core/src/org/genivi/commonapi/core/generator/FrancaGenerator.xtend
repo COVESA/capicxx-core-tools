@@ -36,7 +36,6 @@ import org.franca.deploymodel.core.FDeployedInterface
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import java.util.List
 import java.util.LinkedList
-import java.util.Set
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator

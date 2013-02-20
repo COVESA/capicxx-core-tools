@@ -52,13 +52,13 @@ class FrancaGeneratorExtensions {
     }
     
     def FInterface getContainingInterface(FModelElement fModelElement) {
-        if (fModelElement.eContainer == null) {
+        if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
             return null
         }
         if (fModelElement.eContainer instanceof FInterface) {
             return (fModelElement.eContainer as FInterface)
         }
-        
+
         return (fModelElement.eContainer as FModelElement).containingInterface
     }
 
@@ -389,25 +389,24 @@ class FrancaGeneratorExtensions {
                         return FBasicTypeId::INT64
                 }
             }
-        } else {
-            switch(deploymentAccessor.getEnumBackingType(fEnumerationType)) {
-                case EnumBackingType::UInt8:
-                    return FBasicTypeId::UINT8
-                case EnumBackingType::UInt16:
-                    return FBasicTypeId::UINT16
-                case EnumBackingType::UInt32:
-                    return FBasicTypeId::UINT32
-                case EnumBackingType::UInt64:
-                    return FBasicTypeId::UINT64
-                case EnumBackingType::Int8:
-                    return FBasicTypeId::INT8
-                case EnumBackingType::Int16:
-                    return FBasicTypeId::INT16
-                case EnumBackingType::Int32:
-                    return FBasicTypeId::INT32
-                case EnumBackingType::Int64:
-                    return FBasicTypeId::INT64
-            }
+        }
+        switch(deploymentAccessor.getEnumBackingType(fEnumerationType)) {
+            case EnumBackingType::UInt8:
+                return FBasicTypeId::UINT8
+            case EnumBackingType::UInt16:
+                return FBasicTypeId::UINT16
+            case EnumBackingType::UInt32:
+                return FBasicTypeId::UINT32
+            case EnumBackingType::UInt64:
+                return FBasicTypeId::UINT64
+            case EnumBackingType::Int8:
+                return FBasicTypeId::INT8
+            case EnumBackingType::Int16:
+                return FBasicTypeId::INT16
+            case EnumBackingType::Int32:
+                return FBasicTypeId::INT32
+            case EnumBackingType::Int64:
+                return FBasicTypeId::INT64
         }
     }
 

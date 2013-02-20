@@ -19,7 +19,7 @@ public class DeploymentInterfacePropertyAccessorWrapper extends DeploymentInterf
 		super(target);
 		encapsulate = (target == null); 
 	}
-	
+
 	public DefaultEnumBackingType getDefaultEnumBackingType(FInterface obj) {
 		if(encapsulate) {
 			return DefaultEnumBackingType.Int32;
@@ -29,7 +29,7 @@ public class DeploymentInterfacePropertyAccessorWrapper extends DeploymentInterf
 
 	public EnumBackingType getEnumBackingType (FEnumerationType obj) {
 		if(encapsulate) {
-			return EnumBackingType.UseDefault;
+			return EnumBackingType.Int32;
 		}
 		return super.getEnumBackingType(obj);
 	}
