@@ -32,45 +32,79 @@ class FInterfaceStubGenerator {
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
+        /**
+         * Receives messages from remote and handles all dispatching of deserialized calls
+         * to a stub for the service «fInterface.name». Also provides means to send broadcasts
+         * and attribute-changed-notifications of observable attributes as defined by this service.
+         * An application developer should not need to bother with this class.
+         */
         class «fInterface.stubAdapterClassName»: virtual public CommonAPI::StubAdapter, public «fInterface.name» {
          public:
             «FOR attribute : fInterface.attributes»
                 «IF attribute.isObservable»
+                    ///Notifies all remote listeners about a change of value of the attribute «attribute.name».
                     virtual void «attribute.stubAdapterClassFireChangedMethodName»(const «attribute.type.getNameReference(fInterface.model)»& «attribute.name») = 0;
                 «ENDIF»
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
+                /**
+                 * Sends a broadcast event for «broadcast.name». Should not be called directly.
+                 * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
+                 */
                 virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')») = 0;
             «ENDFOR»        
         };
 
 
+        /**
+         * Defines the necessary callbacks to handle remote set events related to the attributes
+         * defined in the IDL description for «fInterface.name».
+         * For each attribute two callbacks are defined:
+         * - a verification callback that allows to verify the requested value and to prevent setting
+         *   e.g. an invalid value ("onRemoteSet<AttributeName>").
+         * - an action callback to do local work after the attribute value has been changed
+         *   ("onRemote<AttributeName>Changed").
+         *
+         * This class and the one below are the ones an application developer needs to have
+         * a look at if he wants to implement a service.
+         */
         class «fInterface.stubRemoteEventClassName» {
          public:
             virtual ~«fInterface.stubRemoteEventClassName»() { }
 
             «FOR attribute : fInterface.attributes»
+                /// Verification callback for remote set requests on the attribute «attribute.name».
                 virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» «attribute.name») = 0;
+                /// Action callback for remote set requests on the attribute «attribute.name».
                 virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
 
             «ENDFOR»
         };
 
 
+        /**
+         * Defines the interface that must be implemented by any class that should provide
+         * the service «fInterface.name» to remote clients.
+         * This class and the one above are the ones an application developer needs to have
+         * a look at if he wants to implement a service.
+         */
         class «fInterface.stubClassName» : public CommonAPI::Stub<«fInterface.stubAdapterClassName» , «fInterface.stubRemoteEventClassName»> {
          public:
             virtual ~«fInterface.stubClassName»() { }
 
             «FOR attribute : fInterface.attributes»
+                /// Provides getter access to the attribute «attribute.name».
                 virtual const «attribute.type.getNameReference(fInterface.model)»& «attribute.stubClassGetMethodName»() = 0;
             «ENDFOR»
 
             «FOR method: fInterface.methods»
+                /// This is the method that will be called on remote calls on the method «method.name».
                 virtual void «method.name»(«method.generateStubSignature») = 0;
             «ENDFOR»
             
             «FOR broadcast : fInterface.broadcasts»
+                /// Sends a broadcast event for «broadcast.name».
                 virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')») = 0;
             «ENDFOR»
         };
@@ -89,6 +123,16 @@ class FInterfaceStubGenerator {
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
+        /**
+         * Provides a default implementation for «fInterface.stubRemoteEventClassName» and
+         * «fInterface.stubClassName». Method callbacks have an empty implementation,
+         * remote set calls on attributes will always change the value of the attribute
+         * to the one received.
+         * 
+         * Override this stub if you only want to provide a subset of the functionality
+         * that would be defined for this service, and/or if you do not need any non-default
+         * behaviour.
+         */
         class «fInterface.stubDefaultClassName» : public «fInterface.stubClassName» {
          public:
             «fInterface.stubDefaultClassName»();
@@ -191,6 +235,14 @@ class FInterfaceStubGenerator {
                 return true;
             }
 
+            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value) {
+                return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
+            }
+
+            void «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassChangedMethodName»() {
+                defaultStub_->«attribute.stubRemoteEventClassChangedMethodName»();
+            }
+
         «ENDFOR»
 
         «FOR method : fInterface.methods»
@@ -209,17 +261,6 @@ class FInterfaceStubGenerator {
         «fInterface.stubDefaultClassName»::RemoteEventHandler::RemoteEventHandler(«fInterface.stubDefaultClassName»* defaultStub):
                 defaultStub_(defaultStub) {
         }
-
-        «FOR attribute : fInterface.attributes»
-            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value) {
-                return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
-            }
-
-            void «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassChangedMethodName»() {
-                defaultStub_->«attribute.stubRemoteEventClassChangedMethodName»();
-            }
-
-        «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
     '''

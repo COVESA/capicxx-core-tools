@@ -116,27 +116,70 @@ class FInterfaceProxyGenerator {
             ~«fInterface.proxyClassName»();
 
             «FOR attribute : fInterface.attributes»
+                /// Returns the wrapper class that provides access to the attribute «attribute.name».
                 virtual «attribute.generateGetMethodDefinition»;
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
+                /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
                 virtual «broadcast.generateGetMethodDefinition»;
             «ENDFOR»
 
             «FOR method : fInterface.methods»
 
+                /**
+                 * Calls «method.name» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
+                 * 
+«IF !method.inArgs.empty»     * All const parameters are input parameters to this method.«ENDIF»
+«IF !method.outArgs.empty»     * All non-const parameters will be filled with the returned values.«ENDIF»
+                 * The CallStatus will be filled when the method returns and indicate either
+                 * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
+                 * will be set.
+                 «IF !method.isFireAndForget»
+                 * Synchronous calls are not supported (will block indefinitely) when mainloop integration is used.
+                 «ENDIF»
+                 */
                 virtual «method.generateDefinition»;
                 «IF !method.isFireAndForget»
+                    /**
+                     * Calls «method.name» with asynchronous semantics.
+                     * 
+                     * The provided callback will be called when the reply to this call arrives or
+                     * an error occurs during the call. The CallStatus will indicate either "SUCCESS"
+                     * or which type of error has occurred. In case of any error, ONLY the CallStatus
+                     * will have a defined value.
+                     * The std::future returned by this method will be fulfilled at arrival of the reply.
+                     * It will provide the same value for CallStatus as will be handed to the callback.
+                     */
                     virtual «method.generateAsyncDefinition»;
                 «ENDIF»
             «ENDFOR»
 
+            /// Returns the CommonAPI address of the remote partner this proxy communicates with.
             virtual std::string getAddress() const;
+
+            /// Returns the domain of the remote partner this proxy communicates with.
             virtual const std::string& getDomain() const;
+
+            /// Returns the service ID of the remote partner this proxy communicates with.
             virtual const std::string& getServiceId() const;
+
+            /// Returns the instance ID of the remote partner this proxy communicates with.
             virtual const std::string& getInstanceId() const;
+
+            /// Returns true if the remote partner for this proxy is available.
             virtual bool isAvailable() const;
+
+            /**
+             * Returns the wrapper class that is used to (de-)register for notifications about
+             * the availability of the remote partner of this proxy.
+             */
             virtual CommonAPI::ProxyStatusEvent& getProxyStatusEvent();
+
+            /**
+             * Returns the wrapper class that is used to access version information of the remote
+             * partner of this proxy.
+             */
             virtual CommonAPI::InterfaceVersionAttribute& getInterfaceVersionAttribute();
 
          private:
