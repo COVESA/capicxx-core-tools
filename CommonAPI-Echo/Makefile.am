@@ -20,7 +20,7 @@ AM_CPPFLAGS = \
 		-D_GNU_SOURCE \
 		-D_GLIBCXX_USE_NANOSLEEP
 
-LDADD = ${COMMONAPI_DBUS_LIBS}
+AM_LDFLAGS = ${COMMONAPI_DBUS_LIBS}
 
 # ------------------------------------------------------------------------------
 lib_LTLIBRARIES = \
@@ -60,12 +60,9 @@ EchoClient_SOURCES = \
 		src/Benchmark.h \
 		src/Benchmark.cpp \
 		src/EchoClient.cpp
-EchoClient_LDADD = \
-		libcommonapi-tests-EchoProxy.la \
-		${LDADD}
+EchoClient_LDADD = libcommonapi-tests-EchoProxy.la
 
 EchoService_SOURCES = \
 		src/EchoService.cpp
 EchoService_LDADD = \
-		libcommonapi-tests-EchoStubDefault.la \
-		${LDADD}
+		libcommonapi-tests-EchoStubDefault.la
