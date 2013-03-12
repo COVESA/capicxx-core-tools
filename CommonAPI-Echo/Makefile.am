@@ -60,7 +60,12 @@ EchoClient_SOURCES = \
 		src/Benchmark.h \
 		src/Benchmark.cpp \
 		src/EchoClient.cpp
-EchoClient_LDADD = ${LDADD} libcommonapi-tests-EchoProxy.la
+EchoClient_LDADD = \
+		libcommonapi-tests-EchoProxy.la \
+		${LDADD}
 
-EchoService_SOURCES = src/EchoService.cpp
-EchoService_LDADD = ${LDADD} libcommonapi-tests-EchoStubDefault.la
+EchoService_SOURCES = \
+		src/EchoService.cpp
+EchoService_LDADD = \
+		libcommonapi-tests-EchoStubDefault.la \
+		${LDADD}
