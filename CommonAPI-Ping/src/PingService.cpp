@@ -5,20 +5,20 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include <CommonAPI/Factory.h>
-#include <CommonAPI/tests/EchoStubDefault.h>
+#include <CommonAPI/tests/PingStubDefault.h>
 
 #include <iostream>
 #include <chrono>
 #include <thread>
 
 
-class EchoStubBenchmark: public CommonAPI::tests::EchoStubDefault {
+class PingStubBenchmark: public CommonAPI::tests::PingStubDefault {
  public:
-	virtual void getTestDataCopy(CommonAPI::tests::Echo::TestData testData, CommonAPI::tests::Echo::TestData& testDataCopy) {
+	virtual void getTestDataCopy(CommonAPI::tests::Ping::TestData testData, CommonAPI::tests::Ping::TestData& testDataCopy) {
 	 	testDataCopy = testData;
  	}
 
-    virtual void getTestDataArrayCopy(CommonAPI::tests::Echo::TestDataArray testDataArray, CommonAPI::tests::Echo::TestDataArray& testDataArrayCopy) {
+    virtual void getTestDataArrayCopy(CommonAPI::tests::Ping::TestDataArray testDataArray, CommonAPI::tests::Ping::TestDataArray& testDataArrayCopy) {
     	testDataArrayCopy = testDataArray;
     }
 };
@@ -26,10 +26,10 @@ class EchoStubBenchmark: public CommonAPI::tests::EchoStubDefault {
 
 int main(void) {
     std::shared_ptr<CommonAPI::Factory> factory = CommonAPI::Runtime::load()->createFactory();
-    std::string serviceAddress = "local:comommonapi.tests.EchoService:commonapi.tests.Echo";
-    auto echoStub = std::make_shared<EchoStubBenchmark>();
+    std::string serviceAddress = "local:comommonapi.tests.PingService:commonapi.tests.Ping";
+    auto pingStub = std::make_shared<PingStubBenchmark>();
 
-    bool success = factory->registerService(echoStub, serviceAddress);
+    bool success = factory->registerService(pingStub, serviceAddress);
     if (!success) {
     	std::cerr << "Unable to register service!\n";
     	return -1;

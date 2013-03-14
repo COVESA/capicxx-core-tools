@@ -6,7 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package CommonAPI.tests
 
-interface Echo {
+interface Ping {
 	version { major 1 minor 0 }
 
 	method getEmptyResponse {

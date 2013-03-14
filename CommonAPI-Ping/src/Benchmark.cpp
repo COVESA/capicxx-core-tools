@@ -10,7 +10,7 @@
 #include <functional>
 
 
-static const std::string serviceAddress = "local:comommonapi.tests.EchoService:commonapi.tests.Echo";
+static const std::string serviceAddress = "local:comommonapi.tests.PingService:commonapi.tests.Ping";
 
 
 namespace CommonAPI {
@@ -22,7 +22,7 @@ Benchmark::Benchmark(SendType sendType, unsigned long sendCount, unsigned long a
 		arraySize_(arraySize),
 		verbose_(verbose),
 		async_(async),
-		benchmarkStats_("GENIVI_ECHO", sendCount_, verbose_),
+		benchmarkStats_("GENIVI_PING", sendCount_, verbose_),
 		getEmptyResponseAsyncCallback_(std::bind(&Benchmark::emptyAsyncSendBenchmarkCallback, this, std::placeholders::_1)),
 		getTestDataCopyAsyncCallback_(std::bind(&Benchmark::copyAsyncSendBenchmarkCallback, this, std::placeholders::_1, std::placeholders::_2)),
 		getTestDataArrayCopyAsyncCallback_(std::bind(&Benchmark::copiesAsyncSendBenchmarkCallback, this, std::placeholders::_1, std::placeholders::_2)) {
@@ -31,15 +31,15 @@ Benchmark::Benchmark(SendType sendType, unsigned long sendCount, unsigned long a
 bool Benchmark::run() {
 	std::shared_ptr<CommonAPI::Factory> factory = CommonAPI::Runtime::load()->createFactory();
 
-	echoProxy_ = factory->buildProxy<CommonAPI::tests::EchoProxy>(serviceAddress);
+	pingProxy_ = factory->buildProxy<CommonAPI::tests::PingProxy>(serviceAddress);
 
-	std::cout << "Waiting for EchoService: " << serviceAddress << std::endl;
-	for (int i = 0; !echoProxy_->isAvailable() && i < 10; i++) {
+	std::cout << "Waiting for PingService: " << serviceAddress << std::endl;
+	for (int i = 0; !pingProxy_->isAvailable() && i < 10; i++) {
 		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 
-	if (!echoProxy_->isAvailable()) {
-		std::cerr << "EchoService is not available: timed out waiting!\n";
+	if (!pingProxy_->isAvailable()) {
+		std::cerr << "PingService is not available: timed out waiting!\n";
 		return false;
 	}
 
@@ -75,33 +75,33 @@ bool Benchmark::run() {
 
 	benchmarkStats_.stop();
 
-	echoProxy_.reset();
+	pingProxy_.reset();
 
 	return result == CommonAPI::CallStatus::SUCCESS;
 }
 
-CommonAPI::tests::Echo::TestData Benchmark::createTestData() {
+CommonAPI::tests::Ping::TestData Benchmark::createTestData() {
 	if (verbose_) {
 		std::cout << "Creating TestData struct...\n";
 	}
 
 	benchmarkStats_.startCreation();
 
-    Echo::TestData testData(1, 12.6, 1e40, "XXXXXXXXXXXXXXXXXXXX");
+    Ping::TestData testData(1, 12.6, 1e40, "XXXXXXXXXXXXXXXXXXXX");
 
     benchmarkStats_.stopCreation();
 
     return testData;
 }
 
-CommonAPI::tests::Echo::TestDataArray Benchmark::createTestDataArray() {
+CommonAPI::tests::Ping::TestDataArray Benchmark::createTestDataArray() {
 	if (verbose_) {
 		std::cout << "Creating TestDataArray of size=" << arraySize_ << "...\n";
 	}
 
     benchmarkStats_.startCreation();
 
-    CommonAPI::tests::Echo::TestDataArray testDataArray;
+    CommonAPI::tests::Ping::TestDataArray testDataArray;
 
     for (unsigned long i = 0; i < arraySize_; i++)
     	testDataArray.emplace_back(1, 12.6, 1e40, "XXXXXXXXXXXXXXXXXXXX");
@@ -116,7 +116,7 @@ CommonAPI::CallStatus Benchmark::doEmptySendBenchmark() {
 
 	for (unsigned long i = 0; i < sendCount_; i++) {
     	benchmarkStats_.startTransport();
-        echoProxy_->getEmptyResponse(callStatus);
+        pingProxy_->getEmptyResponse(callStatus);
 
         if (callStatus != CallStatus::SUCCESS) {
         	break;
@@ -131,12 +131,12 @@ CommonAPI::CallStatus Benchmark::doEmptySendBenchmark() {
 
 CommonAPI::CallStatus Benchmark::doCopySendBenchmark() {
 	CallStatus callStatus;
-	Echo::TestData testData = createTestData();
-	Echo::TestData testDataReply;
+	Ping::TestData testData = createTestData();
+	Ping::TestData testDataReply;
 
     for (unsigned long i = 0; i < sendCount_; i++) {
     	benchmarkStats_.startTransport();
-    	echoProxy_->getTestDataCopy(testData, callStatus, testDataReply);
+    	pingProxy_->getTestDataCopy(testData, callStatus, testDataReply);
 
         if (callStatus != CallStatus::SUCCESS) {
         	break;
@@ -156,12 +156,12 @@ CommonAPI::CallStatus Benchmark::doCopySendBenchmark() {
 
 CommonAPI::CallStatus Benchmark::doCopiesSendBenchmark() {
 	CallStatus callStatus;
-	Echo::TestDataArray testDataArray = createTestDataArray();
-	Echo::TestDataArray testDataArrayReply;
+	Ping::TestDataArray testDataArray = createTestDataArray();
+	Ping::TestDataArray testDataArrayReply;
 
 	for (unsigned long i = 0; i < sendCount_; i++) {
     	benchmarkStats_.startTransport();
-    	echoProxy_->getTestDataArrayCopy(testDataArray, callStatus, testDataArrayReply);
+    	pingProxy_->getTestDataArrayCopy(testDataArray, callStatus, testDataArrayReply);
 
         if (callStatus != CallStatus::SUCCESS) {
         	break;
@@ -180,7 +180,7 @@ CommonAPI::CallStatus Benchmark::doCopiesSendBenchmark() {
 
 CommonAPI::CallStatus Benchmark::doEmptyAsyncSendBenchmark() {
     benchmarkStats_.startTransport();
-    echoProxy_->getEmptyResponseAsync(getEmptyResponseAsyncCallback_);
+    pingProxy_->getEmptyResponseAsync(getEmptyResponseAsyncCallback_);
 
     auto asyncFuture = asyncPromise_.get_future();
     const CommonAPI::CallStatus& callStatus = asyncFuture.get();
@@ -194,17 +194,17 @@ void Benchmark::emptyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus& cal
 
     if (callStatus == CallStatus::SUCCESS && benchmarkStats_.getSendCount() < sendCount_) {
     	benchmarkStats_.startTransport();
-    	echoProxy_->getEmptyResponseAsync(getEmptyResponseAsyncCallback_);
+    	pingProxy_->getEmptyResponseAsync(getEmptyResponseAsyncCallback_);
     } else {
     	asyncPromise_.set_value(callStatus);
     }
 }
 
 CommonAPI::CallStatus Benchmark::doCopyAsyncSendBenchmark() {
-	Echo::TestData testData = createTestData();
+	Ping::TestData testData = createTestData();
 
 	benchmarkStats_.startTransport();
-    echoProxy_->getTestDataCopyAsync(testData, getTestDataCopyAsyncCallback_);
+    pingProxy_->getTestDataCopyAsync(testData, getTestDataCopyAsyncCallback_);
 
     auto asyncFuture = asyncPromise_.get_future();
     const CommonAPI::CallStatus& callStatus = asyncFuture.get();
@@ -212,27 +212,27 @@ CommonAPI::CallStatus Benchmark::doCopyAsyncSendBenchmark() {
     return callStatus;
 }
 
-void Benchmark::copyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus& callStatus, const Echo::TestData& testDataReply)  {
+void Benchmark::copyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus& callStatus, const Ping::TestData& testDataReply)  {
 	benchmarkStats_.stopTransport();
     benchmarkStats_.addSendReplyDelta();
 
     benchmarkStats_.startCreation();
-    Echo::TestData testData = testDataReply;
+    Ping::TestData testData = testDataReply;
     benchmarkStats_.stopCreation();
 
     if (callStatus == CallStatus::SUCCESS && benchmarkStats_.getSendCount() < sendCount_) {
     	benchmarkStats_.startTransport();
-    	echoProxy_->getTestDataCopyAsync(testData, getTestDataCopyAsyncCallback_);
+    	pingProxy_->getTestDataCopyAsync(testData, getTestDataCopyAsyncCallback_);
     } else {
     	asyncPromise_.set_value(callStatus);
     }
 }
 
 CommonAPI::CallStatus Benchmark::doCopiesAsyncSendBenchmark() {
-	Echo::TestDataArray testDataArray = createTestDataArray();
+	Ping::TestDataArray testDataArray = createTestDataArray();
 
 	benchmarkStats_.startTransport();
-    echoProxy_->getTestDataArrayCopyAsync(testDataArray, getTestDataArrayCopyAsyncCallback_);
+    pingProxy_->getTestDataArrayCopyAsync(testDataArray, getTestDataArrayCopyAsyncCallback_);
 
     auto asyncFuture = asyncPromise_.get_future();
     const CommonAPI::CallStatus& callStatus = asyncFuture.get();
@@ -240,17 +240,17 @@ CommonAPI::CallStatus Benchmark::doCopiesAsyncSendBenchmark() {
     return callStatus;
 }
 
-void Benchmark::copiesAsyncSendBenchmarkCallback(const CommonAPI::CallStatus& callStatus, const Echo::TestDataArray& testDataArrayReply)  {
+void Benchmark::copiesAsyncSendBenchmarkCallback(const CommonAPI::CallStatus& callStatus, const Ping::TestDataArray& testDataArrayReply)  {
 	benchmarkStats_.stopTransport();
     benchmarkStats_.addSendReplyDelta();
 
     benchmarkStats_.startCreation();
-    Echo::TestDataArray testDataArray = testDataArrayReply;
+    Ping::TestDataArray testDataArray = testDataArrayReply;
     benchmarkStats_.stopCreation();
 
     if (callStatus == CallStatus::SUCCESS && benchmarkStats_.getSendCount() < sendCount_) {
     	benchmarkStats_.startTransport();
-    	echoProxy_->getTestDataArrayCopyAsync(testDataArray, getTestDataArrayCopyAsyncCallback_);
+    	pingProxy_->getTestDataArrayCopyAsync(testDataArray, getTestDataArrayCopyAsyncCallback_);
     } else {
     	asyncPromise_.set_value(callStatus);
     }

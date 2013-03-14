@@ -1,8 +1,8 @@
 AC_PREREQ(2.61)
-AC_INIT([GENIVI Common API Echo Tool],
+AC_INIT([GENIVI Common API Ping Tool],
         [1.0],
         [],
-        [CommonAPI-Echo])
+        [CommonAPI-Ping])
 
 AC_CONFIG_MACRO_DIR([m4])
 m4_ifdef([AM_PROG_AR], [AM_PROG_AR])

@@ -7,7 +7,7 @@
 #ifndef COMMONAPI_TESTS_BENCHMARKING_STATS_H_
 #define COMMONAPI_TESTS_BENCHMARKING_STATS_H_
 
-#include <CommonAPI/tests/EchoProxy.h>
+#include <CommonAPI/tests/PingProxy.h>
 
 #include "BenchmarkStats.h"
 
@@ -30,8 +30,8 @@ class Benchmark {
 	bool run();
 
  private:
-	Echo::TestData createTestData();
-	Echo::TestDataArray createTestDataArray();
+	Ping::TestData createTestData();
+	Ping::TestDataArray createTestDataArray();
 
 	CommonAPI::CallStatus doEmptySendBenchmark();
 	CommonAPI::CallStatus doCopySendBenchmark();
@@ -41,10 +41,10 @@ class Benchmark {
 	void emptyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus&);
 
 	CommonAPI::CallStatus doCopyAsyncSendBenchmark();
-	void copyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus&, const Echo::TestData&);
+	void copyAsyncSendBenchmarkCallback(const CommonAPI::CallStatus&, const Ping::TestData&);
 
 	CommonAPI::CallStatus doCopiesAsyncSendBenchmark();
-	void copiesAsyncSendBenchmarkCallback(const CommonAPI::CallStatus&, const Echo::TestDataArray&);
+	void copiesAsyncSendBenchmarkCallback(const CommonAPI::CallStatus&, const Ping::TestDataArray&);
 
 
 	SendType sendType_;
@@ -54,11 +54,11 @@ class Benchmark {
 	bool async_;
 
 	BenchmarkStats benchmarkStats_;
-	std::shared_ptr<CommonAPI::tests::EchoProxy<> > echoProxy_;
+	std::shared_ptr<CommonAPI::tests::PingProxy<> > pingProxy_;
 
-	EchoProxyBase::GetEmptyResponseAsyncCallback getEmptyResponseAsyncCallback_;
-	EchoProxyBase::GetTestDataCopyAsyncCallback getTestDataCopyAsyncCallback_;
-	EchoProxyBase::GetTestDataArrayCopyAsyncCallback getTestDataArrayCopyAsyncCallback_;
+	PingProxyBase::GetEmptyResponseAsyncCallback getEmptyResponseAsyncCallback_;
+	PingProxyBase::GetTestDataCopyAsyncCallback getTestDataCopyAsyncCallback_;
+	PingProxyBase::GetTestDataArrayCopyAsyncCallback getTestDataArrayCopyAsyncCallback_;
 
 	std::promise<CommonAPI::CallStatus> asyncPromise_;
 };
