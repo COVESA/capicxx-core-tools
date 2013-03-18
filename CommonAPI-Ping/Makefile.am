@@ -55,11 +55,14 @@ bin_PROGRAMS = \
 		PingService
 
 PingClient_SOURCES = \
-		src/BenchmarkStats.h \
-		src/BenchmarkStats.cpp \
 		src/Benchmark.h \
 		src/Benchmark.cpp \
-		src/PingClient.cpp
+		src/BenchmarkStats.h \
+		src/BenchmarkStats.cpp \
+		src/PingClient.cpp \
+		src/StopWatch.h \
+		src/StopWatch.cpp
+
 PingClient_LDADD = libcommonapi-tests-PingProxy.la
 
 PingService_SOURCES = \

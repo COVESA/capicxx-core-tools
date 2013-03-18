@@ -7,57 +7,10 @@
 #ifndef BENCHMARKING_STATS_H_
 #define BENCHMARKING_STATS_H_
 
-#include <chrono>
 #include <thread>
 #include <memory>
 
-
-class StopWatch {
- public:
-   typedef std::chrono::high_resolution_clock clock;
-
-   StopWatch():
-	   started_(false),
-	   totalElapsedMilliseconds_(0) {
-   }
-
-   inline void reset() {
-	   totalElapsedMilliseconds_ = totalElapsedMilliseconds_.zero();
-   }
-
-   inline void start() {
-	   reset();
-	   startTimePoint_ = clock::now();
-	   started_ = true;
-   }
-
-   inline void stop() {
-	   totalElapsedMilliseconds_ += getElapsed();
-	   started_ = false;
-   }
-
-   inline int64_t getTotalElapsedMilliseconds() const {
-	   int64_t elapsedMilliseconds = totalElapsedMilliseconds_.count();
-
-	   if (started_)
-		   elapsedMilliseconds += getElapsed().count();
-
-	   return elapsedMilliseconds;
-   }
-
-   inline int64_t getTotalElapsedSeconds() const {
-	   return getTotalElapsedMilliseconds() / 1000;
-   }
-
- private:
-   inline std::chrono::milliseconds getElapsed() const {
-	   return std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - startTimePoint_);
-   }
-
-   bool started_;
-   clock::time_point startTimePoint_;
-   std::chrono::milliseconds totalElapsedMilliseconds_;
-};
+#include "StopWatch.h"
 
 
 class BenchmarkStats {
@@ -113,7 +66,5 @@ private:
 	StopWatch creationStopWatch_;
 	StopWatch transportStopWatch_;
 };
-
-extern std::shared_ptr<BenchmarkStats> global_stats;
 
 #endif // BENCHMARKING_STATS_H_

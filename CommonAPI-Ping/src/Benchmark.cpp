@@ -7,6 +7,7 @@
 #include "Benchmark.h"
 
 #include <CommonAPI/Factory.h>
+#include <chrono>
 #include <functional>
 
 
