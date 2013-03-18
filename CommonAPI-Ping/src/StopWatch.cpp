@@ -11,17 +11,20 @@
 
 
 #define USEC_PER_SEC  1000000ULL
-#define USEC_PER_MSEC 1000ULL
 #define NSEC_PER_USEC 1000ULL
 
 
-uint64_t StopWatch::getTotalElapsedMilliseconds() const {
+StopWatch::usec_t StopWatch::getTotalElapsedMicroseconds() const {
 	usec_t elapsed = totalElapsed_;
 
 	if (started_)
 		elapsed += getElapsed();
 
-	return elapsed / USEC_PER_MSEC;
+	return elapsed;
+}
+
+StopWatch::usec_t StopWatch::getTotalElapsedSeconds() const {
+	return getTotalElapsedMicroseconds() / USEC_PER_SEC;
 }
 
 StopWatch::usec_t StopWatch::now() {

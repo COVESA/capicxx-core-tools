@@ -50,11 +50,11 @@ void BenchmarkStats::stop() {
   std::cout << envPrefix_ << "_SENT=" << sendCount_ << ";\n"
             << envPrefix_ << "_RECEIVED=" << replyCount_ << ";\n"
             << envPrefix_ << "_TOTAL=" << totalCount << ";\n"
-            << envPrefix_ << "_TIME=" << totalStopWatch_.getTotalElapsedMilliseconds() << ";\n"
+            << envPrefix_ << "_TIME=" << totalStopWatch_.getTotalElapsedMicroseconds() << ";\n"
             << envPrefix_ << "_TIME_SEC=" << totalStopWatch_.getTotalElapsedSeconds() << ";\n"
             << envPrefix_ << "_MSGS_PER_SEC=" << getMessagesPerSecondCount() << ";\n"
-            << envPrefix_ << "_CREATION_TIME=" << creationStopWatch_.getTotalElapsedMilliseconds() << ";\n"
-            << envPrefix_ << "_TRANSPORT_TIME=" << transportStopWatch_.getTotalElapsedMilliseconds() << ";\n";
+            << envPrefix_ << "_CREATION_TIME=" << creationStopWatch_.getTotalElapsedMicroseconds() << ";\n"
+            << envPrefix_ << "_TRANSPORT_TIME=" << transportStopWatch_.getTotalElapsedMicroseconds() << ";\n";
   std::cout.flush();
 
 	if (verbose_)
@@ -67,21 +67,30 @@ void BenchmarkStats::stop() {
 				  << sendCount_ << " " << std::setw(10) << replyCount_ << " "
 				  << std::setw(10) << totalCount << " " << std::setw(12)
 				  << totalStopWatch_.getTotalElapsedSeconds() << " " << std::setw(13)
-				  << totalStopWatch_.getTotalElapsedMilliseconds() << " " << std::setw(16)
+				  << totalStopWatch_.getTotalElapsedMicroseconds() << " " << std::setw(16)
 				  << getMessagesPerSecondCount() << " " << std::setw(15)
-				  << creationStopWatch_.getTotalElapsedMilliseconds() << " "
-				  << transportStopWatch_.getTotalElapsedMilliseconds() << std::endl;
+				  << creationStopWatch_.getTotalElapsedMicroseconds() << " "
+				  << transportStopWatch_.getTotalElapsedMicroseconds() << std::endl;
 
 }
 
 unsigned long BenchmarkStats::getMessagesPerSecondCount() const {
-  const int64_t totalElapsedSeconds = totalStopWatch_.getTotalElapsedSeconds();
-  const long totalMessageCount = sendCount_ + replyCount_;
+	const long totalMessageCount = sendCount_ + replyCount_;
 
-  if (!totalElapsedSeconds)
-    return totalMessageCount;
+	if (totalMessageCount <= 0) {
+		return 0;
+	}
 
-  return totalMessageCount / totalElapsedSeconds;
+	auto totalElapsedMicroseconds = totalStopWatch_.getTotalElapsedMicroseconds();
+	auto microsecondsPerMessage = totalElapsedMicroseconds / totalMessageCount;
+
+	if (microsecondsPerMessage <= 0) {
+		return totalMessageCount;
+	}
+
+	const auto microsecondsPerSecond = 1000000ULL;
+
+	return microsecondsPerSecond / microsecondsPerMessage;
 }
 
 void BenchmarkStats::stopStatsThread() {

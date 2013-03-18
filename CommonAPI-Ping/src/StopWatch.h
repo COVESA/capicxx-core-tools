@@ -35,11 +35,8 @@ public:
 		started_ = false;
 	}
 
-	uint64_t getTotalElapsedMilliseconds() const;
-
-	inline uint64_t getTotalElapsedSeconds() const {
-		return getTotalElapsedMilliseconds() / 1000;
-	}
+	usec_t getTotalElapsedMicroseconds() const;
+	usec_t getTotalElapsedSeconds() const;
 
 private:
 	inline usec_t getElapsed() const {
