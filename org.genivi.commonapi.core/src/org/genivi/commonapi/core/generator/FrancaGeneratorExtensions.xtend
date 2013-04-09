@@ -61,13 +61,24 @@ class FrancaGeneratorExtensions {
 
         return (fModelElement.eContainer as FModelElement).containingInterface
     }
+    
+    def FTypeCollection getContainingTypeCollection(FModelElement fModelElement) {
+        if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
+            return null
+        }
+        if (fModelElement.eContainer instanceof FTypeCollection) {
+            return (fModelElement.eContainer as FTypeCollection)
+        }
+
+        return (fModelElement.eContainer as FModelElement).containingTypeCollection
+    }
 
     def getDirectoryPath(FModel fModel) {
         fModel.name.replace('.', '/')
     }
     
     def getDefineName(FModelElement fModelElement) {
-        val defineSuffix = '_' + fModelElement.name.splitCamelCase.join('_').toUpperCase
+        val defineSuffix = '_' + fModelElement.name.splitCamelCase.join('_')
 
         if (fModelElement.eContainer instanceof FModelElement)
             return (fModelElement.eContainer as FModelElement).defineName + defineSuffix
