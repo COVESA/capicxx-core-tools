@@ -69,14 +69,6 @@ class FrancaGenerator implements IGenerator {
         }
 
         doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess)
-
-//        mainStubGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
-//        automakeGenerator.generate(basicModel.interfaces, null, fileSystemAccess, outputLocation, skeletonFolderPath)
-//        initTypeGeneration
-//        for (fInterface: basicModel.interfaces) {
-//            generateInterface(fInterface, deploymentAccessor, fileSystemAccess)
-//        }
-//        finalizeTypeGeneration(fileSystemAccess, outputLocation)
     }
     
 
