@@ -197,7 +197,7 @@ class FTypeGenerator {
         typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
     '''
 
-    def private getElementNames(FUnionType fUnion) {
+    def private String getElementNames(FUnionType fUnion) {
         var names = "";
         if (fUnion.base != null) {
             names = fUnion.base.getElementNames

@@ -117,7 +117,7 @@ class FTypeCommonAreaGenerator {
 
     
     
-    def private getElementTypeNames(FUnionType fUnion, String unionName, FModelElement parent, String parentName) {
+    def private List<String> getElementTypeNames(FUnionType fUnion, String unionName, FModelElement parent, String parentName) {
         var names = new ArrayList<String>
         var rev = fUnion.elements
         var iter = rev.iterator
