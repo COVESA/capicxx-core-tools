@@ -8,29 +8,29 @@ package org.genivi.commonapi.core.generator
 
 import java.util.Arrays
 import java.util.Collection
+import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
+import java.util.Set
 import javax.inject.Inject
+import org.eclipse.emf.common.util.EList
 import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FEnumerator
 import org.franca.core.franca.FField
+import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FModelElement
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
-import org.franca.core.franca.FUnionType
 import org.franca.core.franca.FTypeRef
-import org.franca.core.franca.FBasicTypeId
-import org.franca.core.franca.FInterface
-import java.util.Set
-import java.util.HashSet
-import org.eclipse.emf.common.util.EList
+import org.franca.core.franca.FUnionType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FTypeGenerator {
     @Inject private extension FrancaGeneratorExtensions

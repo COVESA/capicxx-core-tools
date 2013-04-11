@@ -8,8 +8,8 @@ package org.genivi.commonapi.core.generator
 
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
-import org.franca.core.franca.FInterface
 import org.franca.core.franca.FAttribute
+import org.franca.core.franca.FInterface
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator

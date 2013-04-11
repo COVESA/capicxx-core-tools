@@ -8,6 +8,8 @@ package org.genivi.commonapi.core.generator
 
 import java.util.Collection
 import java.util.HashSet
+import java.util.LinkedList
+import java.util.List
 import javax.inject.Inject
 import org.eclipse.core.runtime.Path
 import org.eclipse.emf.ecore.plugin.EcorePlugin
@@ -26,16 +28,14 @@ import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FUnionType
-import org.franca.deploymodel.dsl.FDeployPersistenceManager
 import org.franca.deploymodel.core.FDModelExtender
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
+import org.franca.deploymodel.core.FDeployedInterface
+import org.franca.deploymodel.dsl.FDeployPersistenceManager
+import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
 
 import static com.google.common.base.Preconditions.*
-import org.franca.deploymodel.core.FDeployedInterface
-import org.franca.deploymodel.dsl.fDeploy.FDInterface
-import java.util.List
-import java.util.LinkedList
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -138,7 +138,7 @@ class FrancaGenerator implements IGenerator {
 	    return referencedFInterfaces
 	}
 
-	def private addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences) {
+	def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences) {
 	    if (!fInterfaceReferences.contains(fInterface)) {
 	        fInterfaceReferences.add(fInterface)
 	        fInterface.base?.addFInterfaceTree(fInterfaceReferences)

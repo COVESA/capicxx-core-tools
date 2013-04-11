@@ -13,9 +13,9 @@ import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator

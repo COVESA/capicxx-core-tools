@@ -6,19 +6,17 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
-
+import java.util.ArrayList
+import java.util.LinkedList
+import java.util.List
 import javax.inject.Inject
 import org.franca.core.franca.FEnumerationType
-import org.franca.core.franca.FModelElement
-import static org.genivi.commonapi.core.generator.FTypeGenerator.*
-import org.franca.core.franca.FTypeCollection
-import org.franca.core.franca.FType
 import org.franca.core.franca.FModel
-import java.util.List
-import org.franca.core.franca.FUnionType
-import java.util.LinkedList
-import java.util.ArrayList
+import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FType
+import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeRef
+import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 class FTypeCommonAreaGenerator {

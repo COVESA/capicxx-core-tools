@@ -8,34 +8,33 @@ package org.genivi.commonapi.core.generator
 
 import com.google.common.primitives.Ints
 import java.util.List
+import org.eclipse.core.runtime.Path
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.plugin.EcorePlugin
+import org.eclipse.emf.ecore.resource.Resource
+import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FAttribute
+import org.franca.core.franca.FBasicTypeId
+import org.franca.core.franca.FBroadcast
+import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
+import org.franca.core.franca.FMapType
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FStructType
 import org.franca.core.franca.FTypeCollection
+import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
-import org.franca.core.franca.FAttribute
-import org.franca.core.franca.FBroadcast
-import org.franca.core.franca.FEnumerationType
+import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$DefaultEnumBackingType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
 
 import static com.google.common.base.Preconditions.*
-import org.franca.core.franca.FBasicTypeId
-import org.franca.core.franca.FTypeDef
-import org.franca.core.franca.FArrayType
-import org.franca.core.franca.FMapType
-import org.franca.core.franca.FStructType
-import org.franca.core.franca.FUnionType
-import org.eclipse.emf.ecore.resource.Resource
-import org.eclipse.core.runtime.Path
-
 
 class FrancaGeneratorExtensions {
-    def getFullyQualifiedName(FModelElement fModelElement) {
+    def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
             return (fModelElement.eContainer as FModel).name + '.' + fModelElement.name
         return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.name
@@ -77,7 +76,7 @@ class FrancaGeneratorExtensions {
         fModel.name.replace('.', '/')
     }
     
-    def getDefineName(FModelElement fModelElement) {
+    def String getDefineName(FModelElement fModelElement) {
         val defineSuffix = '_' + fModelElement.name.splitCamelCase.join('_')
 
         if (fModelElement.eContainer instanceof FModelElement)
