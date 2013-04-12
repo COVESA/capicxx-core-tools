@@ -11,7 +11,6 @@ import java.util.Collection
 import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
-import java.util.Set
 import javax.inject.Inject
 import org.eclipse.emf.common.util.EList
 import org.franca.core.franca.FArrayType
@@ -33,7 +32,7 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import static com.google.common.base.Preconditions.*
 
 class FTypeGenerator {
-    @Inject private extension FrancaGeneratorExtensions
+    @Inject private extension FrancaGeneratorExtensions francaGeneratorExtensions
 
 
     def generateFTypeDeclarations(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
@@ -61,81 +60,15 @@ class FTypeGenerator {
     }
 
     def private hasNoCircularDependencies(EList<FType> types) {
-        for(currentType: types) {
-            var Set<FType> currentTypeSet = new HashSet<FType>
-            val Set<FType> fullDependencySet = new HashSet<FType>
-            currentTypeSet.add(currentType)
-            fullDependencySet.add(currentType)
-            while(!currentTypeSet.empty) {
-                currentTypeSet = currentTypeSet.map[it.directlyReferencedTypes].flatten.toSet
-                for(knownType: fullDependencySet) {
-                    if(currentTypeSet.contains(knownType)) {
-                        return false
-                    }
-                }
-                fullDependencySet.addAll(currentTypeSet)
-            }
-        }
-        return true
+    	val cycleDetector = new FTypeCycleDetector(francaGeneratorExtensions)
+    	return !cycleDetector.hasCycle(types)
     }
 
     def private List<FType> getReferencedTypes(FType fType) {
-        var references = fType.getDirectlyReferencedTypes
+        var references = fType.directlyReferencedTypes
         references.addAll(references.map[it.referencedTypes].flatten.toList)
         return references
     }
-    
-    def private dispatch List<FType> getDirectlyReferencedTypes(FStructType fType) {
-        var references = fType.elements.map[it.type.derived].filter[it != null].toList
-        if(fType.base != null) {
-            references.add(fType.base)
-        }
-        return references
-    }
-
-    def private dispatch List<FType> getDirectlyReferencedTypes(FEnumerationType fType) {
-        var references = new LinkedList<FType>()
-        if(fType.base != null) {
-            references.add(fType.base)
-        }
-        return references
-    }
-
-    def private dispatch List<FType> getDirectlyReferencedTypes(FArrayType fType) {
-        var references = new LinkedList<FType>()
-        if(fType.elementType.derived != null) {
-            references.add(fType.elementType.derived)
-        }
-        return references
-    }
-
-    def private dispatch List<FType> getDirectlyReferencedTypes(FUnionType fType) {
-        var references = fType.elements.map[it.type.derived].filter[it != null].toList
-        if(fType.base != null) {
-            references.add(fType.base)
-        }
-        return references
-    }
-
-    def private dispatch List<FType> getDirectlyReferencedTypes(FMapType fType) {
-        var references = new LinkedList<FType>()
-        if(fType.keyType.derived != null) {
-            references.add(fType.keyType.derived)
-        }
-        if(fType.valueType.derived != null) {
-            references.add(fType.valueType.derived)
-        }
-        return references
-    }
-
-    def private dispatch List<FType> getDirectlyReferencedTypes(FTypeDef fType) {
-        var references = new LinkedList<FType>()
-        if(fType.actualType.derived != null) {
-            references.add(fType.actualType.derived)
-        }
-        return references
-    }
-
 
     def dispatch generateFTypeDeclaration(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.name»;

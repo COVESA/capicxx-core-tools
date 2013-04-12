@@ -23,6 +23,7 @@ import org.franca.core.franca.FMethod
 import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
 import org.franca.core.franca.FStructType
+import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
@@ -501,6 +502,51 @@ class FrancaGeneratorExtensions {
             signature = fStructType.base.getElementsTypeStreamSignature(deploymentAccessor) + signature
 
         return signature
+    }
+
+	def List<FType> getDirectlyReferencedTypes(FType type) {
+		val directlyReferencedTypes = newLinkedList
+
+		directlyReferencedTypes.addFTypeDirectlyReferencedTypes(type)
+
+		return directlyReferencedTypes
+	}
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FStructType fType) {
+    	list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+
+        if (fType.base != null)
+        	list.add(fType.base)
+    }
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FEnumerationType fType) {
+        if (fType.base != null)
+            list.add(fType.base)
+    }
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FArrayType fType) {
+        if (fType.elementType.derived != null)
+        	list.add(fType.elementType.derived)
+    }
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FUnionType fType) {
+    	list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+
+        if (fType.base != null)
+            list.add(fType.base)
+    }
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FMapType fType) {
+        if (fType.keyType.derived != null)
+            list.add(fType.keyType.derived)
+
+        if (fType.valueType.derived != null)
+            list.add(fType.valueType.derived)
+    }
+
+    def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FTypeDef fType) {
+        if (fType.actualType.derived != null)
+            list.add(fType.actualType.derived)
     }
     
     def generateCppNamespace(FModel fModel) '''
