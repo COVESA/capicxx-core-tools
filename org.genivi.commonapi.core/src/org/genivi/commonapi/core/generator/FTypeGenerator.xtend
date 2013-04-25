@@ -386,17 +386,37 @@ class FTypeGenerator {
         return ''
     }
 
-    private static List<Integer> integerRadixList = Arrays::asList(10, 16, 2, 8)
-
     def private tryParseInteger(String string) {
         if (!string.nullOrEmpty) {
-            try {
-                return Integer::decode(string)
-            } catch (NumberFormatException e1) {
-                for (radix : integerRadixList)
+            if (string.startsWith("0x") || string.startsWith("0X")) {
+                try {
+                    return "0x" + Integer::toHexString((Integer::parseInt(string.substring(2), 16)))
+                } catch (NumberFormatException e) {
+                    return null
+                }
+            } else if (string.startsWith("0b") || string.startsWith("0B")) {
+                try {
+                    return "0x" + Integer::toHexString((Integer::parseInt(string.substring(2), 2)))
+                } catch (NumberFormatException e) {
+                    return null
+                }
+            } else if (string.startsWith("0")) {
+                try {
+                    Integer::parseInt(string, 8)
+                    return string
+                } catch (NumberFormatException e) {
+                    return null
+                }
+            } else {
+                try {
+                    return Integer::parseInt(string, 10)
+                } catch (NumberFormatException e) {
                     try {
-                        return new Integer(Integer::parseInt(string, radix.intValue))
-                    } catch (NumberFormatException e2) { }
+                        return "0x" + Integer::toHexString((Integer::parseInt(string, 16)))
+                    } catch (NumberFormatException e2) {
+                        return null
+                    }
+                }
             }
         }
         return null
