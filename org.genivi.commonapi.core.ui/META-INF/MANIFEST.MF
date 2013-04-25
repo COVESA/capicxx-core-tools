@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: GENIVI Common API UI
 Bundle-SymbolicName: org.genivi.commonapi.core.ui;singleton:=true
-Bundle-Version: 1.0.0.qualifier
+Bundle-Version: 2.0.1.qualifier
 Bundle-Activator: org.genivi.commonapi.core.ui.CommonApiUiPlugin
 Bundle-Vendor: BMW AG
 Require-Bundle: org.eclipse.ui,

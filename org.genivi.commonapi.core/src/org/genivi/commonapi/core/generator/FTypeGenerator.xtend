@@ -89,7 +89,9 @@ class FTypeGenerator {
             «ENDFOR»
 
             «fStructType.name»() = default;
-            «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
+            «IF fStructType.allElements.size > 0»
+                «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
+            «ENDIF»
 
             virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
             virtual void writeToOutputStream(CommonAPI::OutputStream& outputStream) const;
@@ -187,25 +189,31 @@ class FTypeGenerator {
     def dispatch generateFTypeImplementation(FEnumerationType fEnumerationType, FModelElement parent) ''''''
 
     def dispatch generateFTypeImplementation(FStructType fStructType, FModelElement parent) '''
-        «fStructType.getClassNamespace(parent)»::«fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType) + "Value"].join(", ")»):
-                «fStructType.base?.generateBaseConstructorCall(fStructType)»
-                «FOR element : fStructType.elements SEPARATOR ','»
-                    «element.name»(«element.name»Value)
-                «ENDFOR»
-        {
-        }
+        «IF fStructType.allElements.size > 0»
+            «fStructType.getClassNamespace(parent)»::«fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType) + "Value"].join(", ")»):
+                    «fStructType.base?.generateBaseConstructorCall(fStructType)»
+                    «FOR element : fStructType.elements SEPARATOR ','»
+                        «element.name»(«element.name»Value)
+                    «ENDFOR»
+            {
+            }
+        «ENDIF»
 
         bool operator==(const «fStructType.getClassNamespace(parent)»& lhs, const «fStructType.getClassNamespace(parent)»& rhs) {
             if (&lhs == &rhs)
                 return true;
 
             return
-                «IF fStructType.base != null»
-                    static_cast<«fStructType.base.getClassNamespace(parent)»>(lhs) == static_cast<«fStructType.base.getClassNamespace(parent)»>(rhs) &&
+                «IF fStructType.allElements.size > 0»
+                    «IF fStructType.base != null»
+                        static_cast<«fStructType.base.getClassNamespace(parent)»>(lhs) == static_cast<«fStructType.base.getClassNamespace(parent)»>(rhs) &&
+                    «ENDIF»
+                    «FOR element : fStructType.elements SEPARATOR ' &&'»
+                        lhs.«element.name» == rhs.«element.name»
+                    «ENDFOR»
+                «ELSE»
+                    true
                 «ENDIF»
-                «FOR element : fStructType.elements SEPARATOR ' &&'»
-                    lhs.«element.name» == rhs.«element.name»
-                «ENDFOR»
             ;
         }
 

@@ -47,7 +47,7 @@ class FTypeCollectionGenerator {
         }
 
         «IF fTypeCollection.version != null»
-            CommonAPI::Version getTypeCollectionVersion() {
+            inline CommonAPI::Version getTypeCollectionVersion() {
                 return CommonAPI::Version(«fTypeCollection.version.major», «fTypeCollection.version.minor»);
             }
         «ENDIF»
