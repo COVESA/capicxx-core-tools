@@ -6,7 +6,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.ui;
 
+import org.eclipse.jface.preference.PreferenceStore;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
+import org.eclipse.xtext.ui.ecore.Activator;
 import org.osgi.framework.BundleContext;
 
 public class CommonApiUiPlugin extends AbstractUIPlugin {
@@ -30,6 +32,10 @@ public class CommonApiUiPlugin extends AbstractUIPlugin {
 	}
 
 	public static CommonApiUiPlugin getInstance() {
+		return INSTANCE;
+	}
+	
+	public static CommonApiUiPlugin getDefault() {
 		return INSTANCE;
 	}
 }

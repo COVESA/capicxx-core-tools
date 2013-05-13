@@ -35,7 +35,9 @@ import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
 
+import static extension org.eclipse.emf.ecore.plugin.EcorePlugin.*
 import static com.google.common.base.Preconditions.*
+import org.eclipse.core.resources.ResourcesPlugin
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -127,7 +129,7 @@ class FrancaGenerator implements IGenerator {
         }
         
         val platformPath = new Path(resource.URI.toPlatformString(true))
-        val file = EcorePlugin::workspaceRoot.getFile(platformPath)
+        val file =  ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
 
         return file.location.toString
     }
