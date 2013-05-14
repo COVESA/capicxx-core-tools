@@ -6,9 +6,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.ui;
 
-import org.eclipse.jface.preference.PreferenceStore;
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
-import org.eclipse.xtext.ui.ecore.Activator;
 import org.osgi.framework.BundleContext;
 
 public class CommonApiUiPlugin extends AbstractUIPlugin {
@@ -38,4 +37,15 @@ public class CommonApiUiPlugin extends AbstractUIPlugin {
 	public static CommonApiUiPlugin getDefault() {
 		return INSTANCE;
 	}
+	/**
+	 * Returns an image descriptor for the image file at the given
+	 * plug-in relative path
+	 *
+	 * @param path the path
+	 * @return the image descriptor
+	 */
+	public static ImageDescriptor getImageDescriptor(String path) {
+		return imageDescriptorFromPlugin(PLUGIN_ID, path);
+	}
+	
 }

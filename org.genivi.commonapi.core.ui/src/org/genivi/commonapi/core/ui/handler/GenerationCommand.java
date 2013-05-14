@@ -19,6 +19,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IEditorPart;
@@ -31,12 +32,13 @@ import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.XtextEditor;
 import org.eclipse.xtext.ui.resource.IResourceSetProvider;
 import org.eclipse.xtext.util.concurrent.IUnitOfWork;
+import org.genivi.commonapi.core.preferences.PreferenceConstants;
+import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
 
 import com.google.inject.Provider;
 
 public class GenerationCommand extends AbstractHandler {
-	public static final String OUTPUT_DIRECTORY = "src-gen"; 
-
+	
 	@Inject private Provider<EclipseResourceFileSystemAccess2> fileAccessProvider;
 	@Inject private IResourceDescriptions resourceDescriptions;
 	@Inject private IResourceSetProvider resourceSetProvider;
@@ -94,9 +96,13 @@ public class GenerationCommand extends AbstractHandler {
 	}
 	
 	private EclipseResourceFileSystemAccess2 createFileSystemAccess() {
+		
+		IPreferenceStore store = CommonApiUiPlugin.getDefault().getPreferenceStore();
+		String outputDir = store.getString(PreferenceConstants.P_OUTPUT);
+		
 		final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
 
-		fsa.setOutputPath(OUTPUT_DIRECTORY);
+		fsa.setOutputPath(outputDir);
 		fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT).setCreateOutputDirectory(true);
 		fsa.setMonitor(new NullProgressMonitor());
 

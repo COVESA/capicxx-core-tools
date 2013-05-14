@@ -1,13 +1,10 @@
 package org.genivi.commonapi.core.ui.preferences;
 
-import java.io.IOException;
-
-import org.eclipse.core.runtime.preferences.ConfigurationScope;
 import org.eclipse.jface.preference.*;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.IWorkbench;
-import org.eclipse.ui.preferences.ScopedPreferenceStore;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
+import org.genivi.commonapi.core.preferences.PreferenceConstants;
 
 /**
  * This class represents a preference page that
@@ -26,10 +23,9 @@ import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
 public class CommonAPIPreferencePage
 	extends FieldEditorPreferencePage
 	implements IWorkbenchPreferencePage {
-
+	
 	public CommonAPIPreferencePage() {
 		super(GRID);
-		setPreferenceStore(new ScopedPreferenceStore(ConfigurationScope.INSTANCE, "org.genivi.commonapi.core"));
 		setDescription("Preferences for CommonAPI");
 	}
 	
@@ -41,13 +37,19 @@ public class CommonAPIPreferencePage
 	 */
 	public void createFieldEditors() {
 		addField(
-			new StringFieldEditor(PreferenceConstants.P_LICENSE, "The header to insert for all generated files", 60, getFieldEditorParent()));
+				new StringFieldEditor(PreferenceConstants.P_LICENSE, "The header to insert for all generated files", 60, getFieldEditorParent()));
+		addField(
+				new StringFieldEditor(PreferenceConstants.P_OUTPUT, "Output directory inside project", 30, getFieldEditorParent()));
 	}
+	
 	
 	/* (non-Javadoc)
 	 * @see org.eclipse.ui.IWorkbenchPreferencePage#init(org.eclipse.ui.IWorkbench)
 	 */
 	public void init(IWorkbench workbench) {
+		//PreferenceInitializer init = new PreferenceInitializer();
+		//init.initializeDefaultPreferences();
+		setPreferenceStore(CommonApiUiPlugin.getDefault().getPreferenceStore());
 	}
 	
 }
