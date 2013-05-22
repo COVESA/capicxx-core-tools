@@ -8,6 +8,7 @@ package org.genivi.commonapi.core.generator
 
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
+import org.franca.core.franca.FStructType
 import org.franca.core.franca.FTypeCollection
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
@@ -76,6 +77,10 @@ class FTypeCollectionGenerator {
         «generateCommonApiLicenseHeader»
         #include "«fTypeCollection.headerFile»"
 
+        «FOR fStructTypeHeaderPath : fTypeCollection.allDerivedFStructTypeHeaderPaths»
+            #include <«fStructTypeHeaderPath»>
+        «ENDFOR»
+
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
         namespace «fTypeCollection.name» {
 
@@ -97,5 +102,15 @@ class FTypeCollectionGenerator {
     def private hasSourceFile(FTypeCollection fTypeCollection) {
         val hasTypeWithImplementation = fTypeCollection.types.exists[hasImplementation]
         return hasTypeWithImplementation
+    }
+
+    def private getAllDerivedFStructTypeHeaderPaths(FTypeCollection fTypeCollection) {
+        return fTypeCollection.types
+                .filter[it instanceof FStructType && (it as FStructType).isPolymorphic]
+                .map[(it as FStructType).derivedFStructTypes]
+                .flatten
+                .map[(eContainer as FTypeCollection).headerPath]
+                .toSet
+                .filter[!fTypeCollection.headerPath.equals(it)]
     }
 }

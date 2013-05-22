@@ -6,7 +6,6 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
-import java.util.Arrays
 import java.util.Collection
 import java.util.HashSet
 import java.util.LinkedList
@@ -91,6 +90,15 @@ class FTypeGenerator {
             «fStructType.name»() = default;
             «IF fStructType.allElements.size > 0»
                 «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
+            «ENDIF»
+
+            «IF fStructType.isPolymorphic»
+                enum: uint32_t { SERIAL_ID = 0x«Integer::toHexString(fStructType.serialId)» };
+
+                static «fStructType.name»* createInstance(const uint32_t& serialId);
+
+                virtual uint32_t getSerialId() const;
+                virtual void createTypeSignature(CommonAPI::TypeOutputStream& typeOutputStream) const;
             «ENDIF»
 
             virtual void readFromInputStream(CommonAPI::InputStream& inputStream);
@@ -196,6 +204,37 @@ class FTypeGenerator {
                         «element.name»(«element.name»Value)
                     «ENDFOR»
             {
+            }
+        «ENDIF»
+
+        «IF fStructType.isPolymorphic»
+            «fStructType.getClassNamespace(parent)»* «fStructType.getClassNamespace(parent)»::createInstance(const uint32_t& serialId) {
+                if (serialId == SERIAL_ID)
+                    return new «fStructType.name»;
+
+                «IF fStructType.hasDerivedFStructTypes»
+                    const std::function<«fStructType.name»*()> createDerivedInstanceFuncs[] = {
+                        «FOR derivedFStructType : fStructType.getDerivedFStructTypes SEPARATOR ','»
+                            [&]() { return «derivedFStructType.getRelativeNameReference(fStructType)»::createInstance(serialId); }
+                        «ENDFOR» 
+                    };
+
+                    for (auto& createDerivedInstanceFunc : createDerivedInstanceFuncs) {
+                        «fStructType.name»* derivedInstance = createDerivedInstanceFunc();
+                        if (derivedInstance != NULL)
+                            return derivedInstance;
+                    }
+
+                «ENDIF»
+                return NULL;
+            }
+
+            uint32_t «fStructType.getClassNamespace(parent)»::getSerialId() const {
+                return SERIAL_ID;
+            }
+
+            void «fStructType.getClassNamespace(parent)»::createTypeSignature(CommonAPI::TypeOutputStream& typeOutputStream) const {
+                «fStructType.name»::writeToTypeOutputStream(typeOutputStream);
             }
         «ENDIF»
 
@@ -342,6 +381,10 @@ class FTypeGenerator {
     def private getBaseStructName(FStructType fStructType) {
         if (fStructType.base != null)
             return fStructType.base.getRelativeNameReference(fStructType)
+
+        if (fStructType.isPolymorphic)
+            return "CommonAPI::SerializablePolymorphicStruct"
+
         return "CommonAPI::SerializableStruct"
     }
 

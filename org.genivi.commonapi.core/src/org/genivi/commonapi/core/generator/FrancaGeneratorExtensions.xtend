@@ -6,11 +6,19 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
+import com.google.common.base.Charsets
+import com.google.common.hash.Hasher
+import com.google.common.hash.Hashing
 import com.google.common.primitives.Ints
 import java.util.List
+import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
+import org.eclipse.core.runtime.preferences.DefaultScope
+import org.eclipse.core.runtime.preferences.InstanceScope
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
+import org.eclipse.emf.ecore.util.EcoreUtil
+import org.franca.core.franca.FAnnotationType
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
@@ -30,12 +38,9 @@ import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$DefaultEnumBackingType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
+import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 import static com.google.common.base.Preconditions.*
-import org.eclipse.core.resources.ResourcesPlugin
-import org.eclipse.core.runtime.preferences.InstanceScope
-import org.eclipse.core.runtime.preferences.DefaultScope
-import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.franca.core.franca.FTypedElement
 
 class FrancaGeneratorExtensions {
@@ -370,13 +375,17 @@ class FrancaGeneratorExtensions {
     def getStubAdapterClassFireEventMethodName(FBroadcast fBroadcast) {
         'fire' + fBroadcast.name.toFirstUpper + 'Event'
     }
-    
+
     def getTypeName(FTypedElement element, EObject source) {
-        if ("[]".equals(element.array)) {
-            return "std::vector<" + element.type.getNameReference(source) + ">"
-        } else {
-            return element.type.getNameReference(source)
-        }
+        var typeName = element.type.getNameReference(source)
+
+        if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).isPolymorphic)
+            typeName = 'std::shared_ptr<' + typeName + '>'
+
+        if ("[]".equals(element.array))
+            typeName = 'std::vector<' + element.type.getNameReference(source) + '>'
+
+        return typeName
     }
 
     def getNameReference(FTypeRef destination, EObject source) {
@@ -560,7 +569,90 @@ class FrancaGeneratorExtensions {
         if (fType.actualType.derived != null)
             list.add(fType.actualType.derived)
     }
-    
+
+
+    def boolean isPolymorphic(FStructType fStructType) {
+        if (fStructType.base != null && fStructType.base.isPolymorphic)
+            return true
+
+        if (fStructType.comment != null)
+            return fStructType.comment.elements
+                .filter[type == FAnnotationType::EXPERIMENTAL]
+                .exists[comment.equalsIgnoreCase('polymorphic')]
+
+        return false;
+    }
+
+	def getSerialId(FStructType fStructType) {
+		val hasher = Hashing::murmur3_32.newHasher
+		hasher.putFTypeObject(fStructType);
+		return hasher.hash.asInt
+	}
+
+	def private dispatch void putFTypeObject(Hasher hasher, FStructType fStructType) {
+		if (fStructType.base != null)
+			hasher.putFTypeObject(fStructType.base)
+
+		hasher.putString('FStructType', Charsets::UTF_8)
+		fStructType.elements.forEach[
+			hasher.putFTypeRef(type)
+			// avoid cases where the positions of 2 consecutive elements of the same type are switched
+			hasher.putString(name, Charsets::UTF_8)
+		]
+	}
+
+	def private dispatch void putFTypeObject(Hasher hasher, FEnumerationType fEnumerationType) {
+		if (fEnumerationType.base != null)
+		  hasher.putFTypeObject(fEnumerationType.base)
+
+        hasher.putString('FEnumerationType', Charsets::UTF_8)
+        hasher.putInt(fEnumerationType.enumerators.size)
+	}
+
+    def private dispatch void putFTypeObject(Hasher hasher, FArrayType fArrayType) {
+    	hasher.putString('FArrayType', Charsets::UTF_8)
+    	hasher.putFTypeRef(fArrayType.elementType)
+    }
+
+    def private dispatch void putFTypeObject(Hasher hasher, FUnionType fUnionType) {
+    	if (fUnionType.base != null)
+    	   hasher.putFTypeObject(fUnionType.base)
+
+        hasher.putString('FUnionType', Charsets::UTF_8)
+        fUnionType.elements.forEach[hasher.putFTypeRef(type)]
+    }
+
+    def private dispatch void putFTypeObject(Hasher hasher, FMapType fMapType) {
+    	hasher.putString('FMapType', Charsets::UTF_8)
+    	hasher.putFTypeRef(fMapType.keyType)
+    	hasher.putFTypeRef(fMapType.valueType)
+    }
+
+    def private dispatch void putFTypeObject(Hasher hasher, FTypeDef fTypeDef) {
+    	hasher.putFTypeRef(fTypeDef.actualType)
+    }
+
+    def private void putFTypeRef(Hasher hasher, FTypeRef fTypeRef) {
+    	if (fTypeRef.derived != null)
+    	   hasher.putFTypeObject(fTypeRef.derived)
+    	else
+    	   hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
+    }
+
+    def boolean hasDerivedFStructTypes(FStructType fStructType) {
+        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists[
+            EObject instanceof FStructType && (EObject as FStructType).base == fStructType
+        ]
+    }
+
+    def getDerivedFStructTypes(FStructType fStructType) {
+        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet)
+                .map[EObject]
+                .filter[it instanceof FStructType]
+                .map[it as FStructType]
+                .filter[base == fStructType]
+    }
+
     def generateCppNamespace(FModel fModel) '''
         «fModel.namespaceAsList.map[toString].join("::")»::'''
 
