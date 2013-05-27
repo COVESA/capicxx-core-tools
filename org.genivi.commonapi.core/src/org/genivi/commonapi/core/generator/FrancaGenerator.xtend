@@ -11,8 +11,8 @@ import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
 import javax.inject.Inject
+import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
-import org.eclipse.emf.ecore.plugin.EcorePlugin
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.eclipse.xtext.generator.IGenerator
@@ -35,9 +35,7 @@ import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
 
-import static extension org.eclipse.emf.ecore.plugin.EcorePlugin.*
 import static com.google.common.base.Preconditions.*
-import org.eclipse.core.resources.ResourcesPlugin
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -150,7 +148,7 @@ class FrancaGenerator implements IGenerator {
 	def private getAllReferencedFTypes(FModel fModel) {
         val referencedFTypes = new HashSet<FType>
 
-        fModel.typeCollections.forEach[referencedFTypes.addAll(types)]
+        fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]
 
         fModel.interfaces.forEach[
             attributes.forEach[type.addDerivedFTypeTree(referencedFTypes)]
