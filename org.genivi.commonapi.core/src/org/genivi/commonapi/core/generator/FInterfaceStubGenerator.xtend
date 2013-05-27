@@ -43,7 +43,7 @@ class FInterfaceStubGenerator {
             «FOR attribute : fInterface.attributes»
                 «IF attribute.isObservable»
                     ///Notifies all remote listeners about a change of value of the attribute «attribute.name».
-                    virtual void «attribute.stubAdapterClassFireChangedMethodName»(const «attribute.type.getNameReference(fInterface.model)»& «attribute.name») = 0;
+                    virtual void «attribute.stubAdapterClassFireChangedMethodName»(const «attribute.getTypeName(fInterface.model)»& «attribute.name») = 0;
                 «ENDIF»
             «ENDFOR»
 
@@ -52,7 +52,7 @@ class FInterfaceStubGenerator {
                  * Sends a broadcast event for «broadcast.name». Should not be called directly.
                  * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
                  */
-                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')») = 0;
+                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
             «ENDFOR»        
         };
 
@@ -75,7 +75,7 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 /// Verification callback for remote set requests on the attribute «attribute.name».
-                virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» «attribute.name») = 0;
+                virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» «attribute.name») = 0;
                 /// Action callback for remote set requests on the attribute «attribute.name».
                 virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
 
@@ -95,7 +95,7 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 /// Provides getter access to the attribute «attribute.name».
-                virtual const «attribute.type.getNameReference(fInterface.model)»& «attribute.stubClassGetMethodName»() = 0;
+                virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»() = 0;
             «ENDFOR»
 
             «FOR method: fInterface.methods»
@@ -105,7 +105,7 @@ class FInterfaceStubGenerator {
             
             «FOR broadcast : fInterface.broadcasts»
                 /// Sends a broadcast event for «broadcast.name».
-                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')») = 0;
+                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
             «ENDFOR»
         };
 
@@ -140,8 +140,8 @@ class FInterfaceStubGenerator {
             «fInterface.stubRemoteEventClassName»* initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»>& stubAdapter);
 
             «FOR attribute : fInterface.attributes»
-                virtual const «attribute.type.getNameReference(fInterface.model)»& «attribute.stubClassGetMethodName»();
-                virtual void «attribute.stubDefaultClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
+                virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»();
+                virtual void «attribute.stubDefaultClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value);
 
             «ENDFOR»
 
@@ -151,14 +151,14 @@ class FInterfaceStubGenerator {
             «ENDFOR»
             
             «FOR broadcast : fInterface.broadcasts»
-                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')»);
+                virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')»);
             «ENDFOR»
 
          protected:
             «FOR attribute : fInterface.attributes»
                 virtual void «attribute.stubRemoteEventClassChangedMethodName»();
-                virtual bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
-                virtual bool «attribute.stubDefaultClassValidateMethodName»(const «attribute.type.getNameReference(fInterface.model)»& value);
+                virtual bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.getTypeName(fInterface.model)» value);
+                virtual bool «attribute.stubDefaultClassValidateMethodName»(const «attribute.getTypeName(fInterface.model)»& value);
 
             «ENDFOR»
             
@@ -168,7 +168,7 @@ class FInterfaceStubGenerator {
                 RemoteEventHandler(«fInterface.stubDefaultClassName»* defaultStub);
 
                 «FOR attribute : fInterface.attributes»
-                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value);
+                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value);
                     virtual void «attribute.stubRemoteEventClassChangedMethodName»();
 
                 «ENDFOR»
@@ -181,7 +181,7 @@ class FInterfaceStubGenerator {
             std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter_;
 
             «FOR attribute : fInterface.attributes»
-                «attribute.type.getNameReference(fInterface.model)» «attribute.stubDefaultClassVariableName»;
+                «attribute.getTypeName(fInterface.model)» «attribute.stubDefaultClassVariableName»;
             «ENDFOR»            
         };
 
@@ -206,11 +206,11 @@ class FInterfaceStubGenerator {
         }
 
         «FOR attribute : fInterface.attributes»
-            const «attribute.type.getNameReference(fInterface.model)»& «fInterface.stubDefaultClassName»::«attribute.stubClassGetMethodName»() {
+            const «attribute.getTypeName(fInterface.model)»& «fInterface.stubDefaultClassName»::«attribute.stubClassGetMethodName»() {
                 return «attribute.stubDefaultClassVariableName»;
             }
 
-            void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value) {
+            void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
                 «IF attribute.isObservable»
                     if (valueChanged)
@@ -222,7 +222,7 @@ class FInterfaceStubGenerator {
                 // No operation in default
             }
 
-            bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassTrySetMethodName»(«attribute.type.getNameReference(fInterface.model)» value) {
+            bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassTrySetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
                 if (!«attribute.stubDefaultClassValidateMethodName»(value))
                     return false;
 
@@ -231,11 +231,11 @@ class FInterfaceStubGenerator {
                 return valueChanged;
             }
 
-            bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassValidateMethodName»(const «attribute.type.getNameReference(fInterface.model)»& value) {
+            bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassValidateMethodName»(const «attribute.getTypeName(fInterface.model)»& value) {
                 return true;
             }
 
-            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.type.getNameReference(fInterface.model)» value) {
+            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
                 return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
             }
 
@@ -253,7 +253,7 @@ class FInterfaceStubGenerator {
         «ENDFOR»
         
         «FOR broadcast : fInterface.broadcasts»
-            void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + type.getNameReference(fInterface.model) + '& ' + name].join(', ')») {
+            void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») {
                 stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map[name].join(', ')»);
             }
         «ENDFOR»

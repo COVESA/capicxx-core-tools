@@ -36,6 +36,7 @@ import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.preferences.InstanceScope
 import org.eclipse.core.runtime.preferences.DefaultScope
 import org.genivi.commonapi.core.preferences.PreferenceConstants
+import org.franca.core.franca.FTypedElement
 
 class FrancaGeneratorExtensions {
     def String getFullyQualifiedName(FModelElement fModelElement) {
@@ -231,7 +232,7 @@ class FrancaGeneratorExtensions {
     }
 
     def generateDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + type.getNameReference(fMethod.model) + '& ' + name].join(', ')
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + name].join(', ')
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
@@ -242,13 +243,13 @@ class FrancaGeneratorExtensions {
             signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map[type.getNameReference(fMethod.model) + '& ' + name].join(', ')
+            signature = signature + ', ' + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + name].join(', ')
 
         return signature
     }
     
     def generateStubSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map[type.getNameReference(fMethod.model) + ' ' + name].join(', ')
+        var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
         if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
             signature = signature + ', '
 
@@ -258,7 +259,7 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         if (!fMethod.outArgs.empty)
-            signature = signature + fMethod.outArgs.map[type.getNameReference(fMethod.model) + '& ' + name].join(', ')
+            signature = signature + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + name].join(', ')
 
         return signature
     }
@@ -279,7 +280,7 @@ class FrancaGeneratorExtensions {
     }
 
     def generateAsyncDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + type.getNameReference(fMethod.model) + '& ' + name].join(', ')
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + name].join(', ')
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
         return signature + fMethod.asyncCallbackClassName + ' callback'
@@ -368,6 +369,14 @@ class FrancaGeneratorExtensions {
 
     def getStubAdapterClassFireEventMethodName(FBroadcast fBroadcast) {
         'fire' + fBroadcast.name.toFirstUpper + 'Event'
+    }
+    
+    def getTypeName(FTypedElement element, EObject source) {
+        if ("[]".equals(element.array)) {
+            return "std::vector<" + element.type.getNameReference(source) + ">"
+        } else {
+            return element.type.getNameReference(source)
+        }
     }
 
     def getNameReference(FTypeRef destination, EObject source) {

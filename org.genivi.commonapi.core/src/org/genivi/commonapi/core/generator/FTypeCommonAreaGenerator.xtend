@@ -18,6 +18,7 @@ import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import org.franca.core.franca.FTypedElement
 
 class FTypeCommonAreaGenerator {
 	@Inject private extension FrancaGeneratorExtensions
@@ -104,8 +105,8 @@ class FTypeCommonAreaGenerator {
     	«ENDFOR»
     '''
     
-    def private getClassNamespaceWithName(FTypeRef type, String name, FModelElement parent, String parentName) {
-        var reference = type.getNameReference(parent)
+    def private getClassNamespaceWithName(FTypedElement type, String name, FModelElement parent, String parentName) {
+        var reference = type.getTypeName(parent)
         if (parent != null && parent != type) {
             reference = parentName + '::' + reference
             
@@ -123,9 +124,9 @@ class FTypeCommonAreaGenerator {
         	var item = iter.next
         	var lName = "";
         	if (item.type.derived != null) {
-        		lName = parent.model.namespaceAsList.join("::") + "::" + item.type.getClassNamespaceWithName(item.name, parent, parentName)
+        		lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.name, parent, parentName)
         	} else {
-        	   lName = item.type.getNameReference(fUnion)
+        	   lName = item.getTypeName(fUnion)
             }        	
         	names.add(lName)
         }

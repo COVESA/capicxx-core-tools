@@ -85,7 +85,7 @@ class FTypeGenerator {
     def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         struct «fStructType.name»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
-                «element.type.getNameReference(fStructType)» «element.name»;
+                «element.getTypeName(fStructType)» «element.name»;
             «ENDFOR»
 
             «fStructType.name»() = default;
@@ -140,7 +140,7 @@ class FTypeGenerator {
         if (names != "") {
             names = ", " + names
         }
-        names = fUnion.elements.map[type.getNameReference(fUnion)].join(", ") + names
+        names = fUnion.elements.map[getTypeName(fUnion)].join(", ") + names
         return names
     }
 
@@ -346,7 +346,7 @@ class FTypeGenerator {
     }
 
     def private getConstReferenceVariable(FField destination, FModelElement source) {
-        "const " + destination.type.getNameReference(source) + "& " + destination.name
+        "const " + destination.getTypeName(source) + "& " + destination.name
     }
 
     def private List<FField> getAllElements(FStructType fStructType) {

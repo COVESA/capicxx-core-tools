@@ -54,10 +54,10 @@ class FInterfaceProxyGenerator {
 
             «ENDFOR»
             «FOR attribute : fInterface.attributes»
-                typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.type.getNameReference(fInterface.model)»> «attribute.className»;
+                typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface.model)»> «attribute.className»;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
-                typedef CommonAPI::Event<«broadcast.outArgs.map[type.getNameReference(fInterface.model)].join(', ')»> «broadcast.className»;
+                typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
             «ENDFOR»
             «FOR method : fInterface.methods»
                 «IF !method.isFireAndForget»
@@ -349,7 +349,7 @@ class FInterfaceProxyGenerator {
             signature = signature + ', const ' + fMethod.getErrorNameReference(fMethod.eContainer) + '&'
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map['const ' + type.getNameReference(fMethod.model) + '&'].join(', ')
+            signature = signature + ', ' + fMethod.outArgs.map['const ' + getTypeName(fMethod.model) + '&'].join(', ')
 
         return signature
     }
