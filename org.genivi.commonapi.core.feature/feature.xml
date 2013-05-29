@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.core.feature"
       label="%featureName"
-      version="2.0.1.qualifier"
+      version="2.0.3.qualifier"
       provider-name="%providerName">
 
    <copyright>
