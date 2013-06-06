@@ -117,12 +117,18 @@ class FInterfaceProxyGenerator {
 
             «FOR attribute : fInterface.attributes»
                 /// Returns the wrapper class that provides access to the attribute «attribute.name».
-                virtual «attribute.generateGetMethodDefinition»;
+                virtual «attribute.generateGetMethodDefinition» {
+                    return delegate_->get«attribute.className»();
+                }
+
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
                 /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
-                virtual «broadcast.generateGetMethodDefinition»;
+                virtual «broadcast.generateGetMethodDefinition» {
+                    return delegate_->get«broadcast.className»();
+                }
+
             «ENDFOR»
 
             «FOR method : fInterface.methods»
@@ -207,22 +213,6 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
         }
-
-        «FOR attribute : fInterface.attributes»
-            template <typename ... _AttributeExtensions>
-            typename «attribute.generateGetMethodDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                return delegate_->get«attribute.className»();
-            }
-
-        «ENDFOR»
-
-        «FOR broadcast : fInterface.broadcasts»
-            template <typename ... _AttributeExtensions>
-            typename «broadcast.generateGetMethodDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                return delegate_->get«broadcast.className»();
-            }
-
-        «ENDFOR»
 
         «FOR method : fInterface.methods»
             template <typename ... _AttributeExtensions>
