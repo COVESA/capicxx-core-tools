@@ -57,7 +57,7 @@ class FrancaGenerator implements IGenerator {
             deployedInterfaces = new LinkedList<FDInterface>()
 
         } else if (input.URI.fileExtension.equals("fdepl" /* fDeployPersistenceManager.fileExtension */)) {
-            var fDeployedModel = fDeployPersistenceManager.loadModel(input.filePathUrl);
+            var fDeployedModel = fDeployPersistenceManager.loadModel(input.URI, input.URI);
             val fModelExtender = new FDModelExtender(fDeployedModel);
 
             checkArgument(fModelExtender.getFDInterfaces().size > 0, "No Interfaces were deployed, nothing to generate.")
