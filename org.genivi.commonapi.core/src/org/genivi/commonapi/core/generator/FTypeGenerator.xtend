@@ -39,6 +39,11 @@ class FTypeGenerator {
             «type.generateFTypeDeclaration(deploymentAccessor)»
 
         «ENDFOR»
+        «IF fTypeCollection instanceof FInterface»
+            «FOR method : (fTypeCollection as FInterface).methods.filter[errors != null]»
+                «method.errors.generateDeclaration(method.errors.errorName, deploymentAccessor)»
+            «ENDFOR»
+        «ENDIF»
     '''
 
     def private sortTypes(EList<FType> typeList, FTypeCollection containingTypeCollection) {
@@ -402,12 +407,12 @@ class FTypeGenerator {
     }
 
     def private generateInlineOperatorWithName(FEnumerationType fEnumerationType, String enumerationName, FEnumerationType base, FModelElement parent, String parentName, String operator, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getRelativeNameReference(fEnumerationType)»& rhs) {
+        inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getClassNamespaceWithName(base.name, base.eContainer as FModelElement, (base.eContainer as FModelElement).name)»& rhs) {
             return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
         }
-        inline bool operator«operator»(const «base.getRelativeNameReference(fEnumerationType)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
+        inline bool operator«operator»(const «base.getClassNamespaceWithName(base.name, base.eContainer as FModelElement, (base.eContainer as FModelElement).name)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
             return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
-        }
+        } 
     '''
 
     def private getBaseList(FEnumerationType fEnumerationType) {

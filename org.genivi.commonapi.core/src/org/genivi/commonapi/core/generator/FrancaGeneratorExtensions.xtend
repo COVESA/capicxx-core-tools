@@ -301,12 +301,12 @@ class FrancaGeneratorExtensions {
 
     def getErrorNameReference(FMethod fMethod, EObject source) {
         checkArgument(fMethod.hasError, 'FMethod has no error: ' + fMethod)
-        if (fMethod.errorEnum != null)
-            return fMethod.errorEnum.getRelativeNameReference(source)
+        if (fMethod.errorEnum != null) {
+            return fMethod.errorEnum.getRelativeNameReference((source as FModelElement).model)
+		}
 
         var errorNameReference = fMethod.errors.errorName
-        if (!fMethod.eContainer.equals(source)) 
-            errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' + errorNameReference
+		errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' + errorNameReference
         return errorNameReference
     }
 
@@ -387,7 +387,7 @@ class FrancaGeneratorExtensions {
 
         return typeName
     }
-
+    
     def getNameReference(FTypeRef destination, EObject source) {
         if (destination.derived != null)
             return destination.derived.getRelativeNameReference(source)
