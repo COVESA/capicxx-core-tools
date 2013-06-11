@@ -201,15 +201,32 @@ class FTypeCommonAreaGenerator {
     
     def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»'''
     
+    def getFQN(FType type, String name, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(name, fTypes, fTypes.name)»'''
+    
+    def generateHash (FType type, String name, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+    //Hash for «name»
+    template<>
+    struct hash<«type.getFQN(name, fTypes)»> {
+        inline size_t operator()(const «type.getFQN(name, fTypes)»& «name.toFirstLower») const {
+            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«name.toFirstLower»);
+        }
+    };
+    '''
+    
+    def generateHash (FType type, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+    //Hash for «type.name»
+    template<>
+    struct hash<«type.getFQN(fTypes)»> {
+        inline size_t operator()(const «type.getFQN(fTypes)»& «type.name.toFirstLower») const {
+            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.name.toFirstLower»);
+        }
+    };
+    '''
+    
     def generateHashers(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «FOR type: fTypes.types»
             «IF type.isFEnumerationType»
-                template<>
-                struct hash<«type.getFQN(fTypes)»> {
-                    inline size_t operator()(const «type.getFQN(fTypes)»& «type.name.toFirstLower») const {
-                        return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.name.toFirstLower»);
-                    }
-                };
+                «type.generateHash(fTypes, deploymentAccessor)»
             «ENDIF»
         «ENDFOR»
     '''

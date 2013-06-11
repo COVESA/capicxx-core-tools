@@ -49,10 +49,6 @@ class FInterfaceProxyGenerator {
 
         class «fInterface.proxyBaseClassName»: virtual public CommonAPI::Proxy {
          public:
-            «FOR method : fInterface.methods.filter[errors != null]»
-                «method.errors.generateDeclaration(method.errors.errorName, deploymentAccessor)»
-
-            «ENDFOR»
             «FOR attribute : fInterface.attributes»
                 typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface.model)»> «attribute.className»;
             «ENDFOR»
@@ -86,10 +82,6 @@ class FInterfaceProxyGenerator {
                 «ENDIF»
             «ENDFOR»
         };
-
-        «FOR method : fInterface.methods.filter[errors != null]»
-            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.proxyBaseClassName, deploymentAccessor)»
-        «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
 
