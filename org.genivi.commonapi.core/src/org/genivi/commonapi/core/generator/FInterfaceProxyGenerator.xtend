@@ -16,6 +16,7 @@ import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
+import java.util.HashSet
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
@@ -30,9 +31,23 @@ class FInterfaceProxyGenerator {
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
-
+        
         #include "«fInterface.headerFile»"
-        «fInterface.generateRequiredTypeIncludes»
+        
+        «val generatedHeaders = new HashSet<String>»
+        «val libraryHeaders = new HashSet<String>»        
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
+        
+        «FOR requiredHeaderFile : generatedHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+        
+        #define COMMONAPI_INTERNAL_COMPILATION
+        
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+       
         «IF fInterface.hasAttributes»
             #include <CommonAPI/Attribute.h>
         «ENDIF»
@@ -44,6 +59,8 @@ class FInterfaceProxyGenerator {
             #include <functional>
             #include <future>
         «ENDIF»
+        
+        #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
@@ -94,10 +111,15 @@ class FInterfaceProxyGenerator {
         #define «fInterface.defineName»_PROXY_H_
 
         #include "«fInterface.proxyBaseHeaderFile»"
+        
+        #define COMMONAPI_INTERNAL_COMPILATION
+        
         «IF fInterface.hasAttributes»
             #include <CommonAPI/AttributeExtension.h>
             #include <CommonAPI/Factory.h>
         «ENDIF»
+
+        #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 

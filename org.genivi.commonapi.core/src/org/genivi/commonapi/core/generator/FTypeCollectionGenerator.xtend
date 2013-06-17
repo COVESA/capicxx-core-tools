@@ -11,6 +11,8 @@ import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FTypeCollection
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import java.util.HashSet
+import java.util.Collection
 
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
@@ -29,9 +31,21 @@ class FTypeCollectionGenerator {
         #ifndef «fTypeCollection.defineName»_H_
         #define «fTypeCollection.defineName»_H_
 
-        «FOR requiredHeaderFile : fTypeCollection.requiredHeaderFiles.sort»
+        «val libraryHeaders = new HashSet<String>»
+        «val generatedHeaders = new HashSet<String>»
+        «fTypeCollection.getRequiredHeaderFiles(generatedHeaders, libraryHeaders)»
+        
+        «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
+        
+        #define COMMONAPI_INTERNAL_COMPILATION
+        
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+        
+        #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
 
@@ -91,12 +105,11 @@ class FTypeCollectionGenerator {
         } // namespace «fTypeCollection.name»
         «fTypeCollection.model.generateNamespaceEndDeclaration»
     '''
-
-    def private getRequiredHeaderFiles(FTypeCollection fTypeCollection) {
-        val headerSet = newHashSet('CommonAPI/types.h')
-        fTypeCollection.types.forEach[addRequiredHeaders(headerSet)]
-        headerSet.remove(fTypeCollection.headerPath)
-        return headerSet
+   
+    def void getRequiredHeaderFiles(FTypeCollection fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        libraryHeaders.add('CommonAPI/types.h')
+        fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
+        generatedHeaders.remove(fInterface.headerPath)
     }
 
     def private hasSourceFile(FTypeCollection fTypeCollection) {

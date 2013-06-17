@@ -10,6 +10,7 @@ import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FInterface
+import java.util.HashSet
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
@@ -26,10 +27,27 @@ class FInterfaceStubGenerator {
         #ifndef «fInterface.defineName»_STUB_H_
         #define «fInterface.defineName»_STUB_H_
 
-        «fInterface.generateRequiredTypeIncludes»
+        «val generatedHeaders = new HashSet<String>»
+        «val libraryHeaders = new HashSet<String>»        
+        
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
+        
+        «FOR requiredHeaderFile : generatedHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+        
         #include "«fInterface.name».h"
+        
+        #define COMMONAPI_INTERNAL_COMPILATION
+        
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+
         #include <CommonAPI/Stub.h>
 
+        #undef COMMONAPI_INTERNAL_COMPILATION
+        
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         /**

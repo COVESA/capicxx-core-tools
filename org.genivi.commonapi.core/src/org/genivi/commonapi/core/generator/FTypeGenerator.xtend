@@ -286,64 +286,57 @@ class FTypeGenerator {
         return (fType instanceof FStructType);
     }
 
-    def generateRequiredTypeIncludes(FInterface fInterface) '''
-        «FOR requiredTypeHeaderFile : fInterface.requiredTypeHeaderFiles»
-            #include <«requiredTypeHeaderFile»>
-        «ENDFOR»
-    '''
-
-    def private getRequiredTypeHeaderFiles(FInterface fInterface) {
-        val headerSet = new HashSet<String>
-
-        fInterface.attributes.forEach[type.derived?.addRequiredHeaders(headerSet)]
+    def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        fInterface.attributes.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
         fInterface.methods.forEach[
-            inArgs.forEach[type.derived?.addRequiredHeaders(headerSet)]
-            outArgs.forEach[type.derived?.addRequiredHeaders(headerSet)]
+            inArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
+            outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
         ]
-        fInterface.broadcasts.forEach[outArgs.forEach[type.derived?.addRequiredHeaders(headerSet)]]
+        fInterface.broadcasts.forEach[outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]]
 
-        headerSet.remove(fInterface.headerPath)
-
-        return headerSet
+        generatedHeaders.remove(fInterface.headerPath)
     }
 
-    def addRequiredHeaders(FType fType, Collection<String> requiredHeaders) {
-        requiredHeaders.add(fType.FTypeCollection.headerPath)
-        fType.addFTypeRequiredHeaders(requiredHeaders)
+    def addRequiredHeaders(FType fType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        generatedHeaders.add(fType.FTypeCollection.headerPath)
+        fType.addFTypeRequiredHeaders(generatedHeaders, libraryHeaders)
     }
 
     def private getFTypeCollection(FType fType) {
         fType.eContainer as FTypeCollection
     }
 
-    def private dispatch void addFTypeRequiredHeaders(FTypeDef fTypeDef, Collection<String> requiredHeaders) {
-        requiredHeaders.add(fTypeDef.actualType.requiredHeaderPath)
+    def private dispatch void addFTypeRequiredHeaders(FTypeDef fTypeDef, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        fTypeDef.actualType.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
     }
-    def private dispatch void addFTypeRequiredHeaders(FArrayType fArrayType, Collection<String> requiredHeaders) {
-        requiredHeaders.addAll('vector', fArrayType.elementType.requiredHeaderPath)
+    def private dispatch void addFTypeRequiredHeaders(FArrayType fArrayType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        libraryHeaders.add('vector')
+        fArrayType.elementType.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
     }
-    def private dispatch void addFTypeRequiredHeaders(FMapType fMapType, Collection<String> requiredHeaders) {
-        requiredHeaders.addAll('unordered_map', fMapType.keyType.requiredHeaderPath, fMapType.valueType.requiredHeaderPath)
+    def private dispatch void addFTypeRequiredHeaders(FMapType fMapType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        libraryHeaders.add('unordered_map')
+        fMapType.keyType.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
+        fMapType.valueType.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
     }
-    def private dispatch void addFTypeRequiredHeaders(FStructType fStructType, Collection<String> requiredHeaders) {
+    def private dispatch void addFTypeRequiredHeaders(FStructType fStructType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         if (fStructType.base != null)
-            requiredHeaders.add(fStructType.base.FTypeCollection.headerPath)
+            generatedHeaders.add(fStructType.base.FTypeCollection.headerPath)
         else
-            requiredHeaders.addAll('CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h', 'CommonAPI/SerializableStruct.h')
-        fStructType.elements.forEach[requiredHeaders.add(type.requiredHeaderPath)]
+            libraryHeaders.addAll('CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h', 'CommonAPI/SerializableStruct.h')
+        fStructType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
     }
-    def private dispatch void addFTypeRequiredHeaders(FEnumerationType fEnumerationType, Collection<String> requiredHeaders) {
+    def private dispatch void addFTypeRequiredHeaders(FEnumerationType fEnumerationType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         if (fEnumerationType.base != null)
-            requiredHeaders.add(fEnumerationType.base.FTypeCollection.headerPath)
-        requiredHeaders.addAll('cstdint', 'CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h')
+            generatedHeaders.add(fEnumerationType.base.FTypeCollection.headerPath)
+        libraryHeaders.addAll('cstdint', 'CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h')
     }
-    def private dispatch void addFTypeRequiredHeaders(FUnionType fUnionType, Collection<String> requiredHeaders) {
+    def private dispatch void addFTypeRequiredHeaders(FUnionType fUnionType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         if (fUnionType.base != null)
-            requiredHeaders.add(fUnionType.base.FTypeCollection.headerPath)
+            generatedHeaders.add(fUnionType.base.FTypeCollection.headerPath)
         else
-            requiredHeaders.add('CommonAPI/SerializableVariant.h')
-        fUnionType.elements.forEach[requiredHeaders.add(type.requiredHeaderPath)]
-        requiredHeaders.addAll('cstdint', 'memory')
+            libraryHeaders.add('CommonAPI/SerializableVariant.h')
+        fUnionType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
+        libraryHeaders.addAll('cstdint', 'memory')
     }
     
     def private getRequiredHeaderPath(FTypeRef fTypeRef) {
@@ -357,6 +350,21 @@ class FTypeGenerator {
             case FBasicTypeId::STRING : 'string'
             case FBasicTypeId::BYTE_BUFFER : 'CommonAPI/ByteBuffer.h'
             default : 'cstdint'
+        }
+    }
+    
+    def private void getRequiredHeaderPath(FTypeRef fTypeRef, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        if (fTypeRef.derived != null) {
+            generatedHeaders.add(fTypeRef.derived.FTypeCollection.headerPath)
+            }
+        fTypeRef.predefined.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
+    }
+
+    def private void getRequiredHeaderPath(FBasicTypeId fBasicTypeId, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        switch fBasicTypeId {
+            case FBasicTypeId::STRING : libraryHeaders.add('string')
+            case FBasicTypeId::BYTE_BUFFER : libraryHeaders.add('CommonAPI/ByteBuffer.h')
+            default : libraryHeaders.add('cstdint')
         }
     }
 

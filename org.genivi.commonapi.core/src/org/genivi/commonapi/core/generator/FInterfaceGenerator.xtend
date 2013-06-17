@@ -10,6 +10,8 @@ import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
+import java.util.Collection
+import java.util.HashSet
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
@@ -27,11 +29,23 @@ class FInterfaceGenerator {
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
-
-        «FOR requiredHeaderFile : fInterface.requiredHeaderFiles.sort»
+        
+        «val libraryHeaders = new HashSet<String>»
+        «val generatedHeaders = new HashSet<String>»
+        «fInterface.getRequiredHeaderFiles(generatedHeaders, libraryHeaders)»
+        
+        «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-
+        
+        #define COMMONAPI_INTERNAL_COMPILATION
+        
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+        
+        #undef COMMONAPI_INTERNAL_COMPILATION
+        
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         class «fInterface.name»«IF fInterface.base != null»: public «fInterface.base.getRelativeNameReference(fInterface)»«ENDIF» {
@@ -95,11 +109,10 @@ class FInterfaceGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
     '''
 
-    def private getRequiredHeaderFiles(FInterface fInterface) {
-        val headerSet = newHashSet('CommonAPI/types.h')
-        fInterface.types.forEach[addRequiredHeaders(headerSet)]
-        headerSet.remove(fInterface.headerPath)
-        return headerSet
+    def void getRequiredHeaderFiles(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        libraryHeaders.add('CommonAPI/types.h')
+        fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
+        generatedHeaders.remove(fInterface.headerPath)
     }
 
     def private hasSourceFile(FInterface fInterface) {
