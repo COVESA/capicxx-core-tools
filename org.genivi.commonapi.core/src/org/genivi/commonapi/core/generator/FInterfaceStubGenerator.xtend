@@ -38,7 +38,9 @@ class FInterfaceStubGenerator {
         
         #include "«fInterface.name».h"
         
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
+        #endif
         
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>

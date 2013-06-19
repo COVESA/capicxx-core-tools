@@ -137,7 +137,7 @@ class FTypeGenerator {
             «ENDFOR»
         };
 
-        // XXX Definition of a comparator still is necessary for GCC 4.4.1, topic is fixed since 4.5.1
+        // Definition of a comparator still is necessary for GCC 4.4.1, topic is fixed since 4.5.1
         struct «name»Comparator;
     '''
 

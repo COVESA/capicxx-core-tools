@@ -39,7 +39,9 @@ class FTypeCollectionGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
         
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
+        #endif
         
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
@@ -58,7 +60,8 @@ class FTypeCollectionGenerator {
 
         
         static inline const char* getTypeCollectionName() {
-            return "«fTypeCollection.fullyQualifiedName»";
+            static const char* typeCollectionName = "«fTypeCollection.fullyQualifiedName»";
+            return typeCollectionName;
         }
 
         «IF fTypeCollection.version != null»

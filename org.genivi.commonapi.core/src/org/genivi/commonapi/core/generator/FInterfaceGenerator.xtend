@@ -38,7 +38,9 @@ class FInterfaceGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
         
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
+        #endif
         
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
@@ -58,7 +60,8 @@ class FInterfaceGenerator {
         };
         
         const char* «fInterface.name»::getInterfaceId() {
-            return "«fInterface.fullyQualifiedName»";
+            static const char* interfaceId = "«fInterface.fullyQualifiedName»";
+            return interfaceId;
         }
 
         CommonAPI::Version «fInterface.name»::getInterfaceVersion() {

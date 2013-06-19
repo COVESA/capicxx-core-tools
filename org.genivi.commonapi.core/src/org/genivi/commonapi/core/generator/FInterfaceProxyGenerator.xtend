@@ -43,7 +43,9 @@ class FInterfaceProxyGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
         
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
+        #endif
         
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
@@ -118,7 +120,9 @@ class FInterfaceProxyGenerator {
 
         #include "«fInterface.proxyBaseHeaderFile»"
         
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
+        #endif
         
         «IF fInterface.hasAttributes»
             #include <CommonAPI/AttributeExtension.h>
