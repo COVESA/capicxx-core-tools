@@ -330,11 +330,11 @@ class FrancaGeneratorExtensions {
     }
    
     def isReadonly(FAttribute fAttribute) {
-        fAttribute.readonly != null
+        fAttribute.readonly
     }
 
     def isObservable(FAttribute fAttribute) {
-        fAttribute.noSubscriptions == null
+        fAttribute.noSubscriptions == false
     }
 
     def getStubAdapterClassFireChangedMethodName(FAttribute fAttribute) {
