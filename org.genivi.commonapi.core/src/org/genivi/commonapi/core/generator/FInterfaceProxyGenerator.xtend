@@ -17,6 +17,7 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
 import java.util.HashSet
+import java.util.HashMap
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
@@ -72,9 +73,14 @@ class FInterfaceProxyGenerator {
             «FOR broadcast : fInterface.broadcasts»
                 typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
             «ENDFOR»
+            «var callbackSet = new HashSet<String>()»
             «FOR method : fInterface.methods»
                 «IF !method.isFireAndForget»
-                    typedef std::function<void(«method.generateASyncTypedefSignature»)> «method.asyncCallbackClassName»;
+                    «val define = "typedef std::function<void(" + method.generateASyncTypedefSignature + ")> " + method.asyncCallbackClassName + ";"»
+                    «IF !callbackSet.contains(define)»
+                        «define»
+                        «val ok = callbackSet.add(define)»
+                    «ENDIF»
                 «ENDIF» 
             «ENDFOR»
 
