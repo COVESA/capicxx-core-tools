@@ -16,16 +16,16 @@
    <requires>
       <import plugin="org.eclipse.core.resources" version="3.8.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.core.runtime" version="3.8.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtend2.lib" version="2.3.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtext.generator" version="2.3.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtext.util" version="2.3.1" match="greaterOrEqual"/>
-      <import plugin="org.franca.core.dsl" version="0.8.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtend2.lib" version="2.4.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.generator" version="2.4.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.util" version="2.4.0" match="greaterOrEqual"/>
+      <import plugin="org.franca.core.dsl" version="0.8.8" match="greaterOrEqual"/>
       <import plugin="javax.inject"/>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.eclipse.core.expressions" version="3.4.400" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtext.builder" version="2.3.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtext.ui" version="2.3.1" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.xtext.ui.ecore" version="2.3.1" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.builder" version="2.4.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.ui" version="2.4.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.xtext.ui.ecore" version="2.4.0" match="greaterOrEqual"/>
       <import plugin="com.google.inject" version="3.0.0" match="greaterOrEqual"/>
       <import plugin="org.genivi.commonapi.core" version="1.0.0" match="greaterOrEqual"/>
    </requires>
