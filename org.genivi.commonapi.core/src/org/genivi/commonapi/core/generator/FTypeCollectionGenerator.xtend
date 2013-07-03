@@ -122,7 +122,7 @@ class FTypeCollectionGenerator {
 
     def private getAllDerivedFStructTypeHeaderPaths(FTypeCollection fTypeCollection) {
         return fTypeCollection.types
-                .filter[it instanceof FStructType && (it as FStructType).isPolymorphic]
+                .filter[it instanceof FStructType && (it as FStructType).hasPolymorphicBase]
                 .map[(it as FStructType).derivedFStructTypes]
                 .flatten
                 .map[(eContainer as FTypeCollection).headerPath]

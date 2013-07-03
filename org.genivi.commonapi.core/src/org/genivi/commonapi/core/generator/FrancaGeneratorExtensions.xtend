@@ -379,7 +379,7 @@ class FrancaGeneratorExtensions {
     def getTypeName(FTypedElement element, EObject source) {
         var typeName = element.type.getNameReference(source)
 
-        if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).isPolymorphic)
+        if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase)
             typeName = 'std::shared_ptr<' + typeName + '>'
 
         if ("[]".equals(element.array))
@@ -571,16 +571,11 @@ class FrancaGeneratorExtensions {
     }
 
 
-    def boolean isPolymorphic(FStructType fStructType) {
-        if (fStructType.base != null && fStructType.base.isPolymorphic)
-            return true
+    def boolean hasPolymorphicBase(FStructType fStructType) {
+        if (fStructType.isPolymorphic)
+            return true;
 
-        if (fStructType.comment != null)
-            return fStructType.comment.elements
-                .filter[type == FAnnotationType::EXPERIMENTAL]
-                .exists[comment.equalsIgnoreCase('polymorphic')]
-
-        return false;
+        return fStructType.base != null && fStructType.base.hasPolymorphicBase
     }
 
 	def getSerialId(FStructType fStructType) {

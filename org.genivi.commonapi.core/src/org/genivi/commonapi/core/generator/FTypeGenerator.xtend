@@ -97,7 +97,7 @@ class FTypeGenerator {
                 «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
             «ENDIF»
 
-            «IF fStructType.isPolymorphic»
+            «IF fStructType.hasPolymorphicBase»
                 enum: uint32_t { SERIAL_ID = 0x«Integer::toHexString(fStructType.serialId)» };
 
                 static «fStructType.name»* createInstance(const uint32_t& serialId);
@@ -212,7 +212,7 @@ class FTypeGenerator {
             }
         «ENDIF»
 
-        «IF fStructType.isPolymorphic»
+        «IF fStructType.hasPolymorphicBase»
             «fStructType.getClassNamespace(parent)»* «fStructType.getClassNamespace(parent)»::createInstance(const uint32_t& serialId) {
                 if (serialId == SERIAL_ID)
                     return new «fStructType.name»;
@@ -395,7 +395,7 @@ class FTypeGenerator {
         if (fStructType.base != null)
             return fStructType.base.getRelativeNameReference(fStructType)
 
-        if (fStructType.isPolymorphic)
+        if (fStructType.hasPolymorphicBase)
             return "CommonAPI::SerializablePolymorphicStruct"
 
         return "CommonAPI::SerializableStruct"
