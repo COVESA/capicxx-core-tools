@@ -70,7 +70,7 @@ class FrancaGenerator implements IGenerator {
 
         doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess)
     }
-    
+
 
     def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess access) {
         val allReferencedFTypes = fModel.allReferencedFTypes
@@ -121,31 +121,31 @@ class FrancaGenerator implements IGenerator {
     }
 
 
-	def private getFilePath(Resource resource) {
+    def private getFilePath(Resource resource) {
         if (resource.URI.file) {
             return resource.URI.toFileString
         }
-        
+
         val platformPath = new Path(resource.URI.toPlatformString(true))
         val file =  ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
 
         return file.location.toString
     }
 
-	def private getAllReferencedFInterfaces(FModel fModel) {
-	    val referencedFInterfaces = fModel.interfaces.toSet
-	    fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
-	    return referencedFInterfaces
-	}
+    def private getAllReferencedFInterfaces(FModel fModel) {
+        val referencedFInterfaces = fModel.interfaces.toSet
+        fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
+        return referencedFInterfaces
+    }
 
-	def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences) {
-	    if (!fInterfaceReferences.contains(fInterface)) {
-	        fInterfaceReferences.add(fInterface)
-	        fInterface.base?.addFInterfaceTree(fInterfaceReferences)
-	    }
-	}
-	
-	def private getAllReferencedFTypes(FModel fModel) {
+    def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences) {
+        if (!fInterfaceReferences.contains(fInterface)) {
+            fInterfaceReferences.add(fInterface)
+            fInterface.base?.addFInterfaceTree(fInterfaceReferences)
+        }
+    }
+
+    def private getAllReferencedFTypes(FModel fModel) {
         val referencedFTypes = new HashSet<FType>
 
         fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]

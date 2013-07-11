@@ -18,36 +18,36 @@ class FInterfaceGenerator {
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         fileSystemAccess.generateFile(fInterface.headerPath, fInterface.generateHeader(deploymentAccessor))
 
         if (fInterface.hasSourceFile)
             fileSystemAccess.generateFile(fInterface.sourcePath, fInterface.generateSource)
-	}
+    }
 
     def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
-        
+
         «val libraryHeaders = new HashSet<String>»
         «val generatedHeaders = new HashSet<String>»
         «fInterface.getRequiredHeaderFiles(generatedHeaders, libraryHeaders)»
-        
+
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-        
+
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #undef COMMONAPI_INTERNAL_COMPILATION
-        
+
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         class «fInterface.name»«IF fInterface.base != null»: public «fInterface.base.getRelativeNameReference(fInterface)»«ENDIF» {
@@ -58,7 +58,7 @@ class FInterfaceGenerator {
             static inline CommonAPI::Version getInterfaceVersion();
             «fInterface.generateFTypeDeclarations(deploymentAccessor)»
         };
-        
+
         const char* «fInterface.name»::getInterfaceId() {
             static const char* interfaceId = "«fInterface.fullyQualifiedName»";
             return interfaceId;
@@ -76,11 +76,11 @@ class FInterfaceGenerator {
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
-        
-        namespace CommonAPI {
-        	«fInterface.generateTypeWriters(deploymentAccessor)»
 
-        	«fInterface.generateVariantComparators»
+        namespace CommonAPI {
+            «fInterface.generateTypeWriters(deploymentAccessor)»
+
+            «fInterface.generateVariantComparators»
         }
 
 
@@ -96,7 +96,7 @@ class FInterfaceGenerator {
 
         #endif // «fInterface.defineName»_H_
     '''
-    
+
 
 
     def private generateSource(FInterface fInterface) '''
