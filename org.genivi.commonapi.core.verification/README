@@ -1,0 +1,72 @@
+GENIVI_org.genivi.commonapi.core.verification
+======================
+:Author: Juergen Gehring - juergen.gehring@bmw.de, Manfred Bathelt - manfred.bathelt@bmw.de
+:doctitle: GENIVI_org.genivi.commonapi.core.verification
+
+Copyright
+---------
+Copyright (C) 2013, GENIVI Alliance, Inc.
+Copyright (C) 2013, BMW AG
+
+This file is part of GENIVI Project IPC Common API.
+ 
+Contributions are licensed to the GENIVI Alliance under one or more
+Contribution License Agreements or MPL 2.0 .
+ 
+(C) Copyright
+This Source Code Form is subject to the terms of the
+Mozilla Public License, v. 2.0. If a  copy of the MPL was not distributed with
+this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ 
+For further information see https://collab.genivi.org/wiki/display/genivi/SysInfraEGCommonIDLCommonAPIGuide
+
+== License
+This project is licensed under MPL 2.0
+
+Contribution is done under GENIVI CLA or MPL2.0. 
+
+== Version
+The current version can be taken from the git.
+
+== Description
+
+The term "gluecode" refers to a binary that contains the binding specific generated code from the Franca files
+"test-derived-types.fidl", "test-interface-proxy.fidl" and "test-predefined-types.fidl" that are delivered in the
+src directory within that project.
+
+There are some configure options that allow you to define the binding that should be tested:
+
+--with-gluecode-path=... specifies the path to your gluecode containing the directories src-gen and .libs.
+
+If you want the gluecode to be linked dynamically, use --with-gluecode-so-name=... to name the *.so file. The .so file must reside
+within .libs in the gluecode path.
+
+If you want the gluecode to be linked statically, use --gluecode-a-name=... to name the *.a file. The .a file must reside
+within .libs in the gluecode path. For statically linked gluecode you also have to specify your binding. To do that use either
+--with-binding-so=... or --with-binding-a=..., depending on whether your binding should be linked dynamically (*.so) or 
+statically (*.a) respectively. Use the full path to your binding.
+If your binding needs additional libraries, use --binding-extra=... to specify them.
+
+== Usage
+
+1. Generate CommonAPI code for all .fidl files within /src using the code generator. After that you should find the generated files in /src-gen
+2. Run autoreconf -i
+3. Configure the project to find the gluecode (see also "Description")
+   Examples:
+   a) configure --with-gluecode-path=~/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
+                --with-gluecode-so-name=libDBusGlue.so
+      Uses dynamically linked gluecode file "libDBusGlue.so"
+   b) configure --with-gluecode-path=~/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
+                --with-gluecode-a-name=libDBusGlue.a \
+                --with-binding-so=~/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.so
+      Uses statically linked gluecode file "libDBusGlue.a" and dynamically linked binding 
+      "~/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.so"
+   c) configure --with-gluecode-path=~/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
+                --with-gluecode-a-name=libDBusGlue.a \
+                --with-binding-a=~/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a \
+                --with-binding-extra=~/libdbus/dbus/.libs/libdbus-1.so
+      Uses statically linked gluecode file "libDBusGlue.a" and staticalls linked binding "~/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a". The binding in this example needs an additional library "~/libdbus/dbus/.libs/libdbus-1.so".
+      If you do not need that, you can omit the --with-binding-extra option 
+4. Run make all
+5. Execute ./verification in order to run the test cases
+   
