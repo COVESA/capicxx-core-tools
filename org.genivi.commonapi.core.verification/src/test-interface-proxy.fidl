@@ -1,0 +1,61 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.tests
+
+import commonapi.tests.* from "test-derived-types.fidl"
+
+interface TestInterface {
+	version { major 1 minor 0 }
+
+	attribute UInt32 TestPredefinedTypeAttribute
+	attribute DerivedTypeCollection.TestStructExtended TestDerivedStructAttribute
+	attribute DerivedTypeCollection.TestArrayUInt64 TestDerivedArrayAttribute
+
+	method testEmptyMethod {
+	}
+
+	method testVoidPredefinedTypeMethod {
+		in {
+			UInt32 uint32Value
+			String stringValue
+		}
+	}
+
+	method testPredefinedTypeMethod {
+		in {
+			UInt32 uint32InValue
+			String stringInValue
+		}
+		out {
+			UInt32 uint32OutValue
+			String stringOutValue
+		}
+	}
+
+	method testVoidDerivedTypeMethod {
+		in {
+			DerivedTypeCollection.TestEnumExtended2 testEnumExtended2Value
+			DerivedTypeCollection.TestMap testMapValue
+		}
+	}
+
+	method testDerivedTypeMethod {
+		in {
+			DerivedTypeCollection.TestEnumExtended2 testEnumExtended2InValue
+			DerivedTypeCollection.TestMap testMapInValue
+		}
+		out {
+			DerivedTypeCollection.TestEnumExtended2 testEnumExtended2OutValue
+			DerivedTypeCollection.TestMap testMapOutValue
+		}
+	}
+
+	broadcast TestPredefinedTypeBroadcast {
+		out {
+			UInt32 uint32Value
+			String stringValue
+		}
+	}
+}
+
