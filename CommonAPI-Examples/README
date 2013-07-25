@@ -1,0 +1,23 @@
+1) Generate CommonAPI and CommonAPI-DBus C++ files from src/helloworld.fidl
+ - for now CommonAPI-DBus is mandatory, future versions of the examples won't depend on any middleware
+
+2) Init autotools:
+  $ autoreconf -i
+
+3) Compile sources:
+  # optionally override the path where CommonAPI is installed
+  $ export PKG_CONFIG_PATH=/path/to/CommonAPI:/path/to/CommonAPI-DBus:/path/to/dbus-patched
+  $ ./configure
+  $ make
+
+4) Make sure dbus session bus is available:
+  $ env |grep DBUS_SESSION_BUS_ADDRESS
+  (output must not be empty!)
+
+5) Run the stub
+  $ ./helloworld-stub
+  (should block and wait for calls)
+
+6) Run the client on another console, while the stub is running:
+  $ ./helloworld-proxy
+  (should call the stub and exit with the response)
