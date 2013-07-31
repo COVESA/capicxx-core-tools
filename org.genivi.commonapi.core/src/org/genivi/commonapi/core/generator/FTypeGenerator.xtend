@@ -7,7 +7,6 @@
 package org.genivi.commonapi.core.generator
 
 import java.util.Collection
-import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
 import javax.inject.Inject
@@ -64,8 +63,8 @@ class FTypeGenerator {
     }
 
     def private hasNoCircularDependencies(EList<FType> types) {
-    	val cycleDetector = new FTypeCycleDetector(francaGeneratorExtensions)
-    	return !cycleDetector.hasCycle(types)
+        val cycleDetector = new FTypeCycleDetector(francaGeneratorExtensions)
+        return !cycleDetector.hasCycle(types)
     }
 
     def private List<FType> getReferencedTypes(FType fType) {
@@ -119,7 +118,7 @@ class FTypeGenerator {
             }
         };
     '''
-    
+
     def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         generateDeclaration(fEnumerationType, fEnumerationType.name, deploymentAccessor)
     }
@@ -338,7 +337,7 @@ class FTypeGenerator {
         fUnionType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
         libraryHeaders.addAll('cstdint', 'memory')
     }
-    
+
     def private getRequiredHeaderPath(FTypeRef fTypeRef) {
         if (fTypeRef.derived != null)
             return fTypeRef.derived.FTypeCollection.headerPath

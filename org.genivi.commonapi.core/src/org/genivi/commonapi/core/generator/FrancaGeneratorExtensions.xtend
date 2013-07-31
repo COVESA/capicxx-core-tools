@@ -18,7 +18,6 @@ import org.eclipse.core.runtime.preferences.InstanceScope
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
-import org.franca.core.franca.FAnnotationType
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
@@ -59,7 +58,7 @@ class FrancaGeneratorExtensions {
             return (fModelElement.eContainer as FModel)
         return (fModelElement.eContainer as FModelElement).model
     }
-    
+
     def FInterface getContainingInterface(FModelElement fModelElement) {
         if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
             return null
@@ -70,7 +69,7 @@ class FrancaGeneratorExtensions {
 
         return (fModelElement.eContainer as FModelElement).containingInterface
     }
-    
+
     def FTypeCollection getContainingTypeCollection(FModelElement fModelElement) {
         if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
             return null
@@ -85,7 +84,7 @@ class FrancaGeneratorExtensions {
     def getDirectoryPath(FModel fModel) {
         fModel.name.replace('.', '/')
     }
-    
+
     def String getDefineName(FModelElement fModelElement) {
         val defineSuffix = '_' + fModelElement.name.splitCamelCase.join('_')
 
@@ -184,7 +183,7 @@ class FrancaGeneratorExtensions {
     def getStubDefaultClassName(FInterface fInterface) {
         fInterface.name + 'StubDefault'
     }
-    
+
     def getStubDefaultSourceFile(FInterface fInterface) {
         fInterface.name + "StubDefault.cpp"
     }
@@ -192,7 +191,7 @@ class FrancaGeneratorExtensions {
     def getStubDefaultSourcePath(FInterface fInterface) {
         fInterface.model.directoryPath + '/' + fInterface.getStubDefaultSourceFile
     }
-    
+
     def getStubRemoteEventClassName(FInterface fInterface) {
         fInterface.name + 'StubRemoteEvent'
     }
@@ -200,7 +199,7 @@ class FrancaGeneratorExtensions {
     def getStubAdapterClassName(FInterface fInterface) {
         fInterface.name + 'StubAdapter'
     }
-    
+
     def getStubHeaderFile(FInterface fInterface) {
         fInterface.name + "Stub.h"
     }
@@ -252,7 +251,7 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
     def generateStubSignature(FMethod fMethod) {
         var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
         if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
@@ -303,10 +302,10 @@ class FrancaGeneratorExtensions {
         checkArgument(fMethod.hasError, 'FMethod has no error: ' + fMethod)
         if (fMethod.errorEnum != null) {
             return fMethod.errorEnum.getRelativeNameReference((source as FModelElement).model)
-		}
+        }
 
         var errorNameReference = fMethod.errors.errorName
-		errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' + errorNameReference
+        errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' + errorNameReference
         return errorNameReference
     }
 
@@ -328,7 +327,7 @@ class FrancaGeneratorExtensions {
 
         return definition
     }
-   
+
     def isReadonly(FAttribute fAttribute) {
         fAttribute.readonly
     }
@@ -387,7 +386,7 @@ class FrancaGeneratorExtensions {
 
         return typeName
     }
-    
+
     def getNameReference(FTypeRef destination, EObject source) {
         if (destination.derived != null)
             return destination.derived.getRelativeNameReference(source)
@@ -461,13 +460,13 @@ class FrancaGeneratorExtensions {
             default: throw new IllegalArgumentException("Unsupported basic type: " + fBasicTypeId.name)
         }
     }
-    
+
     def String typeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         if (fTypeRef.derived != null)
             return fTypeRef.derived.typeStreamFTypeSignature(deploymentAccessor)
         return fTypeRef.predefined.basicTypeStreamSignature
     }
-    
+
     def private String getBasicTypeStreamSignature(FBasicTypeId fBasicTypeId) {
         switch fBasicTypeId {
             case FBasicTypeId::BOOLEAN: return "typeOutputStream.writeBoolType();"
@@ -485,27 +484,27 @@ class FrancaGeneratorExtensions {
             case FBasicTypeId::BYTE_BUFFER: return "typeOutputStream.writeByteBufferType();"
         }
     }
-    
+
     def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return fTypeDef.actualType.typeStreamSignature(deploymentAccessor)
     }
 
     def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        return 'typeOutputStream.beginWriteVectorType();\n' + 
-        fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' + 
+        return 'typeOutputStream.beginWriteVectorType();\n' +
+        fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' +
         'typeOutputStream.endWriteVectorType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-    	return 'typeOutputStream.beginWriteMapType();\n' + 
-    	fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' + fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' + 
-    	'typeOutputStream.endWriteMapType();'
+        return 'typeOutputStream.beginWriteMapType();\n' +
+        fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' + fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' +
+        'typeOutputStream.endWriteMapType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-    	return 'typeOutputStream.beginWriteStructType();\n' +
-    	fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
-    	'typeOutputStream.endWriteStructType();'
+        return 'typeOutputStream.beginWriteStructType();\n' +
+        fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
+        'typeOutputStream.endWriteStructType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
@@ -513,7 +512,7 @@ class FrancaGeneratorExtensions {
     }
 
     def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-    	return 'typeOutputStream.writeVariantType();'
+        return 'typeOutputStream.writeVariantType();'
     }
 
     def private String getElementsTypeStreamSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
@@ -525,19 +524,19 @@ class FrancaGeneratorExtensions {
         return signature
     }
 
-	def List<FType> getDirectlyReferencedTypes(FType type) {
-		val directlyReferencedTypes = newLinkedList
+    def List<FType> getDirectlyReferencedTypes(FType type) {
+        val directlyReferencedTypes = newLinkedList
 
-		directlyReferencedTypes.addFTypeDirectlyReferencedTypes(type)
+        directlyReferencedTypes.addFTypeDirectlyReferencedTypes(type)
 
-		return directlyReferencedTypes
-	}
+        return directlyReferencedTypes
+    }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FStructType fType) {
-    	list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+        list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
 
         if (fType.base != null)
-        	list.add(fType.base)
+            list.add(fType.base)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FEnumerationType fType) {
@@ -547,11 +546,11 @@ class FrancaGeneratorExtensions {
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FArrayType fType) {
         if (fType.elementType.derived != null)
-        	list.add(fType.elementType.derived)
+            list.add(fType.elementType.derived)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FUnionType fType) {
-    	list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+        list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
 
         if (fType.base != null)
             list.add(fType.base)
@@ -578,60 +577,60 @@ class FrancaGeneratorExtensions {
         return fStructType.base != null && fStructType.base.hasPolymorphicBase
     }
 
-	def getSerialId(FStructType fStructType) {
-		val hasher = Hashing::murmur3_32.newHasher
-		hasher.putFTypeObject(fStructType);
-		return hasher.hash.asInt
-	}
+    def getSerialId(FStructType fStructType) {
+        val hasher = Hashing::murmur3_32.newHasher
+        hasher.putFTypeObject(fStructType);
+        return hasher.hash.asInt
+    }
 
-	def private dispatch void putFTypeObject(Hasher hasher, FStructType fStructType) {
-		if (fStructType.base != null)
-			hasher.putFTypeObject(fStructType.base)
+    def private dispatch void putFTypeObject(Hasher hasher, FStructType fStructType) {
+        if (fStructType.base != null)
+            hasher.putFTypeObject(fStructType.base)
 
-		hasher.putString('FStructType', Charsets::UTF_8)
-		fStructType.elements.forEach[
-			hasher.putFTypeRef(type)
-			// avoid cases where the positions of 2 consecutive elements of the same type are switched
-			hasher.putString(name, Charsets::UTF_8)
-		]
-	}
+        hasher.putString('FStructType', Charsets::UTF_8)
+        fStructType.elements.forEach[
+            hasher.putFTypeRef(type)
+            // avoid cases where the positions of 2 consecutive elements of the same type are switched
+            hasher.putString(name, Charsets::UTF_8)
+        ]
+    }
 
-	def private dispatch void putFTypeObject(Hasher hasher, FEnumerationType fEnumerationType) {
-		if (fEnumerationType.base != null)
-		  hasher.putFTypeObject(fEnumerationType.base)
+    def private dispatch void putFTypeObject(Hasher hasher, FEnumerationType fEnumerationType) {
+        if (fEnumerationType.base != null)
+          hasher.putFTypeObject(fEnumerationType.base)
 
         hasher.putString('FEnumerationType', Charsets::UTF_8)
         hasher.putInt(fEnumerationType.enumerators.size)
-	}
+    }
 
     def private dispatch void putFTypeObject(Hasher hasher, FArrayType fArrayType) {
-    	hasher.putString('FArrayType', Charsets::UTF_8)
-    	hasher.putFTypeRef(fArrayType.elementType)
+        hasher.putString('FArrayType', Charsets::UTF_8)
+        hasher.putFTypeRef(fArrayType.elementType)
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FUnionType fUnionType) {
-    	if (fUnionType.base != null)
-    	   hasher.putFTypeObject(fUnionType.base)
+        if (fUnionType.base != null)
+           hasher.putFTypeObject(fUnionType.base)
 
         hasher.putString('FUnionType', Charsets::UTF_8)
         fUnionType.elements.forEach[hasher.putFTypeRef(type)]
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FMapType fMapType) {
-    	hasher.putString('FMapType', Charsets::UTF_8)
-    	hasher.putFTypeRef(fMapType.keyType)
-    	hasher.putFTypeRef(fMapType.valueType)
+        hasher.putString('FMapType', Charsets::UTF_8)
+        hasher.putFTypeRef(fMapType.keyType)
+        hasher.putFTypeRef(fMapType.valueType)
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FTypeDef fTypeDef) {
-    	hasher.putFTypeRef(fTypeDef.actualType)
+        hasher.putFTypeRef(fTypeDef.actualType)
     }
 
     def private void putFTypeRef(Hasher hasher, FTypeRef fTypeRef) {
-    	if (fTypeRef.derived != null)
-    	   hasher.putFTypeObject(fTypeRef.derived)
-    	else
-    	   hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
+        if (fTypeRef.derived != null)
+           hasher.putFTypeObject(fTypeRef.derived)
+        else
+           hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
     }
 
     def boolean hasDerivedFStructTypes(FStructType fStructType) {

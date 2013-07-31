@@ -16,11 +16,11 @@ class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
+    def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
         fileSystemAccess.generateFile(fInterface.stubHeaderPath, fInterface.generateStubHeader)
         fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, fInterface.generateStubDefaultHeader)
         fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, fInterface.generateStubDefaultSource)
-	}
+    }
 
     def private generateStubHeader(FInterface fInterface) '''
         «generateCommonApiLicenseHeader»
@@ -28,20 +28,20 @@ class FInterfaceStubGenerator {
         #define «fInterface.defineName»_STUB_H_
 
         «val generatedHeaders = new HashSet<String>»
-        «val libraryHeaders = new HashSet<String>»        
-        
+        «val libraryHeaders = new HashSet<String>»
+
         «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
-        
+
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #include "«fInterface.name».h"
-        
+
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-        
+
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
@@ -49,7 +49,7 @@ class FInterfaceStubGenerator {
         #include <CommonAPI/Stub.h>
 
         #undef COMMONAPI_INTERNAL_COMPILATION
-        
+
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         /**
@@ -73,7 +73,7 @@ class FInterfaceStubGenerator {
                  * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
                  */
                 virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
-            «ENDFOR»        
+            «ENDFOR»
         };
 
 
@@ -94,9 +94,9 @@ class FInterfaceStubGenerator {
             virtual ~«fInterface.stubRemoteEventClassName»() { }
 
             «FOR attribute : fInterface.attributes»
-                /// Verification callback for remote set requests on the attribute «attribute.name».
+                /// Verification callback for remote set requests on the attribute «attribute.name»
                 virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» «attribute.name») = 0;
-                /// Action callback for remote set requests on the attribute «attribute.name».
+                /// Action callback for remote set requests on the attribute «attribute.name»
                 virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
 
             «ENDFOR»
@@ -114,7 +114,7 @@ class FInterfaceStubGenerator {
             virtual ~«fInterface.stubClassName»() { }
 
             «FOR attribute : fInterface.attributes»
-                /// Provides getter access to the attribute «attribute.name».
+                /// Provides getter access to the attribute «attribute.name»
                 virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»() = 0;
             «ENDFOR»
 
@@ -132,7 +132,7 @@ class FInterfaceStubGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
 
         #endif // «fInterface.defineName»_STUB_H_
-	'''
+    '''
 
     def private generateStubDefaultHeader(FInterface fInterface) '''
         «generateCommonApiLicenseHeader»
@@ -296,7 +296,7 @@ class FInterfaceStubGenerator {
     def private getStubDefaultClassValidateMethodName(FAttribute fAttribute) {
         'validate' + fAttribute.name.toFirstUpper + 'AttributeRequestedValue'
     }
-    
+
     def private getStubDefaultClassVariableName(FAttribute fAttribute) {
         fAttribute.name.toFirstLower + 'AttributeValue_'
     }

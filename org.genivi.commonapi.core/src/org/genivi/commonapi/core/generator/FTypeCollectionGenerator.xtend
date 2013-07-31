@@ -19,12 +19,12 @@ class FTypeCollectionGenerator {
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor))
 
         if (fTypeCollection.hasSourceFile)
             fileSystemAccess.generateFile(fTypeCollection.sourcePath, fTypeCollection.generateSource)
-	}
+    }
 
     def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
@@ -34,19 +34,19 @@ class FTypeCollectionGenerator {
         «val libraryHeaders = new HashSet<String>»
         «val generatedHeaders = new HashSet<String>»
         «fTypeCollection.getRequiredHeaderFiles(generatedHeaders, libraryHeaders)»
-        
+
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-        
+
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
@@ -58,7 +58,7 @@ class FTypeCollectionGenerator {
            «type.generateFTypeInlineImplementation(type, deploymentAccessor)»
         «ENDFOR»
 
-        
+
         static inline const char* getTypeCollectionName() {
             static const char* typeCollectionName = "«fTypeCollection.fullyQualifiedName»";
             return typeCollectionName;
@@ -73,12 +73,12 @@ class FTypeCollectionGenerator {
         } // namespace «fTypeCollection.name»
 
         «fTypeCollection.model.generateNamespaceEndDeclaration»
-        
+
         namespace CommonAPI {
-        	
-        	«fTypeCollection.generateTypeWriters(deploymentAccessor)»
-        	
-        	«fTypeCollection.generateVariantComparators»
+
+            «fTypeCollection.generateTypeWriters(deploymentAccessor)»
+
+            «fTypeCollection.generateVariantComparators»
         }
 
 
@@ -108,7 +108,7 @@ class FTypeCollectionGenerator {
         } // namespace «fTypeCollection.name»
         «fTypeCollection.model.generateNamespaceEndDeclaration»
     '''
-   
+
     def void getRequiredHeaderFiles(FTypeCollection fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         libraryHeaders.add('CommonAPI/types.h')
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]

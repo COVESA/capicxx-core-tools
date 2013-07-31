@@ -17,40 +17,39 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
 import java.util.HashSet
-import java.util.HashMap
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-	def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader(deploymentAccessor))
         fileSystemAccess.generateFile(fInterface.proxyHeaderPath, fInterface.generateProxyHeader)
-	}
+    }
 
     def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
-        
+
         #include "«fInterface.headerFile»"
-        
+
         «val generatedHeaders = new HashSet<String>»
-        «val libraryHeaders = new HashSet<String>»        
+        «val libraryHeaders = new HashSet<String>»
         «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
-        
+
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-        
+
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-       
+
         «IF fInterface.hasAttributes»
             #include <CommonAPI/Attribute.h>
         «ENDIF»
@@ -62,7 +61,7 @@ class FInterfaceProxyGenerator {
             #include <functional>
             #include <future>
         «ENDIF»
-        
+
         #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -119,11 +118,11 @@ class FInterfaceProxyGenerator {
         #define «fInterface.defineName»_PROXY_H_
 
         #include "«fInterface.proxyBaseHeaderFile»"
-        
+
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-        
+
         «IF fInterface.hasAttributes»
             #include <CommonAPI/AttributeExtension.h>
             #include <CommonAPI/Factory.h>
@@ -262,27 +261,27 @@ class FInterfaceProxyGenerator {
         const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getDomain() const {
             return delegate_->getDomain();
         }
-        
+
         template <typename ... _AttributeExtensions>
         const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getServiceId() const {
             return delegate_->getServiceId();
         }
-        
+
         template <typename ... _AttributeExtensions>
         const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getInstanceId() const {
             return delegate_->getInstanceId();
         }
-        
+
         template <typename ... _AttributeExtensions>
         bool «fInterface.proxyClassName»<_AttributeExtensions...>::isAvailable() const {
             return delegate_->isAvailable();
         }
-        
+
         template <typename ... _AttributeExtensions>
         CommonAPI::ProxyStatusEvent& «fInterface.proxyClassName»<_AttributeExtensions...>::getProxyStatusEvent() {
             return delegate_->getProxyStatusEvent();
         }
-        
+
         template <typename ... _AttributeExtensions>
         CommonAPI::InterfaceVersionAttribute& «fInterface.proxyClassName»<_AttributeExtensions...>::getInterfaceVersionAttribute() {
             return delegate_->getInterfaceVersionAttribute();
