@@ -10,6 +10,7 @@
 #include "VerificationMainLoop.h"
 #include "commonapi/tests/TestInterfaceProxy.h"
 #include "VerificationTestStub.h"
+#include <functional>
 
 const std::string testAddress8 = "local:my.eigth.test:commonapi.address.eight";
 
@@ -39,6 +40,8 @@ protected:
         servicePublisher_ = runtime_->getServicePublisher();
         ASSERT_TRUE((bool) servicePublisher_);
         callbackCalled = 0;
+        lastBroadcastNumber = 0;
+        outInt = 0;
     }
 
     void TearDown() {
@@ -58,6 +61,17 @@ protected:
     CommonAPI::VerificationMainLoop* mainLoopStub_;
 
     int callbackCalled;
+    int lastBroadcastNumber;
+    uint32_t outInt;
+
+public:
+    void broadcastCallback(uint32_t intValue, std::string stringValue) {
+        // check correct order
+        lastBroadcastNumber++;
+        ASSERT_EQ(lastBroadcastNumber, intValue);
+        // check, if broadcast is handled after method call
+        ASSERT_EQ(outInt, 1);
+    }
 };
 
 TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
@@ -115,17 +129,54 @@ TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
 
     // 1. just dispatch dispatchSources
     mainLoopStub_->runVerification(15, false, true);
-    ASSERT_EQ(stub->getCalled(), 0);
+    ASSERT_EQ(stub->getCalledTestDerivedTypeMethod(), 0);
 
     // 2. just dispatch watches (reads transport)
     mainLoopStub_->runVerification(20, true, false);
-    ASSERT_EQ(stub->getCalled(), 0);
+    ASSERT_EQ(stub->getCalledTestDerivedTypeMethod(), 0);
 
     // 3. just dispatch dispatchSources again. This should dispatch the messages already read from transport in 2.
     mainLoopStub_->doVerificationIteration(false, true);
-    ASSERT_EQ(stub->getCalled(), 1);
+    ASSERT_EQ(stub->getCalledTestDerivedTypeMethod(), 1);
 
     servicePublisher_->unregisterService(testAddress8);
+}
+
+TEST_F(MainLoopTest, VerifySyncCallMessageHandlingOrder) {
+    std::shared_ptr<commonapi::verification::VerificationTestStub> stub = std::make_shared<commonapi::verification::VerificationTestStub>();
+    ASSERT_TRUE(servicePublisher_->registerService(stub, testAddress8, mainloopFactoryStub_));
+
+    auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
+    ASSERT_TRUE((bool) proxy);
+
+    std::thread stubThread = std::thread([&](){ mainLoopStub_->run(); });
+    stubThread.detach();
+
+    std::thread proxyThread = std::thread([&](){ mainLoopProxy_->run(); });
+    proxyThread.detach();
+
+    while (!proxy->isAvailable()) {
+        usleep(50000);
+    }
+
+    ASSERT_TRUE(proxy->isAvailable());
+
+    auto& broadcastEvent = proxy->getTestPredefinedTypeBroadcastEvent();
+    broadcastEvent.subscribe(std::bind(&MainLoopTest::broadcastCallback, this, std::placeholders::_1, std::placeholders::_2));
+
+    CommonAPI::CallStatus callStatus;
+    std::string outString;
+
+    proxy->testPredefinedTypeMethod(0, "", callStatus, outInt, outString);
+    ASSERT_EQ(outInt, 1);
+
+    sleep(10);
+
+    mainLoopProxy_->stop();
+    mainLoopStub_->stop();
+
+    // in total 5 broadcasts should have been arrived
+    ASSERT_EQ(lastBroadcastNumber, 5);
 }
 
 int main(int argc, char** argv) {

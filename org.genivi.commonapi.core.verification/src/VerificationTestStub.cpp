@@ -17,11 +17,27 @@ void VerificationTestStub::testDerivedTypeMethod(
                                  commonapi::tests::DerivedTypeCollection::TestMap& testMapOutValue) {
     testEnumExtended2OutValue = testEnumExtended2InValue;
     testMapOutValue = testMapInValue;
-    called++;
+    calledTestDerivedTypeMethod++;
 }
 
 VerificationTestStub::VerificationTestStub() :
-                TestInterfaceStubDefault(), called(0) {
+                TestInterfaceStubDefault(), calledTestDerivedTypeMethod(0) {
+}
+
+void VerificationTestStub::testPredefinedTypeMethod(const CommonAPI::ClientId& clientId,
+                                                    uint32_t uint32InValue,
+                                                    std::string stringInValue,
+                                                    uint32_t& uint32OutValue,
+                                                    std::string& stringOutValue) {
+    uint32OutValue = 1;
+    int broadcastNumber = 1;
+
+    fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
+    fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
+    fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
+    fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
+    fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
+    sleep(10);
 }
 
 } /* namespace verification */
