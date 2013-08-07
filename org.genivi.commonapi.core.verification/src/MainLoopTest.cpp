@@ -140,32 +140,35 @@ TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
 }
 
 TEST_F(MainLoopTest, VerifySyncCallMessageHandlingOrder) {
-    std::shared_ptr<commonapi::verification::VerificationTestStub> stub = std::make_shared<commonapi::verification::VerificationTestStub>();
+    std::shared_ptr<commonapi::verification::VerificationTestStub> stub =
+                    std::make_shared<commonapi::verification::VerificationTestStub>();
     ASSERT_TRUE(mainloopFactoryStub_->registerService(stub, testAddress8));
 
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
-    ASSERT_TRUE((bool) proxy);
+    ASSERT_TRUE((bool ) proxy);
 
-    std::thread stubThread = std::thread([&](){ mainLoopStub_->run(); });
+    std::thread stubThread = std::thread([&]() {mainLoopStub_->run();});
     stubThread.detach();
 
-    std::thread proxyThread = std::thread([&](){ mainLoopProxy_->run(); });
-    proxyThread.detach();
-
-    while (!proxy->isAvailable()) {
-        usleep(50000);
+    for (int i = 0; i < 10000; i++) {
+        mainLoopProxy_->doSingleIteration(100);
     }
 
     ASSERT_TRUE(proxy->isAvailable());
 
     auto& broadcastEvent = proxy->getTestPredefinedTypeBroadcastEvent();
-    broadcastEvent.subscribe(std::bind(&MainLoopTest::broadcastCallback, this, std::placeholders::_1, std::placeholders::_2));
+    broadcastEvent.subscribe(
+                    std::bind(&MainLoopTest::broadcastCallback, this, std::placeholders::_1, std::placeholders::_2));
 
     CommonAPI::CallStatus callStatus;
     std::string outString;
 
     proxy->testPredefinedTypeMethod(0, "", callStatus, outInt, outString);
     ASSERT_EQ(outInt, 1);
+
+    for (int i = 0; i < 10000; i++) {
+        mainLoopProxy_->doSingleIteration(100);
+    }
 
     sleep(10);
 

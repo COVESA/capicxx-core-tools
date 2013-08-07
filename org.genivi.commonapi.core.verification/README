@@ -37,6 +37,8 @@ src directory within that project.
 There are some configure options that allow you to define the binding that should be tested:
 
 --with-gluecode-path=... specifies the path to your gluecode containing the directories src-gen and .libs.
+In the src-gen directory there must be the generated proxy and stub files (Common-API as well as binding specific ones) from
+the three .fidl files mentioned above. This includes the subdirectory structure src-gen/commonapi/tests
 
 If you want the gluecode to be linked dynamically, use --with-gluecode-so-name=... to name the *.so file. The .so file must reside
 within .libs in the gluecode path.
