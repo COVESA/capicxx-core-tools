@@ -37,8 +37,6 @@ protected:
         ASSERT_TRUE((bool) mainloopFactoryStub_);
         ASSERT_FALSE(mainloopFactoryProxy_ == mainloopFactoryStub_);
 
-        servicePublisher_ = runtime_->getServicePublisher();
-        ASSERT_TRUE((bool) servicePublisher_);
         callbackCalled = 0;
         lastBroadcastNumber = 0;
         outInt = 0;
@@ -55,7 +53,6 @@ protected:
     std::shared_ptr<CommonAPI::MainLoopContext> contextStub_;
     std::shared_ptr<CommonAPI::Factory> mainloopFactoryProxy_;
     std::shared_ptr<CommonAPI::Factory> mainloopFactoryStub_;
-    std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher_;
 
     CommonAPI::VerificationMainLoop* mainLoopProxy_;
     CommonAPI::VerificationMainLoop* mainLoopStub_;
@@ -76,7 +73,7 @@ public:
 
 TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
     std::shared_ptr<commonapi::verification::VerificationTestStub> stub = std::make_shared<commonapi::verification::VerificationTestStub>();
-    ASSERT_TRUE(servicePublisher_->registerService(stub, testAddress8, mainloopFactoryStub_));
+    ASSERT_TRUE(mainloopFactoryStub_->registerService(stub, testAddress8));
 
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
     ASSERT_TRUE((bool) proxy);
@@ -139,12 +136,12 @@ TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
     mainLoopStub_->doVerificationIteration(false, true);
     ASSERT_EQ(stub->getCalledTestDerivedTypeMethod(), 1);
 
-    servicePublisher_->unregisterService(testAddress8);
+    mainloopFactoryStub_->unregisterService(testAddress8);
 }
 
 TEST_F(MainLoopTest, VerifySyncCallMessageHandlingOrder) {
     std::shared_ptr<commonapi::verification::VerificationTestStub> stub = std::make_shared<commonapi::verification::VerificationTestStub>();
-    ASSERT_TRUE(servicePublisher_->registerService(stub, testAddress8, mainloopFactoryStub_));
+    ASSERT_TRUE(mainloopFactoryStub_->registerService(stub, testAddress8));
 
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
     ASSERT_TRUE((bool) proxy);

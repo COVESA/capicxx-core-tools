@@ -27,11 +27,10 @@ private:
                     commonapi::tests::DerivedTypeCollection::TestEnumExtended2& testEnumExtended2OutValue,
                     commonapi::tests::DerivedTypeCollection::TestMap& testMapOutValue);
 
-    virtual void testPredefinedTypeMethod(const CommonAPI::ClientId& clientId,
-                                          uint32_t uint32InValue,
-                                          std::string stringInValue,
-                                          uint32_t& uint32OutValue,
-                                          std::string& stringOutValue);
+    virtual void testPredefinedTypeMethod(uint32_t uint32InValue,
+                                              std::string stringInValue,
+                                              uint32_t& uint32OutValue,
+                                              std::string& stringOutValue);
 
     int calledTestDerivedTypeMethod;
 };

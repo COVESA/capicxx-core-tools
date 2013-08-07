@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configurations>
-<configuration id="org.eclipse.linuxtools.cdt.autotools.core.configuration.build.1685832897">
-<option id="configure" value="configure --with-gluecode-path=/home/hmi/work/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification --with-gluecode-a-name=libDBusGlue.a --with-binding-a=/home/hmi/work/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a --with-binding-extra=/home/hmi/work/dbus-1.6.4/dbus/.libs/libdbus-1.so"/>
+<configuration id="org.eclipse.linuxtools.cdt.autotools.core.configuration.build.1477438733">
+<option id="configure" value="configure --with-gluecode-path=/home/hmi/work/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification/ --with-gluecode-so-name=libDBusGlue.so"/>
 <option id="configdir" value=""/>
 <option id="cache-file" value=""/>
 <option id="help" value="false"/>

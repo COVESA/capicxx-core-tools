@@ -7,7 +7,7 @@ AM_CPPFLAGS = \
         ${COMMONAPI_CFLAGS} \
         ${GTEST_CPPFLAGS}
 
-bin_PROGRAMS = \
+check_PROGRAMS = \
         verification
 
 verification_SOURCES = \
