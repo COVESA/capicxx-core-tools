@@ -133,9 +133,6 @@ class FInterfaceProxyGenerator {
                  * The CallStatus will be filled when the method returns and indicate either
                  * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
                  * will be set.
-                 «IF !method.isFireAndForget»
-                 * Synchronous calls are not supported (will block indefinitely) when mainloop integration is used.
-                 «ENDIF»
                  */
                 virtual «method.generateDefinition»;
                 «IF !method.isFireAndForget»
