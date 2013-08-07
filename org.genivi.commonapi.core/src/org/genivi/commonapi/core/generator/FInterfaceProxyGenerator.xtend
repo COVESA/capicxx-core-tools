@@ -49,10 +49,6 @@ class FInterfaceProxyGenerator {
 
         class «fInterface.proxyBaseClassName»: virtual public CommonAPI::Proxy {
          public:
-            «FOR method : fInterface.methods.filter[errors != null]»
-                «method.errors.generateDeclaration(method.errors.errorName, deploymentAccessor)»
-
-            «ENDFOR»
             «FOR attribute : fInterface.attributes»
                 typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface.model)»> «attribute.className»;
             «ENDFOR»
@@ -87,10 +83,6 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
         };
 
-        «FOR method : fInterface.methods.filter[errors != null]»
-            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.proxyBaseClassName, deploymentAccessor)»
-        «ENDFOR»
-
         «fInterface.model.generateNamespaceEndDeclaration»
 
         #endif // «fInterface.defineName»_PROXY_BASE_H_
@@ -117,12 +109,18 @@ class FInterfaceProxyGenerator {
 
             «FOR attribute : fInterface.attributes»
                 /// Returns the wrapper class that provides access to the attribute «attribute.name».
-                virtual «attribute.generateGetMethodDefinition»;
+                virtual «attribute.generateGetMethodDefinition» {
+                    return delegate_->get«attribute.className»();
+                }
+
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
                 /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
-                virtual «broadcast.generateGetMethodDefinition»;
+                virtual «broadcast.generateGetMethodDefinition» {
+                    return delegate_->get«broadcast.className»();
+                }
+
             «ENDFOR»
 
             «FOR method : fInterface.methods»
@@ -135,9 +133,6 @@ class FInterfaceProxyGenerator {
                  * The CallStatus will be filled when the method returns and indicate either
                  * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
                  * will be set.
-                 «IF !method.isFireAndForget»
-                 * Synchronous calls are not supported (will block indefinitely) when mainloop integration is used.
-                 «ENDIF»
                  */
                 virtual «method.generateDefinition»;
                 «IF !method.isFireAndForget»
@@ -207,22 +202,6 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
         }
-
-        «FOR attribute : fInterface.attributes»
-            template <typename ... _AttributeExtensions>
-            typename «attribute.generateGetMethodDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                return delegate_->get«attribute.className»();
-            }
-
-        «ENDFOR»
-
-        «FOR broadcast : fInterface.broadcasts»
-            template <typename ... _AttributeExtensions>
-            typename «broadcast.generateGetMethodDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                return delegate_->get«broadcast.className»();
-            }
-
-        «ENDFOR»
 
         «FOR method : fInterface.methods»
             template <typename ... _AttributeExtensions>

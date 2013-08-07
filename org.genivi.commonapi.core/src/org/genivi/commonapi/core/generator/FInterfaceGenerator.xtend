@@ -54,6 +54,9 @@ class FInterfaceGenerator {
         «FOR type : fInterface.types»
            «type.generateFTypeInlineImplementation(fInterface, deploymentAccessor)»
         «ENDFOR»
+        «FOR method : fInterface.methods.filter[errors != null]»
+            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.name, deploymentAccessor)»
+        «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
         
@@ -65,7 +68,13 @@ class FInterfaceGenerator {
 
 
         namespace std {
+            //hashes for types
             «fInterface.generateHashers(deploymentAccessor)»
+            
+            //hashes for error types
+            «FOR method : fInterface.methods.filter[errors != null]»
+                «method.errors.generateHash(method.errors.errorName, fInterface, deploymentAccessor)»
+            «ENDFOR»
         }
 
         #endif // «fInterface.defineName»_H_
