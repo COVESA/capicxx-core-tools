@@ -49,11 +49,15 @@ within .libs in the gluecode path. For statically linked gluecode you also have 
 statically (*.a) respectively. Use the full path to your binding.
 If your binding needs additional libraries, use --binding-extra=... to specify them.
 
+GTest is needed to compile and run the test. Its confuguration script location must be available 
+in the environment variable GTEST_CONFIG. 
+
 == Usage
 
 1. Generate CommonAPI code for all .fidl files within /src using the code generator. After that you should find the generated files in /src-gen
 2. Run autoreconf -i
 3. Configure the project to find the gluecode (see also "Description")
+Ensure you have GTEST_CONFIG set to the correct location, e.g. GTEST_CONFIG=~/work/gtest/scripts/gtest-config 
    Examples:
    a) configure --with-gluecode-path=~/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
                 --with-gluecode-so-name=libDBusGlue.so
@@ -69,6 +73,6 @@ If your binding needs additional libraries, use --binding-extra=... to specify t
                 --with-binding-extra=~/libdbus/dbus/.libs/libdbus-1.so
       Uses statically linked gluecode file "libDBusGlue.a" and staticalls linked binding "~/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a". The binding in this example needs an additional library "~/libdbus/dbus/.libs/libdbus-1.so".
       If you do not need that, you can omit the --with-binding-extra option 
-4. Run make all
+4. Run make check
 5. Execute ./verification in order to run the test cases
    
