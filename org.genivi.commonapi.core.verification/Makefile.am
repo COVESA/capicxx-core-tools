@@ -2,13 +2,17 @@ ACLOCAL_AMFLAGS = -I m4
 
 AM_CPPFLAGS = \
         -I$(top_srcdir)/src \
+        -I${GLUE_PATH}/src-gen \
         -I$(includedir) \
         ${GLUE_CFLAGS} \
         ${COMMONAPI_CFLAGS} \
         ${GTEST_CPPFLAGS}
 
-bin_PROGRAMS = \
+check_PROGRAMS = \
         verification
+
+
+TESTS = ${check_PROGRAMS}
 
 verification_SOURCES = \
             src/VerificationTestStub.h \
