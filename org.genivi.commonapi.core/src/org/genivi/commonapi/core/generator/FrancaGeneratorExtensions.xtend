@@ -252,10 +252,33 @@ class FrancaGeneratorExtensions {
         return signature
     }
 
-    def generateStubSignature(FMethod fMethod) {
+    def generateStubSignatureCompatibility(FMethod fMethod) {
         var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
         if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
             signature = signature + ', '
+
+        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+        return signature
+    }
+
+    def generateStubSignature(FMethod fMethod) {
+        var signature = 'const CommonAPI::ClientId& clientId'
+
+        if (!fMethod.inArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
+
+        if (fMethod.hasError || !fMethod.outArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+
+        return signature
+    }
+
+    def generateStubSignatureErrorsAndOutArgs(FMethod fMethod) {
+        var signature = ''
 
         if (fMethod.hasError)
             signature = signature + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
@@ -266,6 +289,23 @@ class FrancaGeneratorExtensions {
             signature = signature + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + name].join(', ')
 
         return signature
+    }
+
+    def generateArgumentsToStubCompatibility(FMethod fMethod) {
+        var arguments = fMethod.inArgs.map[name].join(', ')
+
+        if (fMethod.hasError || !fMethod.outArgs.empty)
+            arguments = arguments + ', '
+
+        if (fMethod.hasError)
+            arguments = arguments + 'methodError'
+        if (fMethod.hasError && !fMethod.outArgs.empty)
+            arguments = arguments + ', '
+
+        if (!fMethod.outArgs.empty)
+            arguments = arguments + fMethod.outArgs.map[name].join(', ')
+
+        return arguments
     }
 
     def generateAsyncDefinition(FMethod fMethod) {
@@ -399,9 +439,9 @@ class FrancaGeneratorExtensions {
     }
 
     def getBackingType(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        if(deploymentAccessor.getEnumBackingType(fEnumerationType) == EnumBackingType::UseDefault) {
-            if(fEnumerationType.containingInterface != null) {
-                switch(deploymentAccessor.getDefaultEnumBackingType(fEnumerationType.containingInterface)) {
+        if (deploymentAccessor.getEnumBackingType(fEnumerationType) == EnumBackingType::UseDefault) {
+            if (fEnumerationType.containingInterface != null) {
+                switch (deploymentAccessor.getDefaultEnumBackingType(fEnumerationType.containingInterface)) {
                     case DefaultEnumBackingType::UInt8:
                         return FBasicTypeId::UINT8
                     case DefaultEnumBackingType::UInt16:
@@ -421,7 +461,7 @@ class FrancaGeneratorExtensions {
                 }
             }
         }
-        switch(deploymentAccessor.getEnumBackingType(fEnumerationType)) {
+        switch (deploymentAccessor.getEnumBackingType(fEnumerationType)) {
             case EnumBackingType::UInt8:
                 return FBasicTypeId::UINT8
             case EnumBackingType::UInt16:
@@ -491,23 +531,23 @@ class FrancaGeneratorExtensions {
 
     def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteVectorType();\n' +
-        fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' +
-        'typeOutputStream.endWriteVectorType();'
+            fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' +
+            'typeOutputStream.endWriteVectorType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        return 'typeOutputStream.beginWriteMapType();\n' +
-        fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' + fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' +
-        'typeOutputStream.endWriteMapType();'
+        return 'typeOutputStream.beginWriteMapType();\n' + fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' +
+            fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' + 'typeOutputStream.endWriteMapType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteStructType();\n' +
-        fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
-        'typeOutputStream.endWriteStructType();'
+            fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
+            'typeOutputStream.endWriteStructType();'
     }
 
-    def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return fEnumerationType.getBackingType(deploymentAccessor).basicTypeStreamSignature
     }
 
@@ -515,7 +555,8 @@ class FrancaGeneratorExtensions {
         return 'typeOutputStream.writeVariantType();'
     }
 
-    def private String getElementsTypeStreamSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private String getElementsTypeStreamSignature(FStructType fStructType,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor)].join
 
         if (fStructType.base != null)
@@ -569,7 +610,6 @@ class FrancaGeneratorExtensions {
             list.add(fType.actualType.derived)
     }
 
-
     def boolean hasPolymorphicBase(FStructType fStructType) {
         if (fStructType.isPolymorphic)
             return true;
@@ -597,7 +637,7 @@ class FrancaGeneratorExtensions {
 
     def private dispatch void putFTypeObject(Hasher hasher, FEnumerationType fEnumerationType) {
         if (fEnumerationType.base != null)
-          hasher.putFTypeObject(fEnumerationType.base)
+            hasher.putFTypeObject(fEnumerationType.base)
 
         hasher.putString('FEnumerationType', Charsets::UTF_8)
         hasher.putInt(fEnumerationType.enumerators.size)
@@ -610,7 +650,7 @@ class FrancaGeneratorExtensions {
 
     def private dispatch void putFTypeObject(Hasher hasher, FUnionType fUnionType) {
         if (fUnionType.base != null)
-           hasher.putFTypeObject(fUnionType.base)
+            hasher.putFTypeObject(fUnionType.base)
 
         hasher.putString('FUnionType', Charsets::UTF_8)
         fUnionType.elements.forEach[hasher.putFTypeRef(type)]
@@ -628,27 +668,24 @@ class FrancaGeneratorExtensions {
 
     def private void putFTypeRef(Hasher hasher, FTypeRef fTypeRef) {
         if (fTypeRef.derived != null)
-           hasher.putFTypeObject(fTypeRef.derived)
+            hasher.putFTypeObject(fTypeRef.derived)
         else
-           hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
+            hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
     }
 
     def boolean hasDerivedFStructTypes(FStructType fStructType) {
-        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists[
+        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists [
             EObject instanceof FStructType && (EObject as FStructType).base == fStructType
         ]
     }
 
     def getDerivedFStructTypes(FStructType fStructType) {
-        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet)
-                .map[EObject]
-                .filter[it instanceof FStructType]
-                .map[it as FStructType]
-                .filter[base == fStructType]
+        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
+            filter[it instanceof FStructType].map[it as FStructType].filter[base == fStructType]
     }
 
     def generateCppNamespace(FModel fModel) '''
-        «fModel.namespaceAsList.map[toString].join("::")»::'''
+    «fModel.namespaceAsList.map[toString].join("::")»::'''
 
     def generateNamespaceBeginDeclaration(FModel fModel) '''
         «FOR subnamespace : fModel.namespaceAsList»
@@ -671,11 +708,11 @@ class FrancaGeneratorExtensions {
             return resource.URI.toFileString
 
         val platformPath = new Path(resource.URI.toPlatformString(true))
-        val file =  ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
+        val file = ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
 
         return file.location.toString
     }
-    
+
     def getHeader() {
         val deflt = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "");
         return InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, deflt);
