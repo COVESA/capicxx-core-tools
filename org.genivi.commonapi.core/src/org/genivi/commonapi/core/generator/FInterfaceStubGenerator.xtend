@@ -29,6 +29,8 @@ class FInterfaceStubGenerator {
         «fInterface.generateRequiredTypeIncludes»
         #include "«fInterface.name».h"
         #include <CommonAPI/Stub.h>
+        
+        #include <vector>
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 

@@ -44,6 +44,7 @@ class FInterfaceProxyGenerator {
             #include <functional>
             #include <future>
         «ENDIF»
+        #include <vector>
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
