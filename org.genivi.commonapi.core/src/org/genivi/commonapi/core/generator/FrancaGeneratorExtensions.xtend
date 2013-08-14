@@ -41,6 +41,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 import static com.google.common.base.Preconditions.*
 import org.franca.core.franca.FTypedElement
+import java.util.Collection
 
 
 class FrancaGeneratorExtensions {
@@ -209,6 +210,22 @@ class FrancaGeneratorExtensions {
         fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
     }
 
+    def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        if(!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
+            libraryHeaders.add("unordered_set")
+        }
+
+        return null
+    }
+
+    def generateSelectiveBroadcastProxyIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        if(!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
+            libraryHeaders.add("CommonAPI/types.h")
+        }
+
+        return null
+    }
+
     def getStubClassName(FInterface fInterface) {
         fInterface.name + 'Stub'
     }
@@ -219,6 +236,10 @@ class FrancaGeneratorExtensions {
 
     def hasBroadcasts(FInterface fInterface) {
         !fInterface.broadcasts.empty
+    }
+
+    def hasSelectiveBroadcasts(FInterface fInterface) {
+        !fInterface.broadcasts.filter[!selective.nullOrEmpty].empty
     }
 
     def generateDefinition(FMethod fMethod) {
@@ -263,7 +284,7 @@ class FrancaGeneratorExtensions {
     }
 
     def generateStubSignature(FMethod fMethod) {
-        var signature = 'const CommonAPI::ClientId& clientId'
+        var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
@@ -274,6 +295,31 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+
+        return signature
+    }
+
+    def generateFireSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface) {
+        var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
+
+        if(!fBroadcast.outArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
+
+        return signature
+    }
+
+    def generateSendSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface, Boolean withDefault) {
+        var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
+
+        if(!fBroadcast.outArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + 'const CommonAPI::ClientIdList* receivers'
+
+        if(withDefault)
+            signature = signature + ' = NULL'
 
         return signature
     }
@@ -505,8 +551,16 @@ class FrancaGeneratorExtensions {
     }
 
     def getClassName(FBroadcast fBroadcast) {
-        fBroadcast.name.toFirstUpper + 'Event'
+        var className = fBroadcast.name.toFirstUpper
+
+        if(!fBroadcast.selective.nullOrEmpty)
+            className = className + 'Selective'
+
+        className = className + 'Event'
+
+        return className
     }
+
 
     def generateGetMethodDefinition(FBroadcast fBroadcast) {
         fBroadcast.generateGetMethodDefinitionWithin(null)
@@ -525,6 +579,39 @@ class FrancaGeneratorExtensions {
 
     def getStubAdapterClassFireEventMethodName(FBroadcast fBroadcast) {
         'fire' + fBroadcast.name.toFirstUpper + 'Event'
+    }
+
+    def getStubAdapterClassFireSelectiveMethodName(FBroadcast fBroadcast) {
+        'fire' + fBroadcast.name.toFirstUpper + 'Selective';
+    }
+
+    def getStubAdapterClassSendSelectiveMethodName(FBroadcast fBroadcast) {
+        'send' + fBroadcast.name.toFirstUpper + 'Selective';
+    }
+
+    def getSubscribeSelectiveMethodName(FBroadcast fBroadcast) {
+        'subscribeFor' + fBroadcast.name.toFirstUpper + 'Selective';
+    }
+
+    def getUnsubscribeSelectiveMethodName(FBroadcast fBroadcast) {
+        'unsubscribeFrom' + fBroadcast.name.toFirstUpper + 'Selective';
+    }
+
+    def getSubscriptionChangedMethodName(FBroadcast fBroadcast) {
+        'on' + fBroadcast.name.toFirstUpper + 'SelectiveSubscriptionChanged';
+    }
+
+
+    def getStubAdapterClassSubscribersMethodName(FBroadcast fBroadcast) {
+        'getSubscribersFor' + fBroadcast.name.toFirstUpper + 'Selective';
+    }
+
+    def getStubAdapterClassSubscriberListPropertyName(FBroadcast fBroadcast) {
+        'subscribersFor' + fBroadcast.name.toFirstUpper + 'Selective_';
+    }
+
+    def getStubSubscribeSignature(FBroadcast fBroadcast) {
+        'const std::shared_ptr<CommonAPI::ClientId> clientId, bool& success'
     }
 
     def getTypeName(FTypedElement element, EObject source) {

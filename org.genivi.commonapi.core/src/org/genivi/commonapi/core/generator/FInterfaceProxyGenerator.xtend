@@ -80,11 +80,21 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
-                virtual «broadcast.generateGetMethodDefinition» = 0;
+                «IF !broadcast.selective.nullOrEmpty»
+                    /**
+                     * Subscribes the given callback for the selective broadcast «broadcast.name».
+                     * This may implicitly lead to a method call for making this proxy known to the corresponding stub.
+                     * The Subscription contained in the returned SubscriptionResult is needed for unsubscribing.
+                     */
+                    virtual CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback) = 0;
+                    /// removes a subscription for «broadcast.name». See also «broadcast.getSubscribeSelectiveMethodName»
+                    virtual void «broadcast.unsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription) = 0;
+                «ELSE»
+                    virtual «broadcast.generateGetMethodDefinition» = 0;
+                «ENDIF»
             «ENDFOR»
 
             «FOR method : fInterface.methods»
-
                 «IF method.isFireAndForget»
                     /**
                      * @invariant Fire And Forget
@@ -133,19 +143,22 @@ class FInterfaceProxyGenerator {
                 virtual «attribute.generateGetMethodDefinition» {
                     return delegate_->get«attribute.className»();
                 }
-
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
-                /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
-                virtual «broadcast.generateGetMethodDefinition» {
-                    return delegate_->get«broadcast.className»();
-                }
+                «IF !broadcast.selective.nullOrEmpty»
+                    virtual CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback);
+                    virtual void «broadcast.unsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription);
+                «ELSE»
+                    // Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                    virtual «broadcast.generateGetMethodDefinition» {
+                        return delegate_->get«broadcast.className»();
+                    }
+                «ENDIF»
 
             «ENDFOR»
 
             «FOR method : fInterface.methods»
-
                 /**
                  * Calls «method.name» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
                  * 
@@ -236,7 +249,6 @@ class FInterfaceProxyGenerator {
                     return delegate_->«method.name»Async(«method.generateASyncVariableList»);
                 }
             «ENDIF»
-
         «ENDFOR»
 
         template <typename ... _AttributeExtensions>
@@ -273,6 +285,17 @@ class FInterfaceProxyGenerator {
         CommonAPI::InterfaceVersionAttribute& «fInterface.proxyClassName»<_AttributeExtensions...>::getInterfaceVersionAttribute() {
             return delegate_->getInterfaceVersionAttribute();
         }
+
+        «FOR broadcast : fInterface.broadcasts.filter[!selective.nullOrEmpty]»
+            template <typename ... _AttributeExtensions>
+            CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «fInterface.proxyClassName»<_AttributeExtensions...>::«broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback) {
+                return delegate_->«broadcast.getSubscribeSelectiveMethodName»(callback);
+            }
+            template <typename ... _AttributeExtensions>
+            void «fInterface.proxyClassName»<_AttributeExtensions...>::«broadcast.getUnsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription) {
+                return delegate_->«broadcast.getUnsubscribeSelectiveMethodName»(subscription);
+            }
+        «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
 
