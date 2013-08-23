@@ -10,12 +10,10 @@ import java.util.ArrayList
 import javax.inject.Inject
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
-import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
-import static com.google.common.base.Preconditions.*
 import java.util.HashSet
 
 class FInterfaceProxyGenerator {
@@ -74,16 +72,8 @@ class FInterfaceProxyGenerator {
             «FOR broadcast : fInterface.broadcasts»
                 typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
             «ENDFOR»
-            «var callbackSet = new HashSet<String>()»
-            «FOR method : fInterface.methods»
-                «IF !method.isFireAndForget»
-                    «val define = "typedef std::function<void(" + method.generateASyncTypedefSignature + ")> " + method.asyncCallbackClassName + ";"»
-                    «IF !callbackSet.contains(define)»
-                        «define»
-                        «val ok = callbackSet.add(define)»
-                    «ENDIF»
-                «ENDIF» 
-            «ENDFOR»
+
+            «fInterface.generateAsyncCallbackTypedefs»
 
             «FOR attribute : fInterface.attributes»
                 virtual «attribute.generateGetMethodDefinition» = 0;
@@ -323,6 +313,19 @@ class FInterfaceProxyGenerator {
         };
     '''
 
+    def private generateAsyncCallbackTypedefs(FInterface fInterface) '''
+        «var callbackDefinitions = new HashSet<String>()»
+        «FOR fMethod : fInterface.methods»
+            «IF !fMethod.isFireAndForget»
+                «val definitionSignature = fMethod.generateASyncTypedefSignature + fMethod.asyncCallbackClassName»
+                «IF !callbackDefinitions.contains(definitionSignature)»
+                    typedef std::function<void(«fMethod.generateASyncTypedefSignature»)> «fMethod.asyncCallbackClassName»;
+                    «{callbackDefinitions.add(definitionSignature);""}»
+                «ENDIF»
+            «ENDIF»
+        «ENDFOR»
+    '''
+
     def private getCommonApiBaseClassname(FAttribute fAttribute) {
         var baseClassname = 'Attribute'
 
@@ -345,23 +348,6 @@ class FInterfaceProxyGenerator {
 
     def private getExtensionClassName(FAttribute fAttribute) {
         return fAttribute.className + 'Extension'
-    }
-
-    def private getErrorName(FEnumerationType fMethodErrors) {
-        checkArgument(fMethodErrors.eContainer instanceof FMethod, 'Not FMethod errors')
-        (fMethodErrors.eContainer as FMethod).name + 'Error'
-    }
-
-    def private generateASyncTypedefSignature(FMethod fMethod) {
-        var signature = 'const CommonAPI::CallStatus&'
-
-        if (fMethod.hasError)
-            signature = signature + ', const ' + fMethod.getErrorNameReference(fMethod.eContainer) + '&'
-
-        if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map['const ' + getTypeName(fMethod.model) + '&'].join(', ')
-
-        return signature
     }
 
     def private generateSyncVariableList(FMethod fMethod) {

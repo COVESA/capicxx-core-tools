@@ -42,6 +42,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 import static com.google.common.base.Preconditions.*
 import org.franca.core.franca.FTypedElement
 
+
 class FrancaGeneratorExtensions {
     def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
@@ -315,8 +316,9 @@ class FrancaGeneratorExtensions {
     def generateAsyncDefinitionWithin(FMethod fMethod, String parentClassName) {
         var definition = 'std::future<CommonAPI::CallStatus> '
 
-        if (!parentClassName.nullOrEmpty)
+        if (!parentClassName.nullOrEmpty) {
             definition = definition + parentClassName + '::'
+        }
 
         definition = definition + fMethod.name + 'Async(' + fMethod.generateAsyncDefinitionSignature + ')'
 
@@ -325,17 +327,127 @@ class FrancaGeneratorExtensions {
 
     def generateAsyncDefinitionSignature(FMethod fMethod) {
         var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + name].join(', ')
-        if (!fMethod.inArgs.empty)
+        if (!fMethod.inArgs.empty) {
             signature = signature + ', '
+        }
         return signature + fMethod.asyncCallbackClassName + ' callback'
     }
 
-    def getAsyncCallbackClassName(FMethod fMethod) {
+    def private String getBasicMangledName(FBasicTypeId basicType) {
+        switch (basicType) {
+            case FBasicTypeId::BOOLEAN:
+                return "b"
+            case FBasicTypeId::INT8:
+                return "i8"
+            case FBasicTypeId::UINT8:
+                return "u8"
+            case FBasicTypeId::INT16:
+                return "i16"
+            case FBasicTypeId::UINT16:
+                return "u16"
+            case FBasicTypeId::INT32:
+                return "i32"
+            case FBasicTypeId::UINT32:
+                return "u32"
+            case FBasicTypeId::INT64:
+                return "i64"
+            case FBasicTypeId::UINT64:
+                return "u64"
+            case FBasicTypeId::FLOAT:
+                return "f"
+            case FBasicTypeId::DOUBLE:
+                return "d"
+            case FBasicTypeId::STRING:
+                return "s"
+            case FBasicTypeId::BYTE_BUFFER:
+                return "au8"
+        }
+    }
+
+    def private dispatch String getDerivedMangledName(FEnumerationType fType) {
+        "Ce" + fType.fullyQualifiedName
+    }
+
+    def private dispatch String getDerivedMangledName(FStructType fType) {
+        "Cs" + fType.fullyQualifiedName
+    }
+
+    def private dispatch String getDerivedMangledName(FUnionType fType) {
+        "Cv" + fType.fullyQualifiedName
+    }
+
+    def private dispatch String getDerivedMangledName(FArrayType fType) {
+        "Ca" + fType.elementType.mangledName
+    }
+
+    def private dispatch String getDerivedMangledName(FTypeDef fType) {
+        fType.actualType.mangledName
+    }
+
+    def private String getMangledName(FTypeRef fTypeRef) {
+        if (fTypeRef.derived != null) {
+            return fTypeRef.derived.derivedMangledName
+        } else {
+            return fTypeRef.predefined.basicMangledName
+        }
+    }
+
+    def private getBasicAsyncCallbackClassName(FMethod fMethod) {
         fMethod.name.toFirstUpper + 'AsyncCallback'
+    }
+
+    def private int16Hash(String originalString) {
+        val hash32bit = originalString.hashCode
+
+        var hash16bit = hash32bit.bitwiseAnd(0xFFFF)
+        hash16bit = hash16bit.bitwiseXor((hash32bit >> 16).bitwiseAnd(0xFFFF))
+
+        return hash16bit
+    }
+
+    def private getMangledAsyncCallbackClassName(FMethod fMethod) {
+        val baseName = fMethod.basicAsyncCallbackClassName + '_'
+        var mangledName = ''
+        for (outArg: fMethod.outArgs) {
+            mangledName = mangledName + outArg.type.mangledName
+        }
+
+        return baseName + mangledName.int16Hash
+    }
+
+    def String getAsyncCallbackClassName(FMethod fMethod) {
+        if (fMethod.needsMangling(fMethod.containingInterface)) {
+            return fMethod.mangledAsyncCallbackClassName
+        } else {
+            return fMethod.basicAsyncCallbackClassName
+        }
     }
 
     def hasError(FMethod fMethod) {
         fMethod.errorEnum != null || fMethod.errors != null
+    }
+
+    def generateASyncTypedefSignature(FMethod fMethod) {
+        var signature = 'const CommonAPI::CallStatus&'
+
+        if (fMethod.hasError)
+            signature = signature + ', const ' + fMethod.getErrorNameReference(fMethod.eContainer) + '&'
+
+        if (!fMethod.outArgs.empty)
+            signature = signature + ', ' + fMethod.outArgs.map['const ' + getTypeName(fMethod.model) + '&'].join(', ')
+
+        return signature
+    }
+
+    def needsMangling(FMethod fMethod, FInterface fInterface) {
+        for (otherMethod: fInterface.methods) {
+            if (otherMethod != fMethod
+                && otherMethod.basicAsyncCallbackClassName == fMethod.basicAsyncCallbackClassName
+                && otherMethod.generateASyncTypedefSignature != fMethod.generateASyncTypedefSignature) {
+                return true
+            }
+        }
+        return false
     }
 
     def getErrorNameReference(FMethod fMethod, EObject source) {
