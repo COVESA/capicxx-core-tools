@@ -461,7 +461,7 @@ class FrancaGeneratorExtensions {
     }
 
     def String getAsyncCallbackClassName(FMethod fMethod) {
-        if (fMethod.needsMangling(fMethod.containingInterface)) {
+        if (fMethod.needsMangling) {
             return fMethod.mangledAsyncCallbackClassName
         } else {
             return fMethod.basicAsyncCallbackClassName
@@ -484,8 +484,8 @@ class FrancaGeneratorExtensions {
         return signature
     }
 
-    def needsMangling(FMethod fMethod, FInterface fInterface) {
-        for (otherMethod: fInterface.methods) {
+    def needsMangling(FMethod fMethod) {
+        for (otherMethod: fMethod.containingInterface.methods) {
             if (otherMethod != fMethod
                 && otherMethod.basicAsyncCallbackClassName == fMethod.basicAsyncCallbackClassName
                 && otherMethod.generateASyncTypedefSignature != fMethod.generateASyncTypedefSignature) {

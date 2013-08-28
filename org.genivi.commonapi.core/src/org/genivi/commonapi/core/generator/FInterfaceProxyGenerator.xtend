@@ -333,6 +333,15 @@ class FInterfaceProxyGenerator {
             «IF !fMethod.isFireAndForget»
                 «val definitionSignature = fMethod.generateASyncTypedefSignature + fMethod.asyncCallbackClassName»
                 «IF !callbackDefinitions.contains(definitionSignature)»
+                    «IF fMethod.needsMangling»
+                        /*
+                         * This method has overloaded output parameters!
+                         *
+                         * A hash value was generated out of the names and types of these output
+                         * parameters to distinguish the callback typedefs. Be careful in changing the
+                         * type definitions in Franca if you actively use these typedefs in your code.
+                         */
+                    «ENDIF»
                     typedef std::function<void(«fMethod.generateASyncTypedefSignature»)> «fMethod.asyncCallbackClassName»;
                     «{callbackDefinitions.add(definitionSignature);""}»
                 «ENDIF»
