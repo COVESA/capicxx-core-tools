@@ -80,4 +80,5 @@
             class="org.genivi.commonapi.core.ui.preferences.PreferenceInitializer">
       </initializer>
    </extension>
+     
 </plugin>

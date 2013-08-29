@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="org.genivi.commonapi.core.validator.feature"
+      label="%featureName"
+      version="2.1.0.qualifier"
+      provider-name="%providerName">
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <requires>
+      <import plugin="org.genivi.commonapi.core.ui" version="2.1.0" match="greaterOrEqual"/>
+   </requires>
+
+   <plugin
+         id="org.genivi.commonapi.core.validator"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>
