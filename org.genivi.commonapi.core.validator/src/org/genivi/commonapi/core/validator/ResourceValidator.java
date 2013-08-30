@@ -1,0 +1,671 @@
+package org.genivi.commonapi.core.validator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import org.genivi.commonapi.core.generator.FTypeCycleDetector;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.ResourcesPlugin;
+
+import org.eclipse.ui.IWorkbench;
+import org.eclipse.xtext.validation.ValidationMessageAcceptor;
+import org.franca.core.dsl.validation.IFrancaExternalValidator;
+import org.franca.core.franca.FArgument;
+import org.franca.core.franca.FArrayType;
+import org.franca.core.franca.FAttribute;
+import org.franca.core.franca.FBroadcast;
+import org.franca.core.franca.FEnumerationType;
+import org.franca.core.franca.FEnumerator;
+import org.franca.core.franca.FField;
+import org.franca.core.franca.FInterface;
+import org.franca.core.franca.FMapType;
+import org.franca.core.franca.FMethod;
+import org.franca.core.franca.FModel;
+import org.franca.core.franca.FStructType;
+import org.franca.core.franca.FType;
+import org.franca.core.franca.FTypeCollection;
+import org.franca.core.franca.FTypeDef;
+import org.franca.core.franca.FUnionType;
+import org.franca.core.franca.FrancaPackage;
+import org.franca.core.franca.Import;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.emf.ecore.resource.ResourceSet;
+import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
+
+import com.google.inject.Guice;
+
+public class ResourceValidator implements IFrancaExternalValidator {
+    private FTypeCycleDetector cycleDetector;
+    private ResourceSet resourceSet;
+    private HashMap<String, HashSet<String>> importList = new HashMap<String, HashSet<String>>();
+    private Boolean hasChanged = false;
+    private AllInfoMapsBuilder aimBuilder = new AllInfoMapsBuilder();
+    private Map<String, HashMap<String, HashSet<String>>> fastAllInfo = new HashMap<String, HashMap<String, HashSet<String>>>();
+
+    @Override
+    public void validateModel(FModel model,
+            ValidationMessageAcceptor messageAcceptor) {
+        cycleDetector = Guice.createInjector().getInstance(
+                FTypeCycleDetector.class);
+        resourceSet = new ResourceSetImpl();
+        Resource res = model.eResource();
+        URI uri = res.getURI();
+        String projectName = uri.segment(1);
+
+        final Path platformPath = new Path(res.getURI().toPlatformString(true));
+        final IFile file = ResourcesPlugin.getWorkspace().getRoot()
+                .getFile(platformPath);
+        IPath filePath = file.getLocation();
+        String cwd = filePath.removeLastSegments(1).toString();
+        String cutCwd = cwd.substring(0, cwd.lastIndexOf(projectName)
+                + projectName.length());
+
+        if (aimBuilder.buildAllInfos(cutCwd)) {
+            fastAllInfo = aimBuilder.fastAllInfo;
+        } else {
+            aimBuilder.updateAllInfo((EObject) model, filePath.toString());
+            fastAllInfo = aimBuilder.fastAllInfo;
+        }
+
+        HashSet<String> importedFiles = new HashSet<String>();
+        ArrayList<String> importUriAndNamesspace = new ArrayList<String>();
+        for (Import fImport : model.getImports()) {
+            if (importUriAndNamesspace.contains(fImport.getImportURI() + ","
+                    + fImport.getImportedNamespace()))
+                messageAcceptor.acceptWarning("Multiple times imported!",
+                        fImport, FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
+                        null);
+            if (fImport.getImportURI().equals(file.getName())) {
+                messageAcceptor.acceptError("Class may not import itself!",
+                        fImport, FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
+                        null);
+            } else {
+                Path absoluteImportPath = new Path(fImport.getImportURI());
+                if (!absoluteImportPath.isAbsolute()) {
+                    absoluteImportPath = new Path(cwd + "/"
+                            + fImport.getImportURI());
+                    importedFiles.add(absoluteImportPath.toString());
+                } else {
+                    importedFiles.add(absoluteImportPath.toString()
+                            .replaceFirst(absoluteImportPath.getDevice() + "/",
+                                    ""));
+                }
+
+            }
+            importUriAndNamesspace.add(fImport.getImportURI() + ","
+                    + fImport.getImportedNamespace());
+
+        }
+        importUriAndNamesspace.clear();
+        importList.put(filePath.toString(), importedFiles);
+        ArrayList<String> start = new ArrayList<String>();
+        try {
+            importList = buildImportList(importList);
+        } catch (NullPointerException e) {
+        }
+        start.add(filePath.toString());
+        for (Import fImport : model.getImports()) {
+            Path importPath = new Path(fImport.getImportURI());
+            if (importPath.isAbsolute()) {
+                findCyclicImports(
+                        importPath.toString().replaceFirst(
+                                importPath.getDevice() + "/", ""),
+                        filePath.toString(), start, fImport, messageAcceptor);
+            } else {
+                importPath = new Path(cwd + "/" + fImport.getImportURI());
+                findCyclicImports(importPath.toString(), filePath.toString(),
+                        start, fImport, messageAcceptor);
+            }
+        }
+        start.clear();
+        List<String> interfaceTypecollectionNames = new ArrayList<String>();
+        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
+            interfaceTypecollectionNames.add(fTypeCollection.getName());
+        }
+        for (FInterface fInterface : model.getInterfaces()) {
+            interfaceTypecollectionNames.add(fInterface.getName());
+        }
+
+        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
+
+            if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
+                    .lastIndexOf(fTypeCollection.getName())) {
+                messageAcceptor.acceptError("Name " + fTypeCollection.getName()
+                        + " isn't unique in this file!", fTypeCollection, null,
+                        -1, null);
+            }
+            if (fastAllInfo.get(fTypeCollection.getName()).get(model.getName())
+                    .size() > 1) {
+                for (String s : fastAllInfo.get(fTypeCollection.getName()).get(
+                        model.getName())) {
+                    if (!s.equals(filePath.toString())) {
+                        if (importList.containsKey(s)) {
+                            messageAcceptor
+                                    .acceptError(
+                                            "Imported file "
+                                                    + s
+                                                    + " has interface or typeCollection with the same name and same package!",
+                                            fTypeCollection, null, -1, null);
+                        } else {
+                            messageAcceptor
+                                    .acceptWarning(
+                                            "Interface or typeCollection in file "
+                                                    + s
+                                                    + " has the same name and same package!",
+                                            fTypeCollection, null, -1, null);
+                        }
+                    }
+                }
+
+            }
+            for (FType fType : fTypeCollection.getTypes()) {
+                if (fType instanceof FTypeDef) {
+                    validateFType((FTypeDef) fType, messageAcceptor);
+                }
+                if (fType instanceof FEnumerationType) {
+                    validateFType((FEnumerationType) fType, messageAcceptor);
+                }
+                if (fType instanceof FArrayType) {
+                    validateFType((FArrayType) fType, messageAcceptor);
+                }
+                if (fType instanceof FMapType) {
+                    validateFType((FMapType) fType, messageAcceptor);
+                }
+                if (fType instanceof FStructType) {
+                    validateFType((FStructType) fType, messageAcceptor);
+                }
+                if (fType instanceof FUnionType) {
+                    validateFType((FUnionType) fType, messageAcceptor);
+                }
+            }
+        }
+
+        for (FInterface fInterface : model.getInterfaces()) {
+            if (interfaceTypecollectionNames.indexOf(fInterface.getName()) != interfaceTypecollectionNames
+                    .lastIndexOf(fInterface.getName())) {
+                messageAcceptor.acceptError("Name " + fInterface.getName()
+                        + " isn't unique in this file!", fInterface, null, -1,
+                        null);
+            }
+            try {
+                if (fastAllInfo.get(fInterface.getName()).get(model.getName())
+                        .size() > 1) {
+                    for (String s : fastAllInfo.get(fInterface.getName()).get(
+                            model.getName())) {
+                        if (!s.equals(filePath.toString()))
+                            if (importList.containsKey(s)) {
+                                messageAcceptor
+                                        .acceptError(
+                                                "Imported file "
+                                                        + s
+                                                        + " has interface or typeCollection with the same name and same package!",
+                                                fInterface, null, -1, null);
+                            } else {
+                                messageAcceptor
+                                        .acceptWarning(
+                                                "Interface or typeCollection in file "
+                                                        + s
+                                                        + " has the same name and same package!",
+                                                fInterface, null, -1, null);
+                            }
+                    }
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (fInterface.getVersion() == null)
+                messageAcceptor.acceptError(
+                        "Missing version! Add: version(major int minor int)",
+                        fInterface, FrancaPackage.Literals.FINTERFACE__BASE,
+                        -1, null);
+
+            for (FAttribute att : fInterface.getAttributes()) {
+                if (att.getType().getPredefined().toString() == "undefined") {
+                    try {
+                        if (cycleDetector.hasCycle(att.getType().getDerived())) {
+
+                            messageAcceptor
+                                    .acceptError(
+                                            "Cyclic dependencie: "
+                                                    + cycleDetector.outErrorString,
+                                            att,
+                                            FrancaPackage.Literals.FATTRIBUTE__NO_SUBSCRIPTIONS,
+                                            -1, null);
+                        }
+                    } catch (NullPointerException npe) {
+                        messageAcceptor
+                                .acceptError(
+                                        "Derives from an undefined Type!",
+                                        att,
+                                        FrancaPackage.Literals.FATTRIBUTE__NO_SUBSCRIPTIONS,
+                                        -1, null);
+                    }
+                }
+            }
+            int count = 0;
+            for (FBroadcast fBroadcast : fInterface.getBroadcasts()) {
+                for (FArgument out : fBroadcast.getOutArgs()) {
+                    if (out.getType().getPredefined().toString() == "undefined") {
+                        try {
+                            if (cycleDetector.hasCycle(out.getType()
+                                    .getDerived())) {
+                                messageAcceptor
+                                        .acceptError(
+                                                "Cyclic dependencie: "
+                                                        + cycleDetector.outErrorString,
+                                                fBroadcast,
+                                                FrancaPackage.Literals.FBROADCAST__OUT_ARGS,
+                                                count, null);
+                            }
+                        } catch (NullPointerException npe) {
+                            messageAcceptor
+                                    .acceptError(
+                                            "Derives from an undefined Type!",
+                                            fBroadcast,
+                                            FrancaPackage.Literals.FBROADCAST__OUT_ARGS,
+                                            count, null);
+                        }
+                    }
+                    count += 1;
+                }
+                count = 0;
+            }
+            count = 0;
+            for (FMethod fMethod : fInterface.getMethods()) {
+                for (FArgument out : fMethod.getOutArgs()) {
+                    if (out.getType().getPredefined().toString() == "undefined") {
+                        try {
+                            if (cycleDetector.hasCycle(out.getType()
+                                    .getDerived())) {
+                                messageAcceptor
+                                        .acceptError(
+                                                "Cyclic dependencie: "
+                                                        + cycleDetector.outErrorString,
+                                                fMethod,
+                                                FrancaPackage.Literals.FMETHOD__OUT_ARGS,
+                                                count, null);
+                            }
+                        } catch (NullPointerException npe) {
+                            messageAcceptor.acceptError(
+                                    "Derives from an undefined Type!", fMethod,
+                                    FrancaPackage.Literals.FMETHOD__OUT_ARGS,
+                                    count, null);
+                        }
+                    }
+                    count += 1;
+                }
+                count = 0;
+                for (FArgument in : fMethod.getInArgs()) {
+                    if (in.getType().getPredefined().toString() == "undefined") {
+                        try {
+                            if (cycleDetector.hasCycle(in.getType()
+                                    .getDerived())) {
+                                messageAcceptor
+                                        .acceptError(
+                                                "Cyclic dependencie: "
+                                                        + cycleDetector.outErrorString,
+                                                fMethod,
+                                                FrancaPackage.Literals.FMETHOD__IN_ARGS,
+                                                count, null);
+                            }
+                        } catch (NullPointerException npc) {
+                            messageAcceptor.acceptError(
+                                    "Derives from an undefined Type!", fMethod,
+                                    FrancaPackage.Literals.FMETHOD__IN_ARGS,
+                                    count, null);
+                        }
+                    }
+                    count += 1;
+                }
+                count = 0;
+            }
+
+        }
+
+        interfaceTypecollectionNames.clear();
+        importList.clear();
+    }
+
+    private void validateFType(FStructType fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        if (((FStructType) fType).getBase() != null) {
+            try {
+                if (cycleDetector.hasCycle(((FStructType) fType).getBase())) {
+                    messageAcceptor
+                            .acceptError("Cyclic dependencie: "
+                                    + cycleDetector.outErrorString, fType,
+                                    FrancaPackage.Literals.FSTRUCT_TYPE__BASE,
+                                    -1, null);
+                }
+            } catch (NullPointerException npe) {
+                messageAcceptor.acceptError("Derives from an undefined type!",
+                        fType, FrancaPackage.Literals.FSTRUCT_TYPE__BASE, -1,
+                        null);
+            }
+        }
+        for (FField e : ((FStructType) fType).getElements()) {
+            try {
+                if (e.getType().getPredefined().toString().equals("undefined"))
+                    if (cycleDetector.hasCycle(e.getType().getDerived()))
+                        messageAcceptor.acceptError("Cyclic dependencie: "
+                                + cycleDetector.outErrorString, e, null, -1,
+                                null);
+            } catch (NullPointerException npe) {
+                messageAcceptor.acceptError("Derives from an undefined type!",
+                        e, null, -1, null);
+            }
+        }
+    }
+
+    private void validateFType(FUnionType fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        try {
+            if (cycleDetector.hasCycle(fType)) {
+                messageAcceptor.acceptError("Cyclic dependencie: "
+                        + cycleDetector.outErrorString, fType,
+                        FrancaPackage.Literals.FUNION_TYPE__BASE, -1, null);
+            }
+        } catch (NullPointerException npe) {
+            messageAcceptor.acceptError("Derives from an undefined type!",
+                    fType, FrancaPackage.Literals.FUNION_TYPE__BASE, -1, null);
+
+        }
+    }
+
+    private void validateFType(FArrayType fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        try {
+            if (cycleDetector.hasCycle(fType))
+                messageAcceptor.acceptError(
+
+                "Cyclic dependencie: " + cycleDetector.outErrorString, fType,
+                        FrancaPackage.Literals.FARRAY_TYPE__ELEMENT_TYPE, -1,
+                        null);
+        } catch (NullPointerException npe) {
+            messageAcceptor.acceptError("Derives from an undefined type!",
+                    fType, FrancaPackage.Literals.FARRAY_TYPE__ELEMENT_TYPE,
+                    -1, null);
+        }
+    }
+
+    private void validateFType(FMapType fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        try {
+            if (((FMapType) fType).getKeyType().getPredefined().toString()
+                    .equals("undefined"))
+                if (cycleDetector.hasCycle(((FMapType) fType).getKeyType()
+                        .getDerived())) {
+                    messageAcceptor.acceptError("Cyclic dependencie: "
+                            + cycleDetector.outErrorString, fType,
+                            FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1,
+                            null);
+                }
+        } catch (IllegalArgumentException iae) {
+        } catch (NullPointerException npe) {
+            messageAcceptor
+                    .acceptError("Derives from an undefined type!", fType,
+                            FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1,
+                            null);
+        }
+        try {
+            if (((FMapType) fType).getValueType().getPredefined().toString()
+                    .equals("undefined"))
+                if (cycleDetector.hasCycle(((FMapType) fType).getValueType()
+                        .getDerived())) {
+                    messageAcceptor.acceptError("Cyclic dependencie: "
+                            + cycleDetector.outErrorString, fType,
+                            FrancaPackage.Literals.FMAP_TYPE__VALUE_TYPE, -1,
+                            null);
+                }
+        } catch (IllegalArgumentException iae) {
+        } catch (NullPointerException npe) {
+            messageAcceptor.acceptError("Derives from an undefined type!",
+                    fType, FrancaPackage.Literals.FMAP_TYPE__VALUE_TYPE, -1,
+                    null);
+        }
+
+    }
+
+    private void validateFType(FEnumerationType fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        for (FEnumerator fEnumerator : ((FEnumerationType) fType)
+                .getEnumerators()) {
+
+            if (fEnumerator.getValue() != null) {
+                String enumeratorValue = fEnumerator.getValue().toLowerCase();
+                validateEnumerationValue(enumeratorValue, messageAcceptor,
+                        fEnumerator);
+            }
+        }
+        try {
+            if (cycleDetector.hasCycle(fType))
+                messageAcceptor.acceptError("Cyclic dependencie: "
+                        + cycleDetector.outErrorString, fType,
+                        FrancaPackage.Literals.FENUMERATION_TYPE__BASE, -1,
+                        null);
+        } catch (NullPointerException npe) {
+            if (((FEnumerationType) fType).getBase() != null)
+                messageAcceptor.acceptError("Derives from an undefined type!",
+                        fType, FrancaPackage.Literals.FENUMERATION_TYPE__BASE,
+                        -1, null);
+        }
+    }
+
+    private void validateFType(FTypeDef fType,
+            ValidationMessageAcceptor messageAcceptor) {
+        try {
+            if (cycleDetector.hasCycle(fType))
+                messageAcceptor
+                        .acceptError("Cyclic dependencie: "
+                                + cycleDetector.outErrorString, fType,
+                                FrancaPackage.Literals.FTYPE_DEF__ACTUAL_TYPE,
+                                -1, null);
+        } catch (NullPointerException npe) {
+            messageAcceptor.acceptError("Derives from an undefined type!",
+                    fType, FrancaPackage.Literals.FTYPE_DEF__ACTUAL_TYPE, -1,
+                    null);
+        }
+    }
+
+    private HashMap<String, HashSet<String>> buildImportList(
+            HashMap<String, HashSet<String>> rekImportList) {
+        HashMap<String, HashSet<String>> helpMap = new HashMap<String, HashSet<String>>();
+        for (Entry<String, HashSet<String>> entry : rekImportList.entrySet()) {
+            for (String importedPath : entry.getValue()) {
+                if (!rekImportList.containsKey(importedPath)) {
+                    hasChanged = true;
+                    HashSet<String> importedFIDL = new HashSet<String>();
+                    EObject resource = null;
+                    resource = buildResource(
+                            importedPath.substring(
+                                    importedPath.lastIndexOf("/") + 1,
+                                    importedPath.length()),
+                            "file:/"
+                                    + importedPath.substring(0,
+                                            importedPath.lastIndexOf("/") + 1));
+                    for (EObject imp : resource.eContents()) {
+                        if (imp instanceof Import) {
+                            Path importImportedPath = new Path(
+                                    ((Import) imp).getImportURI());
+                            if (importImportedPath.isAbsolute()) {
+                                importedFIDL.add(importImportedPath.toString()
+                                        .replaceFirst(
+                                                importImportedPath.getDevice()
+                                                        + "/", ""));
+                            } else {
+                                importImportedPath = new Path(
+                                        importedPath.substring(0,
+                                                importedPath.lastIndexOf("/"))
+                                                + "/"
+                                                + ((Import) imp).getImportURI());
+                                importedFIDL.add(importImportedPath.toString());
+                            }
+                        }
+                    }
+                    helpMap.put(importedPath, importedFIDL);
+                }
+            }
+        }
+        if (hasChanged) {
+            hasChanged = false;
+            helpMap.putAll(rekImportList);
+            return buildImportList(helpMap);
+        } else {
+            return rekImportList;
+        }
+    }
+
+    private void findCyclicImports(String filePath, String prevFilePath,
+            ArrayList<String> cyclicList, Import imp,
+            ValidationMessageAcceptor messageAcceptor) {
+        if (cyclicList.contains(filePath)) {
+            String errorString = "";
+            for (String impString : cyclicList) {
+                errorString = errorString + impString + "->";
+            }
+            if (prevFilePath.equals(filePath)) {
+                if (cyclicList.size() > 1)
+                    messageAcceptor
+                            .acceptError("Last file imports itself!: "
+                                    + errorString + filePath, imp,
+                                    FrancaPackage.Literals.IMPORT__IMPORT_URI,
+                                    -1, null);
+                return;
+            } else {
+                messageAcceptor.acceptError("Cyclic Imports: " + errorString
+                        + filePath, imp,
+                        FrancaPackage.Literals.IMPORT__IMPORT_URI, -1, null);
+                return;
+            }
+        } else {
+            cyclicList.add(filePath);
+            for (String importPath : importList.get(filePath)) {
+                findCyclicImports(importPath, filePath, cyclicList, imp,
+                        messageAcceptor);
+            }
+            cyclicList.remove(cyclicList.size() - 1);
+        }
+    }
+
+    private EObject buildResource(String filename, String cwd) {
+        URI fileURI = normalizeURI(URI.createURI(filename));
+        URI cwdURI = normalizeURI(URI.createURI(cwd));
+        Resource resource = null;
+
+        if (cwd != null && cwd.length() > 0) {
+            resourceSet
+                    .getURIConverter()
+                    .getURIMap()
+                    .put(fileURI,
+                            URI.createURI((cwdURI.toString() + "/" + fileURI
+                                    .toString()).replaceAll("/+", "/")));
+        }
+
+        try {
+            resource = resourceSet.getResource(fileURI, true);
+            resource.load(Collections.EMPTY_MAP);
+        } catch (RuntimeException e) {
+            return null;
+        } catch (IOException io) {
+            return null;
+        }
+
+        return resource.getContents().get(0);
+    }
+
+    private static URI normalizeURI(URI path) {
+        if (path.isFile()) {
+            return URI.createURI(path.toString().replaceAll("\\\\", "/"));
+        }
+        return path;
+    }
+
+    private void validateEnumerationValue(String enumeratorValue,
+            ValidationMessageAcceptor messageAcceptor, FEnumerator fEnumerator) {
+        String value = enumeratorValue;
+        if (value.length() == 0) {
+            messageAcceptor.acceptWarning("Missing value!", fEnumerator,
+                    FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+            return;
+        }
+
+        if (value.length() == 1) {
+            if (48 > (int) value.charAt(0) || (int) value.charAt(0) > 57) {
+                messageAcceptor.acceptError("Not a valid number!", fEnumerator,
+                        FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+                return;
+            }
+        }
+
+        if (value.length() > 2) {
+            if (value.charAt(0) == '0') {
+                // binary
+                if (value.charAt(1) == 'b') {
+                    for (int i = 2; i < value.length(); i++) {
+                        if (value.charAt(i) != '0' && value.charAt(i) != '1') {
+                            messageAcceptor.acceptError(
+                                    "Not a valid number! Should be binary",
+                                    fEnumerator,
+                                    FrancaPackage.Literals.FENUMERATOR__VALUE,
+                                    -1, null);
+                            return;
+                        }
+                    }
+                    return;
+                }
+                // hex
+                if (value.charAt(1) == 'x') {
+                    for (int i = 2; i < value.length(); i++) {
+                        if ((48 > (int) value.charAt(i) || (int) value
+                                .charAt(i) > 57)
+                                && (97 > (int) value.charAt(i) || (int) value
+                                        .charAt(i) > 102)) {
+                            messageAcceptor
+                                    .acceptError(
+                                            "Not a valid number! Should be hexadecimal",
+                                            fEnumerator,
+                                            FrancaPackage.Literals.FENUMERATOR__VALUE,
+                                            -1, null);
+                            return;
+                        }
+                    }
+                    return;
+                }
+            }
+        }
+        if (value.charAt(0) == '0') {
+            // oct
+            for (int i = 1; i < value.length(); i++) {
+                if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 55) {
+                    messageAcceptor
+                            .acceptError("Not a valid number! Should be octal",
+                                    fEnumerator,
+                                    FrancaPackage.Literals.FENUMERATOR__VALUE,
+                                    -1, null);
+                    return;
+                }
+            }
+            return;
+        }
+        // dec
+        for (int i = 0; i < value.length(); i++) {
+            if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 57) {
+                messageAcceptor.acceptError(
+                        "Not a valid number! Should be decimal", fEnumerator,
+                        FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+                return;
+            }
+        }
+    }
+}
