@@ -15,6 +15,7 @@ import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import java.util.HashSet
+import org.franca.core.franca.FBroadcast
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
@@ -53,6 +54,9 @@ class FInterfaceProxyGenerator {
         «ENDIF»
         «IF fInterface.hasBroadcasts»
             #include <CommonAPI/Event.h>
+            «IF fInterface.hasSelectiveBroadcasts»
+                #include <CommonAPI/SelectiveEvent.h>
+            «ENDIF»
         «ENDIF»
         #include <CommonAPI/Proxy.h>
         «IF !fInterface.methods.empty»
@@ -70,7 +74,11 @@ class FInterfaceProxyGenerator {
                 typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface.model)»> «attribute.className»;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
-                typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
+                «IF broadcast.isSelective»
+                    typedef CommonAPI::SelectiveEvent<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
+                «ELSE»
+                    typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
+                «ENDIF»
             «ENDFOR»
 
             «fInterface.generateAsyncCallbackTypedefs»
@@ -80,18 +88,7 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
-                «IF !broadcast.selective.nullOrEmpty»
-                    /**
-                     * Subscribes the given callback for the selective broadcast «broadcast.name».
-                     * This may implicitly lead to a method call for making this proxy known to the corresponding stub.
-                     * The Subscription contained in the returned SubscriptionResult is needed for unsubscribing.
-                     */
-                    virtual CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback) = 0;
-                    /// removes a subscription for «broadcast.name». See also «broadcast.getSubscribeSelectiveMethodName»
-                    virtual void «broadcast.unsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription) = 0;
-                «ELSE»
-                    virtual «broadcast.generateGetMethodDefinition» = 0;
-                «ENDIF»
+                virtual «broadcast.generateGetMethodDefinition» = 0;
             «ENDFOR»
 
             «FOR method : fInterface.methods»
@@ -146,16 +143,10 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
-                «IF !broadcast.selective.nullOrEmpty»
-                    virtual CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback);
-                    virtual void «broadcast.unsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription);
-                «ELSE»
-                    // Returns the wrapper class that provides access to the broadcast «broadcast.name».
-                    virtual «broadcast.generateGetMethodDefinition» {
-                        return delegate_->get«broadcast.className»();
-                    }
-                «ENDIF»
-
+                // Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                virtual «broadcast.generateGetMethodDefinition» {
+                    return delegate_->get«broadcast.className»();
+                }
             «ENDFOR»
 
             «FOR method : fInterface.methods»

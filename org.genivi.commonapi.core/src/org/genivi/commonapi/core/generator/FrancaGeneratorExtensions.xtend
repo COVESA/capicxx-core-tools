@@ -43,7 +43,6 @@ import static com.google.common.base.Preconditions.*
 import org.franca.core.franca.FTypedElement
 import java.util.Collection
 
-
 class FrancaGeneratorExtensions {
     def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
@@ -612,6 +611,10 @@ class FrancaGeneratorExtensions {
 
     def getStubSubscribeSignature(FBroadcast fBroadcast) {
         'const std::shared_ptr<CommonAPI::ClientId> clientId, bool& success'
+    }
+
+    def boolean isSelective(FBroadcast fBroadcast) {
+        return !fBroadcast.selective.nullOrEmpty
     }
 
     def getTypeName(FTypedElement element, EObject source) {
