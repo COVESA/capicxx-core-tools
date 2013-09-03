@@ -18,7 +18,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 
 public class MyFrancaPersistenceManager extends FrancaPersistenceManager {
-  
+
     private final String fileExtension = "fidl";
 
     @Inject
