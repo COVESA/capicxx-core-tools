@@ -20,4 +20,7 @@ public class PreferenceConstants {
     public static final String DEFAULT_LICENSE = "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.\n" +
             "If a copy of the MPL was not distributed with this file, You can obtain one at\n" +
             "http://mozilla.org/MPL/2.0/.";
+    public static final String P_GENERATEPROXY = "generateproxy";
+    public static final String P_GENERATESTUB = "generatestub";
+    public static final String PROJECT_PAGEID = "org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage";
 }

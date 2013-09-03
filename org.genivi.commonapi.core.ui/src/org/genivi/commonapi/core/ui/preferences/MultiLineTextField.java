@@ -31,7 +31,7 @@ public class MultiLineTextField extends MultiLineTextFieldEditor {
 
     @Override
     public void setEnabled(boolean enabled, Composite parent) {
-        // super.setEnabled(enabled, parent); 
+        // super.setEnabled(enabled, parent);
         getTextControl(parent).setEnabled(enabled);
     }
-} 
+}

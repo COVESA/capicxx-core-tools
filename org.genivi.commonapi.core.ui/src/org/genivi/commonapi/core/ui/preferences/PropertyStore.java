@@ -32,17 +32,7 @@ public class PropertyStore extends PreferenceStore {
         this.workbenchStore = workbenchStore;
         this.pageId = pageId;
         FPreferences pref = FPreferences.getInstance();
-        try {
-            pref.setPreference(PreferenceConstants.P_LICENSE, getProperty(PreferenceConstants.P_LICENSE), resource
-                    .getFullPath().toPortableString());
-            pref.setPreference(PreferenceConstants.P_OUTPUT, getProperty(PreferenceConstants.P_OUTPUT), resource
-                    .getFullPath().toPortableString());
-            pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS,
-                    getProperty(PreferenceConstants.USEPROJECTSETTINGS), resource.getFullPath().toPortableString());
-        } catch (CoreException e) {
-            throw new IOException(Messages.getString("PropertyStore.Cannot_read_resource_property")
-                    + PreferenceConstants.P_LICENSE);
-        }
+        pref.addPreferences(resource);
     }
 
     /*** Write modified values back to properties ***/

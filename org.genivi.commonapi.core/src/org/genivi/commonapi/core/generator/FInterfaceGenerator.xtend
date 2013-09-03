@@ -13,21 +13,22 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import java.util.Collection
 import java.util.HashSet
 import org.franca.core.franca.FMethod
+import org.eclipse.core.resources.IResource
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        fileSystemAccess.generateFile(fInterface.headerPath, fInterface.generateHeader(deploymentAccessor))
+    def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) {
+        fileSystemAccess.generateFile(fInterface.headerPath, fInterface.generateHeader(deploymentAccessor, modelid))
 
         if (fInterface.hasSourceFile)
-            fileSystemAccess.generateFile(fInterface.sourcePath, fInterface.generateSource)
+            fileSystemAccess.generateFile(fInterface.sourcePath, fInterface.generateSource(modelid))
     }
 
-    def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
@@ -103,8 +104,8 @@ class FInterfaceGenerator {
 
 
 
-    def private generateSource(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateSource(FInterface fInterface, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #include "«fInterface.headerFile»"
 

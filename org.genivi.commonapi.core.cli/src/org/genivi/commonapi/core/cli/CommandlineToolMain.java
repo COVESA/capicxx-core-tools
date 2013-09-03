@@ -67,12 +67,13 @@ public class CommandlineToolMain {
         boolean dbus = false;
         String dest = createAbsolutPath("." + FILESEPARATOR + "src-gen" + FILESEPARATOR);
         if (args.length < 1) {
-            System.err
-                    .println("NO ARGUMENTS!\nPlease start this tool with:\njava -jar generator.jar [options] file [file...]"
-                            + "\nValid Options are:\n-dbus -> to generate files with the FrancaDBUSGenerator\n"
-                            + "-dest path/to/output/folder -> the generated files will be saved at this Location\n"
-                            + "-pref path/to/header/file -> here you can set the text which will be placed as a comment "
-                            + "on each generated file (for example your license");
+            System.err.println(
+                            "Usage: [java -jar] generator.jar [options] file...\n" +
+                            "\n" +
+                            "Options:\n" +
+                            "  -dbus                    Additionally generate gluecode for the CommonAPI-D-Bus middleware binding\n" +
+                            "  -dest <path/to/folder>   Relative to current location, the generated files will be saved there\n" +
+                            "  -pref <path/to/file>     The text in this file which will be inserted as a comment in each generated file (for example your license)");
             System.exit(-1);
         }
         // All given files were saved in this list with an absolute path
@@ -111,9 +112,8 @@ public class CommandlineToolMain {
                 }
                 System.out.println("The following file was set as header:\n" + file.getAbsolutePath());
                 try {
-                    pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true),
-                            System.getProperty("user.dir"));
-                    pref.setPreferences(PreferenceConstants.P_LICENSE, file, System.getProperty("user.dir"));
+                    pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
+                    pref.setPreferences(PreferenceConstants.P_LICENSE, file);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

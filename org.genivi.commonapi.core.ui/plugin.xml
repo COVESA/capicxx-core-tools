@@ -86,12 +86,19 @@
                          class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
                          id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
                          name="CommonAPI"
-                         objectClass="org.eclipse.core.resources.IProject">>
-                      <!--<enabledWhen>
-                         <instanceof
-                               value="org.eclipse.core.resources.IProject">
-                         </instanceof>
-                      </enabledWhen>-->
+                         objectClass="org.eclipse.core.resources.IProject">
+                   </page>
+                   <page
+                         class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
+                         id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
+                         name="CommonAPI"
+                         objectClass="org.eclipse.core.resources.IFolder">
+                   </page>
+                   <page
+                         class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
+                         id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
+                         name="CommonAPI"
+                         objectClass="org.eclipse.core.resources.IFile">
                    </page>
                 </extension>
 </plugin>

@@ -26,5 +26,4 @@ public class TestModule extends FDeployRuntimeModule {
         binder.bind(IResourceFactory.class).to(FrancaResourceFactory.class);
         binder.bind(XtextResourceSet.class).toProvider(MyProviderXtext.class);
     }
-
 }

@@ -16,18 +16,19 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import java.util.HashSet
 import org.franca.core.franca.FBroadcast
+import org.eclipse.core.resources.IResource
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader(deploymentAccessor))
-        fileSystemAccess.generateFile(fInterface.proxyHeaderPath, fInterface.generateProxyHeader)
+    def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) {
+        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader(deploymentAccessor, modelid))
+        fileSystemAccess.generateFile(fInterface.proxyHeaderPath, fInterface.generateProxyHeader(modelid))
     }
 
-    def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
@@ -113,8 +114,8 @@ class FInterfaceProxyGenerator {
         #endif // «fInterface.defineName»_PROXY_BASE_H_
     '''
 
-    def private generateProxyHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateProxyHeader(FInterface fInterface, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_H_
         #define «fInterface.defineName»_PROXY_H_

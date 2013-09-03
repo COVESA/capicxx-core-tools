@@ -13,10 +13,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.QualifiedName;
+import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceNode;
@@ -36,7 +40,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.ui.IWorkbenchPropertyPage;
-import org.genivi.commonapi.core.preferences.FPreferences;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
 
 public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage implements IWorkbenchPropertyPage {
@@ -52,6 +55,11 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
 
     // Stores all created field editors
     private List<FieldEditor> editors = new ArrayList<FieldEditor>();
+
+    private List<Button> buttons = new ArrayList<Button>();
+
+    private Button checkboxproxy = null;
+    private Button checkboxstub = null;
 
     // Stores owning element of properties
     private IAdaptable element;
@@ -143,6 +151,10 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         super.addField(editor);
     }
 
+    protected void addButton(Button button) {
+        buttons.add(button);
+    }
+
     /**
      * We override the createControl method. In case of property pages we create
      * a new PropertyStore as local preference store. After all control have
@@ -156,7 +168,12 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             pageId = getPageId();
             // Create an overlay preference store and fill it with properties
             try {
-                overlayStore = new PropertyStore((IResource) getElement(), super.getPreferenceStore(), pageId);
+                IResource res = (IResource) element;
+                if (res instanceof IFolder) {
+                    res = res.getProject();
+                    setElement(res);
+                }
+                overlayStore = new PropertyStore(res, super.getPreferenceStore(), pageId);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -180,7 +197,8 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         if (isPropertyPage()) {
             createSelectionGroup(parent);
             updateFieldEditors();
-        }
+        } else
+            createButtons(parent);
         return super.createContents(parent);
     }
 
@@ -200,20 +218,35 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         Composite radioGroup = new Composite(comp, SWT.NONE);
         radioGroup.setLayout(new GridLayout());
         radioGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        useWorkspaceSettingsButton = createRadioButton(radioGroup,
-                Messages.getString("OverlayPage.Use_Workspace_Settings")); //$NON-NLS-1$
-        useProjectSettingsButton = createRadioButton(radioGroup, Messages.getString("OverlayPage.Use_Project_Settings")); //$NON-NLS-1$
+
+        String msg = Messages.getString("OverlayPage.Use_Workspace_Settings");
+        if (element instanceof IFile)
+            msg = Messages.getString("OverlayPage.Use_Project_Settings");
+        useWorkspaceSettingsButton = createRadioButton(radioGroup, msg); //$NON-NLS-1$
+        msg = Messages.getString("OverlayPage.Use_Project_Settings");
+        if (element instanceof IFile)
+            msg = Messages.getString("OverlayPage.Use_File_Settings");
+        useProjectSettingsButton = createRadioButton(radioGroup, msg); //$NON-NLS-1$
         configureButton = new Button(comp, SWT.PUSH);
-        configureButton.setText(Messages.getString("OverlayPage.Configure_Workspace_Settings")); //$NON-NLS-1$
+        msg = Messages.getString("OverlayPage.Configure_Workspace_Settings");
+        if (element instanceof IFile)
+            msg = Messages.getString("OverlayPage.Configure_Project_Settings");
+        configureButton.setText(msg); //$NON-NLS-1$
         configureButton.addSelectionListener(new SelectionAdapter() {
             public void widgetSelected(SelectionEvent e) {
                 configureWorkspaceSettings();
             }
         });
+        createButtons(parent);
         // Set workspace/project radio buttons
         try {
-            String use = ((IResource) getElement()).getPersistentProperty(new QualifiedName(pageId,
+            String use = ((IResource) element).getPersistentProperty(new QualifiedName(pageId,
                     PreferenceConstants.USEPROJECTSETTINGS));
+            if (use == null) {
+                ((IResource) element).setPersistentProperty(new QualifiedName(pageId,
+                        PreferenceConstants.USEPROJECTSETTINGS), Boolean.FALSE.toString());
+                use = FALSE;
+            }
             if (TRUE.equals(use)) {
                 useProjectSettingsButton.setSelection(true);
                 configureButton.setEnabled(false);
@@ -222,6 +255,79 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         } catch (CoreException e) {
             useWorkspaceSettingsButton.setSelection(true);
         }
+    }
+
+    public void createButtons(Composite parent) {
+        Composite comp = new Composite(parent, SWT.NONE);
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginHeight = 0;
+        layout.marginWidth = 0;
+        comp.setLayout(layout);
+        comp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        Composite radioGroup = new Composite(comp, SWT.BOTTOM);
+        radioGroup.setLayout(new GridLayout());
+        radioGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        checkboxproxy = new Button(radioGroup, SWT.CHECK);
+        checkboxproxy.setText(Messages.getString("OverlayPage.Generate_Proxy"));
+        checkboxstub = new Button(radioGroup, SWT.CHECK);
+        checkboxstub.setText(Messages.getString("OverlayPage.Generate_Stub"));
+        if (isPropertyPage()) {
+            try {
+                String use = ((IResource) getElement()).getPersistentProperty(new QualifiedName(pageId,
+                        PreferenceConstants.P_GENERATEPROXY));
+                if (TRUE.equals(use))
+                    checkboxproxy.setSelection(true);
+            } catch (CoreException e) {
+                checkboxproxy.setSelection(true);
+            }
+            try {
+                String use = ((IResource) getElement()).getPersistentProperty(new QualifiedName(pageId,
+                        PreferenceConstants.P_GENERATESTUB));
+                if (TRUE.equals(use))
+                    checkboxstub.setSelection(true);
+                else if (!checkboxproxy.getSelection()) {
+                    checkboxproxy.setSelection(true);
+                    checkboxstub.setSelection(true);
+                }
+            } catch (CoreException e) {
+                checkboxstub.setSelection(true);
+            }
+        } else {
+            String use = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(
+                    PreferenceConstants.P_GENERATEPROXY, "");
+            use = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATEPROXY,
+                    use);
+            if (TRUE.equals(use))
+                checkboxproxy.setSelection(true);
+            use = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATESTUB, "");
+            use = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+                    .get(PreferenceConstants.P_GENERATESTUB, use);
+            if (TRUE.equals(use))
+                checkboxstub.setSelection(true);
+            if (!checkboxproxy.getSelection() && !checkboxstub.getSelection()) {
+                checkboxproxy.setSelection(true);
+                checkboxstub.setSelection(true);
+            }
+        }
+        checkboxproxy.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (!checkboxproxy.getSelection() && !checkboxstub.getSelection())
+                    checkboxstub.setSelection(true);
+            }
+
+        });
+        checkboxstub.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (!checkboxproxy.getSelection() && !checkboxstub.getSelection())
+                    checkboxproxy.setSelection(true);
+            }
+        });
+        addButton(checkboxproxy);
+        addButton(checkboxstub);
     }
 
     /**
@@ -277,6 +383,9 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             FieldEditor editor = it.next();
             editor.setEnabled(enabled, parent);
         }
+        for (Button button : buttons) {
+            button.setEnabled(enabled);
+        }
     }
 
     /**
@@ -293,8 +402,17 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             try {
                 String value = (useProjectSettingsButton.getSelection()) ? TRUE : FALSE;
                 resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.USEPROJECTSETTINGS), value);
+                value = (checkboxproxy.getSelection()) ? TRUE : FALSE;
+                resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATEPROXY), value);
+                value = (checkboxstub.getSelection()) ? TRUE : FALSE;
+                resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATESTUB), value);
             } catch (CoreException e) {
             }
+        } else if (result) {
+            String value = (checkboxproxy.getSelection()) ? TRUE : FALSE;
+            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATEPROXY, value);
+            value = (checkboxstub.getSelection()) ? TRUE : FALSE;
+            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATESTUB, value);
         }
         return result;
     }
@@ -309,6 +427,8 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             useWorkspaceSettingsButton.setSelection(true);
             useProjectSettingsButton.setSelection(false);
             configureButton.setEnabled(true);
+            checkboxproxy.setSelection(true);
+            checkboxstub.setSelection(true);
             updateFieldEditors();
         }
         super.performDefaults();
@@ -316,12 +436,15 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
 
     /**
      * Creates a new preferences page and opens it
+     * @see com.bdaum.SpellChecker.preferences.SpellCheckerPreferencePage#configureWorkspaceSettings()
      */
     protected void configureWorkspaceSettings() {
         try {
             // create a new instance of the current class
-            IPreferencePage page = (IPreferencePage) this.getClass().newInstance();
+            FieldEditorOverlayPage page = (FieldEditorOverlayPage) this.getClass().newInstance();
             page.setTitle(getTitle());
+            if (element instanceof IFile)
+                page.setElement(((IFile) element).getProject());
             page.setImageDescriptor(image);
             // and show it
             showPreferencePage(pageId, page);

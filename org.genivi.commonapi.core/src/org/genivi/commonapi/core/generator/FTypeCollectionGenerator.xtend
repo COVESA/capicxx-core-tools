@@ -13,22 +13,27 @@ import org.franca.core.franca.FTypeCollection
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import java.util.HashSet
 import java.util.Collection
+import org.eclipse.core.resources.IResource
 
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor))
+    def generate(FTypeCollection fTypeCollection,
+                 IFileSystemAccess fileSystemAccess,
+                 DeploymentInterfacePropertyAccessor deploymentAccessor,
+                 IResource modelid) {
 
-        if (fTypeCollection.hasSourceFile)
-            fileSystemAccess.generateFile(fTypeCollection.sourcePath, fTypeCollection.generateSource)
+        fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor, modelid))
+
+        if (fTypeCollection.hasSourceFile) {
+            fileSystemAccess.generateFile(fTypeCollection.sourcePath, fTypeCollection.generateSource(modelid))
+        }
     }
 
-    def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader(fTypeCollection)»
+    def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
         #ifndef «fTypeCollection.defineName»_H_
         #define «fTypeCollection.defineName»_H_
@@ -91,8 +96,8 @@ class FTypeCollectionGenerator {
         #endif // «fTypeCollection.defineName»_H_
     '''
 
-    def private generateSource(FTypeCollection fTypeCollection) '''
-        «generateCommonApiLicenseHeader(fTypeCollection)»
+    def private generateSource(FTypeCollection fTypeCollection, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
         #include "«fTypeCollection.headerFile»"
 

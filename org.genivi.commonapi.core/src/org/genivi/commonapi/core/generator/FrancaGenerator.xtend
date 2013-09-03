@@ -16,7 +16,6 @@ import org.eclipse.core.runtime.Path
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.eclipse.xtext.generator.IGenerator
-import org.franca.core.dsl.FrancaPersistenceManager
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
@@ -36,6 +35,16 @@ import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
 
 import static com.google.common.base.Preconditions.*
+import org.genivi.commonapi.core.preferences.FPreferences
+import org.genivi.commonapi.core.preferences.PreferenceConstants
+import org.eclipse.core.runtime.preferences.InstanceScope
+import org.eclipse.core.runtime.preferences.DefaultScope
+import org.eclipse.core.runtime.QualifiedName
+import org.eclipse.xtext.builder.EclipseResourceFileSystemAccess2
+import org.eclipse.core.resources.IResource
+import org.eclipse.xtext.generator.JavaIoFileSystemAccess
+import org.osgi.framework.FrameworkUtil
+import org.eclipse.core.runtime.preferences.IEclipsePreferences
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -51,12 +60,13 @@ class FrancaGenerator implements IGenerator {
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
         var FModel fModel
         var List<FDInterface> deployedInterfaces
+        var IResource res = null
 
-        if(input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)) {
+        if (input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)) {
             fModel = francaPersistenceManager.loadModel(input.filePath)
             deployedInterfaces = new LinkedList<FDInterface>()
 
-        } else if (input.URI.fileExtension.equals("fdepl" /* fDeployPersistenceManager.fileExtension */)) {
+        } else if (input.URI.fileExtension.equals("fdepl"/* fDeployPersistenceManager.fileExtension */)) {
             var fDeployedModel = fDeployPersistenceManager.loadModel(input.URI, input.URI);
             val fModelExtender = new FDModelExtender(fDeployedModel);
 
@@ -68,14 +78,54 @@ class FrancaGenerator implements IGenerator {
             checkArgument(false, "Unknown input: " + input)
         }
 
-        doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess)
+        try {
+            var pathfile = input.URI.toPlatformString(false);
+            if (pathfile == null) {
+                pathfile = FPreferences::instance.getModelPath(fModel)
+            }
+            if (pathfile.startsWith("platform:/")) {
+                pathfile = pathfile.substring(pathfile.indexOf("platform") + 10)
+                pathfile = pathfile.substring(pathfile.indexOf(System.getProperty("file.separator")))
+            }
+
+            res = ResourcesPlugin.workspace.root.findMember(pathfile)
+            FPreferences::instance.addPreferences(res)
+            if (FPreferences::instance.useModelSpecific(res)) {
+                var output = res.getPersistentProperty(new QualifiedName(PreferenceConstants::PROJECT_PAGEID, PreferenceConstants::P_OUTPUT))
+                if (output != null && output.length != 0) {
+                    if (fileSystemAccess instanceof EclipseResourceFileSystemAccess2) {
+                        (fileSystemAccess as EclipseResourceFileSystemAccess2).setOutputPath(output)
+                    } else if (fileSystemAccess instanceof JavaIoFileSystemAccess) {
+                        (fileSystemAccess as JavaIoFileSystemAccess).setOutputPath(output)
+                    }
+                }
+            }
+            doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess, res)
+        } catch (IllegalStateException e) {
+            //happens only when the cli calls the francagenerator
+        }
+        doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess, res)
+
+        if (res != null) {
+            var defaultValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT, PreferenceConstants::DEFAULT_OUTPUT);
+            defaultValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT, defaultValue)
+            defaultValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_OUTPUT, defaultValue)
+
+            if (fileSystemAccess instanceof EclipseResourceFileSystemAccess2) {
+                (fileSystemAccess as EclipseResourceFileSystemAccess2).setOutputPath(defaultValue)
+            } else if (fileSystemAccess instanceof JavaIoFileSystemAccess) {
+                (fileSystemAccess as JavaIoFileSystemAccess).setOutputPath(defaultValue)
+            }
+        }
     }
 
+    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess fileSystemAccess, IResource res) {
 
-    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess access) {
         val allReferencedFTypes = fModel.allReferencedFTypes
-        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[eContainer as FTypeCollection]
-        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
+        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[
+            eContainer as FTypeCollection]
+        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[
+            eContainer as FInterface]
 
         val generateTypeCollections = fModel.typeCollections.toSet
         generateTypeCollections.addAll(allFTypeTypeCollections)
@@ -85,41 +135,71 @@ class FrancaGenerator implements IGenerator {
 
         val defaultDeploymentAccessor = new DeploymentInterfacePropertyAccessorWrapper(null) as DeploymentInterfacePropertyAccessor
 
-        generateTypeCollections.forEach[generate(it, access, defaultDeploymentAccessor)]
-
-        generateInterfaces.forEach[
-            val currentInterface = it
-            var DeploymentInterfacePropertyAccessor deploymentAccessor
-            if(deployedInterfaces.exists[it.target == currentInterface]) {
-                deploymentAccessor = new DeploymentInterfacePropertyAccessor(new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
-            } else {
-                deploymentAccessor = defaultDeploymentAccessor
-            }
-            generate(it, access, deploymentAccessor)
+        generateTypeCollections.forEach [
+            generate(it, fileSystemAccess, defaultDeploymentAccessor, res)
         ]
 
-        fModel.interfaces.forEach[
+        generateInterfaces.forEach [
             val currentInterface = it
             var DeploymentInterfacePropertyAccessor deploymentAccessor
-            if(deployedInterfaces.exists[it.target == currentInterface]) {
-                deploymentAccessor = new DeploymentInterfacePropertyAccessor(new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
+            if (deployedInterfaces.exists[it.target == currentInterface]) {
+                deploymentAccessor = new DeploymentInterfacePropertyAccessor(
+                    new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
             } else {
                 deploymentAccessor = defaultDeploymentAccessor
             }
-            it.generateProxy(access, deploymentAccessor)
-            it.generateStub(access)
+            generate(it, fileSystemAccess, defaultDeploymentAccessor, res)
+        ]
+
+        fModel.interfaces.forEach [
+            val currentInterface = it
+            var DeploymentInterfacePropertyAccessor deploymentAccessor
+            if (deployedInterfaces.exists[it.target == currentInterface]) {
+                deploymentAccessor = new DeploymentInterfacePropertyAccessor(
+                    new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
+            } else {
+                deploymentAccessor = defaultDeploymentAccessor
+            }
+
+            val booleanTrue = Boolean.toString(true)
+            var IEclipsePreferences node
+
+            var String finalValue = booleanTrue
+            if (FrameworkUtil::getBundle(this.getClass()) != null) {
+                node = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
+                finalValue = node.get(PreferenceConstants::P_GENERATEPROXY, booleanTrue)
+
+                node = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
+                finalValue = node.get(PreferenceConstants::P_GENERATEPROXY, finalValue)
+            }
+            finalValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_GENERATEPROXY, finalValue)
+            if (finalValue.equals(booleanTrue)) {
+                it.generateProxy(fileSystemAccess, deploymentAccessor, res)
+            }
+
+            finalValue = booleanTrue
+            if (FrameworkUtil::getBundle(this.getClass()) != null) {
+                node = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
+                finalValue = node.get(PreferenceConstants::P_GENERATESTUB, booleanTrue)
+                node = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
+                finalValue = node.get(PreferenceConstants::P_GENERATESTUB, finalValue)
+            }
+
+            finalValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_GENERATESTUB, finalValue)
+            if (finalValue.equals(booleanTrue)) {
+                it.generateStub(fileSystemAccess, res)
+            }
         ]
 
         return;
     }
 
-
     private var String filePrefix = "file://"
+
     def getFilePathUrl(Resource resource) {
         val filePath = resource.filePath
         return filePrefix + filePath
     }
-
 
     def private getFilePath(Resource resource) {
         if (resource.URI.file) {
@@ -127,7 +207,7 @@ class FrancaGenerator implements IGenerator {
         }
 
         val platformPath = new Path(resource.URI.toPlatformString(true))
-        val file =  ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
+        val file = ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
 
         return file.location.toString
     }
@@ -150,14 +230,14 @@ class FrancaGenerator implements IGenerator {
 
         fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]
 
-        fModel.interfaces.forEach[
+        fModel.interfaces.forEach [
             attributes.forEach[type.addDerivedFTypeTree(referencedFTypes)]
             types.forEach[addFTypeDerivedTree(referencedFTypes)]
-            methods.forEach[
+            methods.forEach [
                 inArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
                 outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
             ]
-            broadcasts.forEach[
+            broadcasts.forEach [
                 outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
             ]
         ]
@@ -213,4 +293,5 @@ class FrancaGenerator implements IGenerator {
             fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
         }
     }
+
 }

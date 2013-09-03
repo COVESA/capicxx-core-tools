@@ -12,80 +12,108 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.franca.core.franca.FModel;
 
 public class FPreferences {
 
     private static FPreferences instance = null;
-    private Map<String, Map<String, String>> preferences = null;
+    private Map<IResource, Map<String, String>> preferences = null;
 
     private FPreferences() {
-        preferences = new HashMap<String, Map<String, String>>();
-        preferences.put("default", new HashMap<String, String>());
-        preferences.get("default").put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(false));
+        preferences = new HashMap<IResource, Map<String, String>>();
     }
 
     public static FPreferences getInstance() {
-        if (instance == null)
+        if (instance == null) {
             return instance = new FPreferences();
+        }
         return instance;
     }
 
-    public void setPreferences(String name, File file, String path) throws IOException {
+    public void addPreferences(IResource res) {
+        Map<String, String> map = new HashMap<String, String>();
+        if (res != null) {
+            try {
+                QualifiedName useProjectSettingsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.USEPROJECTSETTINGS);
+                map.put(PreferenceConstants.USEPROJECTSETTINGS, res.getPersistentProperty(useProjectSettingsIdentifier));
+
+                QualifiedName outputPathIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT);
+                map.put(PreferenceConstants.P_OUTPUT, res.getPersistentProperty(outputPathIdentifier));
+
+                QualifiedName licenseIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_LICENSE);
+                map.put(PreferenceConstants.P_LICENSE, res.getPersistentProperty(licenseIdentifier));
+
+                QualifiedName generateStubsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATESTUB);
+                map.put(PreferenceConstants.P_GENERATESTUB, res.getPersistentProperty(generateStubsIdentifier));
+
+                QualifiedName generateProxiesIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATEPROXY);
+                map.put(PreferenceConstants.P_GENERATEPROXY, res.getPersistentProperty(generateProxiesIdentifier));
+
+            } catch (CoreException e) {
+                e.printStackTrace();
+            }
+
+        } else {
+            map.put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.FALSE.toString());
+            map.put(PreferenceConstants.P_OUTPUT, PreferenceConstants.DEFAULT_OUTPUT);
+            map.put(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
+            map.put(PreferenceConstants.P_GENERATESTUB, Boolean.TRUE.toString());
+            map.put(PreferenceConstants.P_GENERATEPROXY, Boolean.TRUE.toString());
+        }
+        preferences.put(res, map);
+    }
+
+    public String getPreference(IResource res, String preferencename, String defaultValue) {
+        Map<String, String> map = getPreferencesForResource(res);
+        if (map != null
+                        && map.get(preferencename) != null
+                        && map.get(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.TRUE.toString())) {
+            return map.get(preferencename);
+        }
+        if (res instanceof IFile) {
+            return getPreference(res.getProject(), preferencename, defaultValue);
+        }
+        return defaultValue;
+    }
+
+    public boolean useModelSpecific(IResource res) {
+        Map<String, String> map = getPreferencesForResource(res);
+        return map.get(PreferenceConstants.USEPROJECTSETTINGS) != null
+               && map.get(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.TRUE.toString());
+    }
+
+    private Map<String, String> getPreferencesForResource(IResource res) {
+        return preferences.get(res);
+    }
+
+    public void setPreferences(String name, File file) throws IOException {
         Reader r = null;
         try {
             r = new FileReader(file);
-            setPreference(name, r, path);
+            setPreference(name, r, "");
         } finally {
             try {
                 r.close();
             } catch (IOException e) {
-                ;
             }
         }
     }
 
-    public void setPreference(String name, String preference, FModel model) {
-        getPreferencesForPathString(getModelPath(model), true).put(name, preference);
-    }
-
-    public void setPreference(String name, String preference, String path) {
-        getPreferencesForPathString(path, true).put(name, preference);
-    }
-
-    private Map<String, String> getPreferencesForPathString(String path, boolean setter) {
-        Map<String, String> ret = null;
-        for (String key : preferences.keySet()) {
-            if (path.contains(key))
-                return preferences.get(key);
+    public void setPreference(String name, String preference) {
+        if(preferences.get(null) == null) {
+            preferences.put(null, new HashMap<String, String>());
         }
-        if (setter) {
-            preferences.put(path, new HashMap<String, String>());
-            return preferences.get(path);
-        }
-        return ret;
-    }
-
-    public void setPreference(String name, InputStream in, String path) throws IOException {
-        Reader r = null;
-        try {
-            r = new InputStreamReader(in);
-            setPreference(name, r, path);
-        } finally {
-            try {
-                r.close();
-            } catch (IOException e) {
-                ;
-            }
-        }
+        preferences.get(null).put(name, preference);
     }
 
     public void setPreference(String name, Reader inreader, String path) throws IOException {
@@ -95,49 +123,51 @@ public class FPreferences {
         while ((line = reader.readLine()) != null) {
             builder.append(line + "\n");
         }
-        getPreferencesForPathString(path, true).put(name, builder.toString());
+        if (preferences.get(null) == null)
+            preferences.put(null, new HashMap<String, String>());
+        preferences.get(null).put(name, builder.toString());
     }
 
-    private String getModelPath(FModel model) {
+    public String getModelPath(FModel model) {
         String ret = model.eResource().getURI().toString();
         return ret;
     }
 
-    public String getPreference(String name, String defaultret, FModel model) {
-        if (getPreferencesForPathString(getModelPath(model), false) != null
-                && getPreferencesForPathString(getModelPath(model), false).get(PreferenceConstants.USEPROJECTSETTINGS)
-                        .equals(Boolean.toString(true)))
-            return getPreferencesForPathString(getModelPath(model), false).get(name);
-        return defaultret;
-    }
-
-    public String getPreference(String name, String defaultret, String path) {
-        if (getPreferencesForPathString(path, false) != null
-                && getPreferencesForPathString(path, false).get(PreferenceConstants.USEPROJECTSETTINGS).equals(
-                        Boolean.toString(true)))
-            return getPreferencesForPathString(path, false).get(name);
-        return defaultret;
-    }
-
     public static void init(IPreferenceStore store, IPreferenceStore defaultstore, IProject project) {
-        String propath = project.getFullPath().toPortableString();
-        if (instance == null)
+        if (instance == null) {
             instance = new FPreferences();
-        if (store.getString(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.toString(true))) {
-            if (instance.preferences.get(propath) == null)
-                instance.preferences.put(propath, new HashMap<String, String>());
-            instance.preferences.get(propath).put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
-            instance.preferences.get(propath).put(PreferenceConstants.P_OUTPUT,
-                    store.getString(PreferenceConstants.P_OUTPUT));
-            instance.preferences.get(propath).put(PreferenceConstants.P_LICENSE,
-                    store.getString(PreferenceConstants.P_LICENSE));
+        }
+        String useProjectSettingsString = store.getString(PreferenceConstants.USEPROJECTSETTINGS);
+        boolean useProjectSettings = useProjectSettingsString.equals(Boolean.toString(true));
+        if (useProjectSettings) {
+            if (instance.preferences.get(project) == null) {
+                instance.preferences.put(project, new HashMap<String, String>());
+            }
+            instance.preferences.get(project).put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
+
+            String outputFolder = store.getString(PreferenceConstants.P_OUTPUT);
+            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT, outputFolder);
+
+            String licenseHeader = store.getString(PreferenceConstants.P_LICENSE);
+            instance.preferences.get(project).put(PreferenceConstants.P_LICENSE, licenseHeader);
+
+            String generateProxy = store.getString(PreferenceConstants.P_GENERATEPROXY);
+            instance.preferences.get(project).put(PreferenceConstants.P_GENERATEPROXY, generateProxy);
+
+            String generatStub = store.getString(PreferenceConstants.P_GENERATESTUB);
+            instance.preferences.get(project).put(PreferenceConstants.P_GENERATESTUB, generatStub);
         } else {
-            if (instance.preferences.get(propath) == null)
-                instance.preferences.put(propath, new HashMap<String, String>());
-            instance.preferences.get(propath).put(PreferenceConstants.P_OUTPUT,
+            if (instance.preferences.get(project) == null) {
+                instance.preferences.put(project, new HashMap<String, String>());
+            }
+            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT,
                     defaultstore.getString(PreferenceConstants.P_OUTPUT));
-            instance.preferences.get(propath).put(PreferenceConstants.P_LICENSE,
+            instance.preferences.get(project).put(PreferenceConstants.P_LICENSE,
                     defaultstore.getString(PreferenceConstants.P_LICENSE));
+            instance.preferences.get(project).put(PreferenceConstants.P_GENERATEPROXY,
+                    defaultstore.getString(PreferenceConstants.P_GENERATEPROXY));
+            instance.preferences.get(project).put(PreferenceConstants.P_GENERATESTUB,
+                    defaultstore.getString(PreferenceConstants.P_GENERATESTUB));
         }
     }
 

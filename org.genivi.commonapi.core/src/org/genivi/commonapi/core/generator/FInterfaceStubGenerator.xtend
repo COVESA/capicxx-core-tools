@@ -11,19 +11,20 @@ import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FInterface
 import java.util.HashSet
+import org.eclipse.core.resources.IResource
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess) {
-        fileSystemAccess.generateFile(fInterface.stubHeaderPath, fInterface.generateStubHeader)
-        fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, fInterface.generateStubDefaultHeader)
-        fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, fInterface.generateStubDefaultSource)
+    def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, IResource modelid) {
+        fileSystemAccess.generateFile(fInterface.stubHeaderPath, fInterface.generateStubHeader(modelid))
+        fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, fInterface.generateStubDefaultHeader(modelid))
+        fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, fInterface.generateStubDefaultSource(modelid))
     }
 
-    def private generateStubHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateStubHeader(FInterface fInterface, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_STUB_H_
         #define «fInterface.defineName»_STUB_H_
@@ -177,8 +178,8 @@ class FInterfaceStubGenerator {
         #endif // «fInterface.defineName»_STUB_H_
     '''
 
-    def private generateStubDefaultHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateStubDefaultHeader(FInterface fInterface, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_STUB_DEFAULT_H_
         #define «fInterface.defineName»_STUB_DEFAULT_H_
@@ -275,8 +276,8 @@ class FInterfaceStubGenerator {
         #endif // «fInterface.defineName»_STUB_DEFAULT_H_
     '''
 
-    def private generateStubDefaultSource(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader(fInterface)»
+    def private generateStubDefaultSource(FInterface fInterface, IResource modelid) '''
+        «generateCommonApiLicenseHeader(fInterface, modelid)»
         #include <«fInterface.stubDefaultHeaderPath»>
 
         «fInterface.model.generateNamespaceBeginDeclaration»

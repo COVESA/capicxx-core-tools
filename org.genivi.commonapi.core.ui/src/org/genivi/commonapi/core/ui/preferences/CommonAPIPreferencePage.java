@@ -66,9 +66,8 @@ public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements I
 
     @Override
     protected String getPageId() {
-        return "org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage";
+        return PreferenceConstants.PROJECT_PAGEID;
     }
-
     @Override
     protected IPreferenceStore doGetPreferenceStore() {
         return CommonApiUiPlugin.getDefault().getPreferenceStore();

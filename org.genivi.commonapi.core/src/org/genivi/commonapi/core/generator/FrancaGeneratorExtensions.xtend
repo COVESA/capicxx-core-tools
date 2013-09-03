@@ -44,8 +44,12 @@ import org.franca.core.franca.FTypedElement
 import java.util.Collection
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.osgi.framework.FrameworkUtil
+import org.eclipse.core.runtime.QualifiedName
+import org.eclipse.core.resources.IResource
+import org.osgi.framework.Version
 
 class FrancaGeneratorExtensions {
+
     def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
             return (fModelElement.eContainer as FModel).name + '.' + fModelElement.name
@@ -212,16 +216,18 @@ class FrancaGeneratorExtensions {
         fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
     }
 
-    def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if(!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
+    def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders,
+        Collection<String> libraryHeaders) {
+        if (!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
             libraryHeaders.add("unordered_set")
         }
 
         return null
     }
 
-    def generateSelectiveBroadcastProxyIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if(!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
+    def generateSelectiveBroadcastProxyIncludes(FInterface fInterface, Collection<String> generatedHeaders,
+        Collection<String> libraryHeaders) {
+        if (!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
             libraryHeaders.add("CommonAPI/types.h")
         }
 
@@ -301,10 +307,10 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
     def generateStubSignatureOldStyle(FMethod fMethod) {
         var signature = ''
-        
+
         signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
 
         if (fMethod.hasError || !fMethod.outArgs.empty)
@@ -314,14 +320,15 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
     def generateFireSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface) {
         var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
 
-        if(!fBroadcast.outArgs.empty)
+        if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
 
-        signature = signature + fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
+        signature = signature +
+            fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
 
         return signature
     }
@@ -329,12 +336,12 @@ class FrancaGeneratorExtensions {
     def generateSendSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface, Boolean withDefault) {
         var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
 
-        if(!fBroadcast.outArgs.empty)
+        if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
 
         signature = signature + 'const CommonAPI::ClientIdList* receivers'
 
-        if(withDefault)
+        if (withDefault)
             signature = signature + ' = NULL'
 
         return signature
@@ -470,7 +477,7 @@ class FrancaGeneratorExtensions {
     def private getMangledAsyncCallbackClassName(FMethod fMethod) {
         val baseName = fMethod.basicAsyncCallbackClassName + '_'
         var mangledName = ''
-        for (outArg: fMethod.outArgs) {
+        for (outArg : fMethod.outArgs) {
             mangledName = mangledName + outArg.type.mangledName
         }
 
@@ -502,10 +509,9 @@ class FrancaGeneratorExtensions {
     }
 
     def needsMangling(FMethod fMethod) {
-        for (otherMethod: fMethod.containingInterface.methods) {
-            if (otherMethod != fMethod
-                && otherMethod.basicAsyncCallbackClassName == fMethod.basicAsyncCallbackClassName
-                && otherMethod.generateASyncTypedefSignature != fMethod.generateASyncTypedefSignature) {
+        for (otherMethod : fMethod.containingInterface.methods) {
+            if (otherMethod != fMethod && otherMethod.basicAsyncCallbackClassName == fMethod.basicAsyncCallbackClassName &&
+                otherMethod.generateASyncTypedefSignature != fMethod.generateASyncTypedefSignature) {
                 return true
             }
         }
@@ -570,14 +576,13 @@ class FrancaGeneratorExtensions {
     def getClassName(FBroadcast fBroadcast) {
         var className = fBroadcast.name.toFirstUpper
 
-        if(!fBroadcast.selective.nullOrEmpty)
+        if (!fBroadcast.selective.nullOrEmpty)
             className = className + 'Selective'
 
         className = className + 'Event'
 
         return className
     }
-
 
     def generateGetMethodDefinition(FBroadcast fBroadcast) {
         fBroadcast.generateGetMethodDefinitionWithin(null)
@@ -601,7 +606,7 @@ class FrancaGeneratorExtensions {
     def getStubAdapterClassFireSelectiveMethodName(FBroadcast fBroadcast) {
         'fire' + fBroadcast.name.toFirstUpper + 'Selective';
     }
-    
+
     def getStubAdapterClassSendSelectiveMethodName(FBroadcast fBroadcast) {
         'send' + fBroadcast.name.toFirstUpper + 'Selective';
     }
@@ -941,56 +946,48 @@ class FrancaGeneratorExtensions {
         return file.location.toString
     }
 
-    def getHeader(FModel model) {
-        val deflt = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "");
-        return FPreferences::instance.getPreference(PreferenceConstants::P_LICENSE, 
-            InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, deflt), model);
+    def getHeader(FModel model, IResource res) {
+        if (FrameworkUtil::getBundle(this.getClass()) != null) {
+            var returnValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "")
+            returnValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, returnValue)
+            returnValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_LICENSE, returnValue)
+            return returnValue
+        }
+        return ""
     }
 
-        def getFrancaVersion() {
-        val bundleContext = FrameworkUtil::getBundle(this.getClass()).getBundleContext();
-        for (b : bundleContext.bundles) {
-            if (b.symbolicName.equals("org.franca.core")) {
-                return b.version
+    def getFrancaVersion() {
+        val bundle = FrameworkUtil::getBundle(this.getClass())
+        if (bundle != null) {
+            val bundleContext = bundle.getBundleContext();
+            for (b : bundleContext.bundles) {
+                if (b.symbolicName.equals("org.franca.core")) {
+                    return b.version
+                }
             }
         }
     }
 
     def getCoreVersion() {
-        val bundleContext = FrameworkUtil::getBundle(this.getClass()).getBundleContext();
-        for (b : bundleContext.bundles) {
-            if (b.symbolicName.equals("org.genivi.commonapi.core")) {
-                return b.version
+        val bundle = FrameworkUtil::getBundle(this.getClass())
+        if (bundle != null) {
+            val bundleContext = bundle.getBundleContext();
+            for (b : bundleContext.bundles) {
+                if (b.symbolicName.equals("org.genivi.commonapi.core")) {
+                    return b.version
+                }
             }
         }
+        return new Version("2.1.0")
     }
 
-    def getDBusVersion() {
-        val bundleContext = FrameworkUtil::getBundle(this.getClass()).getBundleContext();
-        for (b : bundleContext.bundles) {
-            if (b.symbolicName.equals("org.genivi.commonapi.dbus")) {
-                return b.version
-            }
-        }
-    }
-
-    def generateCommonApiDBusLicenseHeader(FModelElement model) '''
-        /*
-        * This file was generated by the CommonAPI Generators. 
-        * Used org.genivi.commonapi.dbus «getDBusVersion()».
-        * Used org.franca.core «getFrancaVersion()».
-        *
-        «getCommentedString(getHeader(model.model))»
-        */
-    '''
-
-    def generateCommonApiLicenseHeader(FModelElement model) '''
+    def generateCommonApiLicenseHeader(FModelElement model, IResource modelid) '''
         /*
         * This file was generated by the CommonAPI Generators. 
         * Used org.genivi.commonapi.core «getCoreVersion()».
         * Used org.franca.core «getFrancaVersion()».
         *
-        «getCommentedString(getHeader(model.model))»
+        «getCommentedString(getHeader(model.model, modelid))»
         */
     '''
 
@@ -998,9 +995,8 @@ class FrancaGeneratorExtensions {
         val lines = string.split("\n");
         var builder = new StringBuilder();
         for (String line : lines) {
-            builder.append(" * " + line + "\n");
+            builder.append("* " + line + "\n");
         }
         return builder.toString()
     }
-
 }

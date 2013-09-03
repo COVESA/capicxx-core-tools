@@ -1,100 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="src" path="/org.genivi.commonapi.core"/>
-	<classpathentry kind="src" path="/org.genivi.commonapi.dbus"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.emf.common_2.9.0.v20130528-0742.jar" sourcepath="/Applications/eclipse/plugins/org.eclipse.emf.common_2.9.0.v20130528-0742.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/archive/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/command/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/notify/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/notify/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/common/util/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.emf.ecore_2.9.0.v20130528-0742.jar" sourcepath="/Applications/eclipse/plugins/org.eclipse.emf.ecore_2.9.0.v20130528-0742.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/plugin/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/resource/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/resource/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/util/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/util/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/internal/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/util/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.xtext_2.4.2.v201306120542.jar" sourcepath="/Applications/eclipse/plugins/org.eclipse.xtext_2.4.2.v201306120542.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/eclipse/xtext/generator/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/xtext/resource/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/xtext/Grammar"/>
-			<accessrule kind="accessible" pattern="org/eclipse/xtext/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/xtext/linking/lazy/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.emf.codegen.ecore_2.9.0.v20130610-0406.jar" sourcepath="/Applications/eclipse/plugins/org.eclipse.emf.codegen.ecore_2.9.0.v20130610-0406.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/generator/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/generator/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/impl/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/util/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/edit/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/editor/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/model/*"/>
-			<accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/model/tests/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.franca.core.dsl_0.8.8.201306170812.jar" sourcepath="/Applications/eclipse/plugins/org.franca.core.dsl.source_0.8.8.201306170812.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/services/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/parseTreeConstruction/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/parser/antlr/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/parser/antlr/internal/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/validation/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/scoping/*"/>
-			<accessrule kind="accessible" pattern="org/franca/core/dsl/formatting/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/com.google.inject_3.0.0.v201203062045.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/javax.inject_1.0.0.v20091030.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.franca.deploymodel.dsl_0.8.8.201306170812.jar" sourcepath="/Applications/eclipse/plugins/org.franca.deploymodel.dsl.source_0.8.8.201306170812.jar">
-		<accessrules>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/core/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/impl/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/util/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/formatting/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/generator/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parseTreeConstruction/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parser/antlr/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parser/antlr/internal/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/scoping/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/services/*"/>
-			<accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/validation/*"/>
-			<accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
-		</accessrules>
-	</classpathentry>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.emf.ecore.xmi_2.9.0.v20130528-0742.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.apache.log4j_1.2.15.v201012070815.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.antlr.runtime_3.2.0.v201101311130.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.franca.core_0.8.8.201306170812.jar"/>
-	<classpathentry kind="lib" path="/Applications/eclipse/plugins/org.eclipse.xtext_2.4.3.v201308130914.jar" sourcepath="/Applications/eclipse/plugins/org.eclipse.xtext.source_2.4.3.v201308130914.jar"/>
-	<classpathentry kind="output" path="bin"/>
+    <classpathentry kind="src" path="src"/>
+    <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+    <classpathentry kind="src" path="/org.genivi.commonapi.core"/>
+    <classpathentry kind="src" path="/org.genivi.commonapi.dbus"/>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/com.google.inject_3.0.0.v201203062045.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/com.google.inject.source_3.0.0.v201203062045.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="com/google/inject/*"/>
+            <accessrule kind="accessible" pattern="com/google/inject/binder/*"/>
+            <accessrule kind="discouraged" pattern="com/google/inject/internal/*"/>
+            <accessrule kind="accessible" pattern="com/google/inject/matcher/*"/>
+            <accessrule kind="accessible" pattern="com/google/inject/name/*"/>
+            <accessrule kind="accessible" pattern="com/google/inject/spi/*"/>
+            <accessrule kind="accessible" pattern="com/google/inject/util/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.common_2.9.1.v20130827-0309.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.common.source_2.9.1.v20130827-0309.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/archive/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/command/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/notify/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/notify/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/common/util/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.ecore_2.9.1.v20130827-0309.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.ecore.source_2.9.1.v20130827-0309.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/plugin/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/resource/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/resource/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/util/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/namespace/util/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/internal/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/ecore/xml/type/util/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.xtext_2.4.3.v201309030823.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.eclipse.xtext.source_2.4.3.v201309030823.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/eclipse/xtext/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/xtext/generator/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/xtext/resource/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/xtext/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/xtext/linking/lazy/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.codegen.ecore_2.9.1.v20130902-0605.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.codegen.ecore.source_2.9.1.v20130902-0605.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/generator/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/generator/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/impl/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/genmodel/util/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/edit/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/editor/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/model/*"/>
+            <accessrule kind="accessible" pattern="org/eclipse/emf/codegen/ecore/templates/model/tests/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.franca.deploymodel.dsl_0.8.9.201308271211.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.franca.deploymodel.dsl_0.8.9.201308271211.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/core/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/impl/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/fDeploy/util/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/formatting/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/generator/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parseTreeConstruction/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parser/antlr/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/parser/antlr/internal/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/scoping/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/services/*"/>
+            <accessrule kind="accessible" pattern="org/franca/deploymodel/dsl/validation/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.franca.core.dsl_0.8.9.201308271211.jar" sourcepath="/home/lipci/eclipse-kepler/plugins/org.franca.core.dsl_0.8.9.201308271211.jar">
+        <accessrules>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/formatting/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/parseTreeConstruction/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/parser/antlr/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/parser/antlr/internal/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/resource/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/scoping/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/services/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/validation/*"/>
+            <accessrule kind="accessible" pattern="org/franca/core/dsl/validation/util/*"/>
+            <accessrule ignoreifbetter="true" kind="nonaccessible" pattern="**/*"/>
+        </accessrules>
+    </classpathentry>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/javax.inject_1.0.0.v20091030.jar"/>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.ecore.xmi_2.9.1.v20130827-0309.jar"/>
+    <classpathentry kind="lib" path="/home/lipci/log4j-1.2.17.jar"/>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.antlr.runtime_3.2.0.v201101311130.jar"/>
+    <classpathentry kind="lib" path="/home/lipci/eclipse-kepler/plugins/org.eclipse.emf.mwe2.language_2.4.1.v201309030840.jar"/>
+    <classpathentry kind="output" path="bin"/>
 </classpath>

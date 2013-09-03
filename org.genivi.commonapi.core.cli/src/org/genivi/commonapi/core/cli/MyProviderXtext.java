@@ -25,5 +25,4 @@ public class MyProviderXtext implements Provider<XtextResourceSet> {
         rsset.setResourceFactoryRegistry(Resource.Factory.Registry.INSTANCE);
         return rsset;
     }
-
 }
