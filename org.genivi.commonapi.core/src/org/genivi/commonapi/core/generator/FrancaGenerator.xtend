@@ -44,7 +44,7 @@ class FrancaGenerator implements IGenerator {
     @Inject private extension FInterfaceStubGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    @Inject private FrancaPersistenceManager francaPersistenceManager
+    @Inject private MyFrancaPersistenceManager francaPersistenceManager
     @Inject private FDeployPersistenceManager fDeployPersistenceManager
 
 
