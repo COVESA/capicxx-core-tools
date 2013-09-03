@@ -28,6 +28,7 @@ class FInterfaceProxyGenerator {
 
     def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader(fInterface)»
+        «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
 
@@ -84,14 +85,17 @@ class FInterfaceProxyGenerator {
             «fInterface.generateAsyncCallbackTypedefs»
 
             «FOR attribute : fInterface.attributes»
+                «FTypeGenerator::generateComments(attribute, false)»
                 virtual «attribute.generateGetMethodDefinition» = 0;
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
+                «FTypeGenerator::generateComments(broadcast, false)»
                 virtual «broadcast.generateGetMethodDefinition» = 0;
             «ENDFOR»
 
             «FOR method : fInterface.methods»
+                «FTypeGenerator::generateComments(method, false)»
                 «IF method.isFireAndForget»
                     /**
                      * @invariant Fire And Forget
@@ -111,6 +115,7 @@ class FInterfaceProxyGenerator {
 
     def private generateProxyHeader(FInterface fInterface) '''
         «generateCommonApiLicenseHeader(fInterface)»
+        «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_H_
         #define «fInterface.defineName»_PROXY_H_
 
@@ -136,6 +141,7 @@ class FInterfaceProxyGenerator {
             ~«fInterface.proxyClassName»();
 
             «FOR attribute : fInterface.attributes»
+                «FTypeGenerator::generateComments(attribute, false)»
                 /// Returns the wrapper class that provides access to the attribute «attribute.name».
                 virtual «attribute.generateGetMethodDefinition» {
                     return delegate_->get«attribute.className»();
@@ -143,7 +149,8 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
-                // Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                «FTypeGenerator::generateComments(broadcast, false)»
+                /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
                 virtual «broadcast.generateGetMethodDefinition» {
                     return delegate_->get«broadcast.className»();
                 }
@@ -151,6 +158,7 @@ class FInterfaceProxyGenerator {
 
             «FOR method : fInterface.methods»
                 /**
+                «FTypeGenerator::generateComments(method, true)»
                  * Calls «method.name» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
                  * 
 «IF !method.inArgs.empty»     * All const parameters are input parameters to this method.«ENDIF»
@@ -229,6 +237,7 @@ class FInterfaceProxyGenerator {
         }
 
         «FOR method : fInterface.methods»
+            «FTypeGenerator::generateComments(method, false)»
             template <typename ... _AttributeExtensions>
             «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
                 delegate_->«method.name»(«method.generateSyncVariableList»);
@@ -296,6 +305,7 @@ class FInterfaceProxyGenerator {
     '''
 
     def private generateExtension(FAttribute fAttribute, FInterface fInterface) '''
+        «FTypeGenerator::generateComments(fAttribute, false)»
         template <template <typename > class _ExtensionType>
         class «fAttribute.extensionClassName» {
          public:

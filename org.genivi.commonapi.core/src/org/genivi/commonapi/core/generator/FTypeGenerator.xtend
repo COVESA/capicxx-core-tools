@@ -28,18 +28,137 @@ import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import static com.google.common.base.Preconditions.*
+import org.franca.core.franca.FAnnotationType
+import org.franca.core.franca.FAnnotationBlock
+import org.franca.core.franca.FMethod
+import java.util.ArrayList
+import org.franca.core.franca.FAnnotation
 
 class FTypeGenerator {
     @Inject private extension FrancaGeneratorExtensions francaGeneratorExtensions
+    static int begrenzung = 80
 
+    def static isdeprecated(FAnnotationBlock annotations) {
+        if(annotations == null)
+            return false
+        for(annotation : annotations.elements) {
+            if(annotation.type.value.equals(FAnnotationType.DEPRECATED_VALUE))
+                return true;
+        }
+        return false
+    } 
+
+    def static sortAnnotations(FAnnotationBlock annots) {
+        var ArrayList<ArrayList<FAnnotation>> ret = new ArrayList<ArrayList<FAnnotation>>(4)
+        ret.add(new ArrayList<FAnnotation>())
+        ret.add(new ArrayList<FAnnotation>())
+        ret.add(new ArrayList<FAnnotation>())
+        ret.add(new ArrayList<FAnnotation>())
+        for(anno : annots.elements) {
+            if(anno == null){
+            }else {
+                if(anno.type.value.equals(FAnnotationType.DESCRIPTION_VALUE))
+                    ret.get(0).add(anno)
+                if(anno.type.value.equals(FAnnotationType.PARAM_VALUE))
+                    ret.get(1).add(anno)
+                if(anno.type.value.equals(FAnnotationType.DEPRECATED_VALUE))
+                    ret.get(2).add(anno)
+                if(anno.type.value.equals(FAnnotationType.AUTHOR_VALUE))
+                    ret.get(3).add(anno)
+            }
+        }
+        return ret
+    }
+
+    def static breaktext(String text, int annotation) {
+        var ret = ""
+        var temptext = ""
+        var i = 0
+        var j = 3
+        if(annotation == FAnnotationType.DESCRIPTION_VALUE && text.length > begrenzung) {
+            ret = " * " + text.substring(0,text.substring(0, begrenzung).lastIndexOf(" ")) + "\n";
+            temptext = text.substring(ret.length-j);
+            i = ret.length
+        }else if(annotation != FAnnotationType.DESCRIPTION_VALUE && text.length > begrenzung - 20) {
+            if(annotation == FAnnotationType.AUTHOR_VALUE) {
+                ret = " * @author "
+                j = j + 8
+            }if(annotation == FAnnotationType.DEPRECATED_VALUE){
+                ret = " * @deprecated "
+                j = j + 12
+            }if(annotation == FAnnotationType.PARAM_VALUE){
+                ret = " * @param "
+                j = j + 7
+            }
+            ret = ret + text.substring(0, text.substring(0, begrenzung-20).lastIndexOf(" ")) + "\n";
+            temptext = text.substring(ret.length - j);
+            i = ret.length
+        }else {
+            if(annotation == FAnnotationType.AUTHOR_VALUE)
+                ret = " * @author "
+            if(annotation == FAnnotationType.DEPRECATED_VALUE)
+                ret = " * @deprecated "
+            if(annotation == FAnnotationType.PARAM_VALUE)
+                ret = " * @param "
+            if(annotation == FAnnotationType.DESCRIPTION_VALUE)
+                ret = " * "
+            ret = ret + text + "\n";
+        }
+        while(i != 0 &&temptext.length > begrenzung) {
+            ret = ret + " * " + temptext.substring(0, temptext.substring(0, begrenzung).lastIndexOf(" ")) + "\n";
+            temptext = temptext.substring(ret.length - i - j);
+            j = j + 3
+            i = ret.length;
+        }
+        if(i != 0)
+            ret = ret + " * " + temptext + "\n"
+        return ret;
+    }
+
+    def static generateComments(FModelElement model, boolean inline) {
+        var typ = getTyp(model)
+        var ret = ""
+        var commexists = false
+        if( model != null && model.comment != null){
+            for (list : sortAnnotations(model.comment)){
+                for (comment : list){
+                    if(comment.type.value.equals(FAnnotationType.DESCRIPTION_VALUE) || 
+                        (comment.type.value.equals(FAnnotationType.AUTHOR_VALUE) && typ == ModelTyp.INTERFACE) || 
+                        (comment.type.value.equals(FAnnotationType.DEPRECATED_VALUE) && (typ == ModelTyp.METHOD || typ==ModelTyp.ENUM)) || 
+                        (comment.type.value.equals(FAnnotationType.PARAM_VALUE) && typ == ModelTyp.METHOD)){
+                        if(!inline && !commexists)
+                            ret = "/**\n"
+                        commexists = true
+                        ret = ret + breaktext(comment.comment, comment.type.value)
+                    }
+                }
+            }
+            if(!inline && commexists)
+                ret = ret + " */"
+            if(inline && commexists)
+                ret = ret + " * "
+        }
+        return ret
+    }
+    
+    def static getTyp(FModelElement element) {
+        if(element instanceof FInterface || element instanceof FTypeCollection)
+            return ModelTyp.INTERFACE
+        if(element instanceof FMethod)
+            return ModelTyp.METHOD
+        if(element instanceof FEnumerationType)
+            return ModelTyp.ENUM
+        return ModelTyp.UNKNOWN
+    }
 
     def generateFTypeDeclarations(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «FOR type: fTypeCollection.types.sortTypes(fTypeCollection)»
+            «generateComments(type, false)»
             «type.generateFTypeDeclaration(deploymentAccessor)»
-
         «ENDFOR»
         «IF fTypeCollection instanceof FInterface»
             «FOR method : (fTypeCollection as FInterface).methods.filter[errors != null]»
+                «generateComments(method, false)»
                 «method.errors.generateDeclaration(method.errors.errorName, deploymentAccessor)»
             «ENDFOR»
         «ENDIF»
@@ -74,20 +193,25 @@ class FTypeGenerator {
     }
 
     def dispatch generateFTypeDeclaration(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        «generateComments(fTypeDef, false)»
         typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.name»;
     '''
 
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        «generateComments(fArrayType, false)»
         typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.name»;
     '''
 
     def dispatch generateFTypeDeclaration(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        «generateComments(fMap, false)»
         typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»> «fMap.name»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        «generateComments(fStructType, false)»
         struct «fStructType.name»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
+               «generateComments(element, false)»
                 «element.getTypeName(fStructType)» «element.name»;
             «ENDFOR»
 
@@ -132,6 +256,7 @@ class FTypeGenerator {
             «ENDFOR»
             «IF fEnumerationType.base != null && !fEnumerationType.enumerators.empty»,«ENDIF»
             «FOR enumerator : fEnumerationType.enumerators SEPARATOR ','»
+                «generateComments(enumerator, false)»
                 «enumerator.name»«enumerator.generateValue»
             «ENDFOR»
         };
@@ -141,6 +266,7 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeDeclaration(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+        «generateComments(fUnionType, false)»
         typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
     '''
 

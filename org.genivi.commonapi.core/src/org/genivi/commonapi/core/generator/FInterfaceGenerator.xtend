@@ -27,6 +27,7 @@ class FInterfaceGenerator {
 
     def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader(fInterface)»
+        «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
 
@@ -69,9 +70,11 @@ class FInterfaceGenerator {
         }
 
         «FOR type : fInterface.types»
+           «FTypeGenerator::generateComments(type, false)»
            «type.generateFTypeInlineImplementation(fInterface, deploymentAccessor)»
         «ENDFOR»
         «FOR method : fInterface.methods.filter[errors != null]»
+            «FTypeGenerator::generateComments(method, false)»
             «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.name, deploymentAccessor)»
         «ENDFOR»
 
@@ -101,11 +104,13 @@ class FInterfaceGenerator {
 
     def private generateSource(FInterface fInterface) '''
         «generateCommonApiLicenseHeader(fInterface)»
+        «FTypeGenerator::generateComments(fInterface, false)»
         #include "«fInterface.headerFile»"
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         «FOR type : fInterface.types»
+           «FTypeGenerator::generateComments(type,false)»
            «type.generateFTypeImplementation(fInterface)»
         «ENDFOR»
 

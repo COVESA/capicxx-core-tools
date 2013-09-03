@@ -19,7 +19,8 @@ class FTypeCollectionGenerator {
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def generate(FTypeCollection fTypeCollection, IFileSystemAccess fileSystemAccess,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor))
 
         if (fTypeCollection.hasSourceFile)
@@ -28,6 +29,7 @@ class FTypeCollectionGenerator {
 
     def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader(fTypeCollection)»
+        «FTypeGenerator::generateComments(fTypeCollection, false)»
         #ifndef «fTypeCollection.defineName»_H_
         #define «fTypeCollection.defineName»_H_
 
@@ -55,7 +57,7 @@ class FTypeCollectionGenerator {
             «fTypeCollection.generateFTypeDeclarations(deploymentAccessor)»
 
         «FOR type : fTypeCollection.types»
-           «type.generateFTypeInlineImplementation(type, deploymentAccessor)»
+            «type.generateFTypeInlineImplementation(type, deploymentAccessor)»
         «ENDFOR»
 
 
@@ -89,9 +91,9 @@ class FTypeCollectionGenerator {
         #endif // «fTypeCollection.defineName»_H_
     '''
 
-
     def private generateSource(FTypeCollection fTypeCollection) '''
         «generateCommonApiLicenseHeader(fTypeCollection)»
+        «FTypeGenerator::generateComments(fTypeCollection, false)»
         #include "«fTypeCollection.headerFile»"
 
         «FOR fStructTypeHeaderPath : fTypeCollection.allDerivedFStructTypeHeaderPaths»
@@ -102,14 +104,16 @@ class FTypeCollectionGenerator {
         namespace «fTypeCollection.name» {
 
         «FOR type : fTypeCollection.types»
-           «type.generateFTypeImplementation(type)»
+            «/*FTypeGenerator::generateComments(type.comment, false)*/»
+            «type.generateFTypeImplementation(type)»
         «ENDFOR»
 
         } // namespace «fTypeCollection.name»
         «fTypeCollection.model.generateNamespaceEndDeclaration»
     '''
 
-    def void getRequiredHeaderFiles(FTypeCollection fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+    def void getRequiredHeaderFiles(FTypeCollection fInterface, Collection<String> generatedHeaders,
+        Collection<String> libraryHeaders) {
         libraryHeaders.add('CommonAPI/types.h')
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
         generatedHeaders.remove(fInterface.headerPath)
@@ -121,12 +125,8 @@ class FTypeCollectionGenerator {
     }
 
     def private getAllDerivedFStructTypeHeaderPaths(FTypeCollection fTypeCollection) {
-        return fTypeCollection.types
-                .filter[it instanceof FStructType && (it as FStructType).hasPolymorphicBase]
-                .map[(it as FStructType).derivedFStructTypes]
-                .flatten
-                .map[(eContainer as FTypeCollection).headerPath]
-                .toSet
-                .filter[!fTypeCollection.headerPath.equals(it)]
+        return fTypeCollection.types.filter[it instanceof FStructType && (it as FStructType).hasPolymorphicBase].map[
+            (it as FStructType).derivedFStructTypes].flatten.map[(eContainer as FTypeCollection).headerPath].toSet.filter[
+            !fTypeCollection.headerPath.equals(it)]
     }
 }

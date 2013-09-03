@@ -91,6 +91,7 @@ class FTypeCommonAreaGenerator {
     '''
 
     def private generateTypeOutput(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        FTypeGenerator::generateComments(fEnumerationType, false)
         return fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName.split("_").get(0).toUpperCase.replace("NT", "nt") + "Enum"
     }
 

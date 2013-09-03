@@ -249,7 +249,8 @@ class FrancaGeneratorExtensions {
 
     def generateDefinitionWithin(FMethod fMethod, String parentClassName) {
         var definition = 'void '
-
+        if (FTypeGenerator::isdeprecated(fMethod.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
         if (!parentClassName.nullOrEmpty)
             definition = definition + parentClassName + '::'
 
