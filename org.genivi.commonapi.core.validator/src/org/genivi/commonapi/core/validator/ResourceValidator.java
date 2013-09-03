@@ -1,3 +1,10 @@
+/* Copyright (C) 2013 BMW Group
+ * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package org.genivi.commonapi.core.validator;
 
 import java.io.IOException;
@@ -44,6 +51,8 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import com.google.inject.Guice;
 
 public class ResourceValidator implements IFrancaExternalValidator {
+
+    private CppKeywords cppKeyWords = new CppKeywords();
     private FTypeCycleDetector cycleDetector;
     private ResourceSet resourceSet;
     private HashMap<String, HashSet<String>> importList = new HashMap<String, HashSet<String>>();
@@ -72,7 +81,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
         if (aimBuilder.buildAllInfos(cutCwd)) {
             fastAllInfo = aimBuilder.fastAllInfo;
         } else {
-            aimBuilder.updateAllInfo((EObject) model, filePath.toString());
+            if (!uri.segment(2).toString().equals("bin"))
+                aimBuilder.updateAllInfo((EObject) model, filePath.toString());
             fastAllInfo = aimBuilder.fastAllInfo;
         }
 
@@ -137,6 +147,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
 
+            validateName(fTypeCollection.getName(), messageAcceptor,
+                    fTypeCollection);
             if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
                     .lastIndexOf(fTypeCollection.getName())) {
                 messageAcceptor.acceptError("Name " + fTypeCollection.getName()
@@ -168,6 +180,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
             }
             for (FType fType : fTypeCollection.getTypes()) {
+                validateName(fType.getName(), messageAcceptor, fType);
                 if (fType instanceof FTypeDef) {
                     validateFType((FTypeDef) fType, messageAcceptor);
                 }
@@ -190,6 +203,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
         }
 
         for (FInterface fInterface : model.getInterfaces()) {
+            validateName(fInterface.getName(), messageAcceptor, fInterface);
             if (interfaceTypecollectionNames.indexOf(fInterface.getName()) != interfaceTypecollectionNames
                     .lastIndexOf(fInterface.getName())) {
                 messageAcceptor.acceptError("Name " + fInterface.getName()
@@ -231,6 +245,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         -1, null);
 
             for (FAttribute att : fInterface.getAttributes()) {
+                validateName(att.getName(), messageAcceptor, att);
                 if (att.getType().getPredefined().toString() == "undefined") {
                     try {
                         if (cycleDetector.hasCycle(att.getType().getDerived())) {
@@ -255,7 +270,9 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
             int count = 0;
             for (FBroadcast fBroadcast : fInterface.getBroadcasts()) {
+                validateName(fBroadcast.getName(), messageAcceptor, fBroadcast);
                 for (FArgument out : fBroadcast.getOutArgs()) {
+                    validateName(out.getName(), messageAcceptor, out);
                     if (out.getType().getPredefined().toString() == "undefined") {
                         try {
                             if (cycleDetector.hasCycle(out.getType()
@@ -284,6 +301,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             count = 0;
             for (FMethod fMethod : fInterface.getMethods()) {
                 for (FArgument out : fMethod.getOutArgs()) {
+                    validateName(out.getName(), messageAcceptor, out);
                     if (out.getType().getPredefined().toString() == "undefined") {
                         try {
                             if (cycleDetector.hasCycle(out.getType()
@@ -307,6 +325,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
                 count = 0;
                 for (FArgument in : fMethod.getInArgs()) {
+                    validateName(in.getName(), messageAcceptor, in);
                     if (in.getType().getPredefined().toString() == "undefined") {
                         try {
                             if (cycleDetector.hasCycle(in.getType()
@@ -355,6 +374,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
         }
         for (FField e : ((FStructType) fType).getElements()) {
+            validateName(e.getName(), messageAcceptor, e);
             try {
                 if (e.getType().getPredefined().toString().equals("undefined"))
                     if (cycleDetector.hasCycle(e.getType().getDerived()))
@@ -441,6 +461,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             ValidationMessageAcceptor messageAcceptor) {
         for (FEnumerator fEnumerator : ((FEnumerationType) fType)
                 .getEnumerators()) {
+            validateName(fEnumerator.getName(), messageAcceptor, fEnumerator);
 
             if (fEnumerator.getValue() != null) {
                 String enumeratorValue = fEnumerator.getValue().toLowerCase();
@@ -665,6 +686,22 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         "Not a valid number! Should be decimal", fEnumerator,
                         FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
                 return;
+            }
+        }
+    }
+
+    private void validateName(String name,
+            ValidationMessageAcceptor messageAcceptor, EObject eObject) {
+        if (cppKeyWords.keyWords.contains(name)) {
+            messageAcceptor.acceptError(
+                    "Name " + name + " is a keyword in c++", eObject, null, -1,
+                    null);
+            return;
+        }
+        if (eObject instanceof FTypeCollection) {
+            if (name.indexOf(".") != -1) {
+                messageAcceptor.acceptError("Name may not contain '.'",
+                        eObject, null, -1, null);
             }
         }
     }
