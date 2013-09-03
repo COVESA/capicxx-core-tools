@@ -22,7 +22,7 @@ import org.franca.core.utils.ImportsProvider;
 import org.franca.core.utils.ModelPersistenceHandler;
 
 public class MyModelPersistenceHandler extends ModelPersistenceHandler {
-
+ 
     private ResourceSet resourceSet;
 
     private static Map<String, ImportsProvider> fileHandlerRegistry = new HashMap<String, ImportsProvider>();

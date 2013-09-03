@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.genivi.commonapi.core.generator.FTypeCycleDetector;
+
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 
@@ -23,21 +24,18 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.xtext.validation.ValidationMessageAcceptor;
 import org.franca.core.dsl.validation.IFrancaExternalValidator;
 import org.franca.core.franca.FArgument;
-import org.franca.core.franca.FArrayType;
+
 import org.franca.core.franca.FAttribute;
 import org.franca.core.franca.FBroadcast;
 import org.franca.core.franca.FEnumerationType;
 import org.franca.core.franca.FEnumerator;
 import org.franca.core.franca.FField;
 import org.franca.core.franca.FInterface;
-import org.franca.core.franca.FMapType;
 import org.franca.core.franca.FMethod;
 import org.franca.core.franca.FModel;
 import org.franca.core.franca.FStructType;
 import org.franca.core.franca.FType;
 import org.franca.core.franca.FTypeCollection;
-import org.franca.core.franca.FTypeDef;
-import org.franca.core.franca.FUnionType;
 import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
 import org.eclipse.core.runtime.IPath;
@@ -52,13 +50,13 @@ import com.google.inject.Guice;
 
 public class ResourceValidator implements IFrancaExternalValidator {
 
-    private CppKeywords cppKeyWords = new CppKeywords();
     private FTypeCycleDetector cycleDetector;
     private ResourceSet resourceSet;
     private HashMap<String, HashSet<String>> importList = new HashMap<String, HashSet<String>>();
     private Boolean hasChanged = false;
     private AllInfoMapsBuilder aimBuilder = new AllInfoMapsBuilder();
     private Map<String, HashMap<String, HashSet<String>>> fastAllInfo = new HashMap<String, HashMap<String, HashSet<String>>>();
+    private CppKeywords cppKeyWords = new CppKeywords();
 
     @Override
     public void validateModel(FModel model,
@@ -146,7 +144,6 @@ public class ResourceValidator implements IFrancaExternalValidator {
         }
 
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
-
             validateName(fTypeCollection.getName(), messageAcceptor,
                     fTypeCollection);
             if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
@@ -181,23 +178,23 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
             for (FType fType : fTypeCollection.getTypes()) {
                 validateName(fType.getName(), messageAcceptor, fType);
-                if (fType instanceof FTypeDef) {
-                    validateFType((FTypeDef) fType, messageAcceptor);
+                if (fType instanceof FStructType) {
+                    for (FField fField : ((FStructType) fType).getElements()) {
+                        validateName(fField.getName(), messageAcceptor, fField);
+                    }
                 }
                 if (fType instanceof FEnumerationType) {
-                    validateFType((FEnumerationType) fType, messageAcceptor);
-                }
-                if (fType instanceof FArrayType) {
-                    validateFType((FArrayType) fType, messageAcceptor);
-                }
-                if (fType instanceof FMapType) {
-                    validateFType((FMapType) fType, messageAcceptor);
-                }
-                if (fType instanceof FStructType) {
-                    validateFType((FStructType) fType, messageAcceptor);
-                }
-                if (fType instanceof FUnionType) {
-                    validateFType((FUnionType) fType, messageAcceptor);
+                    for (FEnumerator fEnumerator : ((FEnumerationType) fType)
+                            .getEnumerators()) {
+                        validateName(fEnumerator.getName(), messageAcceptor,
+                                fEnumerator);
+                        if (fEnumerator.getValue() != null) {
+                            String enumeratorValue = fEnumerator.getValue()
+                                    .toLowerCase();
+                            validateEnumerationValue(enumeratorValue,
+                                    messageAcceptor, fEnumerator);
+                        }
+                    }
                 }
             }
         }
@@ -300,6 +297,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
             count = 0;
             for (FMethod fMethod : fInterface.getMethods()) {
+                validateName(fMethod.getName(), messageAcceptor, fMethod);
                 for (FArgument out : fMethod.getOutArgs()) {
                     validateName(out.getName(), messageAcceptor, out);
                     if (out.getType().getPredefined().toString() == "undefined") {
@@ -354,149 +352,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
         interfaceTypecollectionNames.clear();
         importList.clear();
-    }
 
-    private void validateFType(FStructType fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        if (((FStructType) fType).getBase() != null) {
-            try {
-                if (cycleDetector.hasCycle(((FStructType) fType).getBase())) {
-                    messageAcceptor
-                            .acceptError("Cyclic dependencie: "
-                                    + cycleDetector.outErrorString, fType,
-                                    FrancaPackage.Literals.FSTRUCT_TYPE__BASE,
-                                    -1, null);
-                }
-            } catch (NullPointerException npe) {
-                messageAcceptor.acceptError("Derives from an undefined type!",
-                        fType, FrancaPackage.Literals.FSTRUCT_TYPE__BASE, -1,
-                        null);
-            }
-        }
-        for (FField e : ((FStructType) fType).getElements()) {
-            validateName(e.getName(), messageAcceptor, e);
-            try {
-                if (e.getType().getPredefined().toString().equals("undefined"))
-                    if (cycleDetector.hasCycle(e.getType().getDerived()))
-                        messageAcceptor.acceptError("Cyclic dependencie: "
-                                + cycleDetector.outErrorString, e, null, -1,
-                                null);
-            } catch (NullPointerException npe) {
-                messageAcceptor.acceptError("Derives from an undefined type!",
-                        e, null, -1, null);
-            }
-        }
-    }
-
-    private void validateFType(FUnionType fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        try {
-            if (cycleDetector.hasCycle(fType)) {
-                messageAcceptor.acceptError("Cyclic dependencie: "
-                        + cycleDetector.outErrorString, fType,
-                        FrancaPackage.Literals.FUNION_TYPE__BASE, -1, null);
-            }
-        } catch (NullPointerException npe) {
-            messageAcceptor.acceptError("Derives from an undefined type!",
-                    fType, FrancaPackage.Literals.FUNION_TYPE__BASE, -1, null);
-
-        }
-    }
-
-    private void validateFType(FArrayType fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        try {
-            if (cycleDetector.hasCycle(fType))
-                messageAcceptor.acceptError(
-
-                "Cyclic dependencie: " + cycleDetector.outErrorString, fType,
-                        FrancaPackage.Literals.FARRAY_TYPE__ELEMENT_TYPE, -1,
-                        null);
-        } catch (NullPointerException npe) {
-            messageAcceptor.acceptError("Derives from an undefined type!",
-                    fType, FrancaPackage.Literals.FARRAY_TYPE__ELEMENT_TYPE,
-                    -1, null);
-        }
-    }
-
-    private void validateFType(FMapType fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        try {
-            if (((FMapType) fType).getKeyType().getPredefined().toString()
-                    .equals("undefined"))
-                if (cycleDetector.hasCycle(((FMapType) fType).getKeyType()
-                        .getDerived())) {
-                    messageAcceptor.acceptError("Cyclic dependencie: "
-                            + cycleDetector.outErrorString, fType,
-                            FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1,
-                            null);
-                }
-        } catch (IllegalArgumentException iae) {
-        } catch (NullPointerException npe) {
-            messageAcceptor
-                    .acceptError("Derives from an undefined type!", fType,
-                            FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1,
-                            null);
-        }
-        try {
-            if (((FMapType) fType).getValueType().getPredefined().toString()
-                    .equals("undefined"))
-                if (cycleDetector.hasCycle(((FMapType) fType).getValueType()
-                        .getDerived())) {
-                    messageAcceptor.acceptError("Cyclic dependencie: "
-                            + cycleDetector.outErrorString, fType,
-                            FrancaPackage.Literals.FMAP_TYPE__VALUE_TYPE, -1,
-                            null);
-                }
-        } catch (IllegalArgumentException iae) {
-        } catch (NullPointerException npe) {
-            messageAcceptor.acceptError("Derives from an undefined type!",
-                    fType, FrancaPackage.Literals.FMAP_TYPE__VALUE_TYPE, -1,
-                    null);
-        }
-
-    }
-
-    private void validateFType(FEnumerationType fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        for (FEnumerator fEnumerator : ((FEnumerationType) fType)
-                .getEnumerators()) {
-            validateName(fEnumerator.getName(), messageAcceptor, fEnumerator);
-
-            if (fEnumerator.getValue() != null) {
-                String enumeratorValue = fEnumerator.getValue().toLowerCase();
-                validateEnumerationValue(enumeratorValue, messageAcceptor,
-                        fEnumerator);
-            }
-        }
-        try {
-            if (cycleDetector.hasCycle(fType))
-                messageAcceptor.acceptError("Cyclic dependencie: "
-                        + cycleDetector.outErrorString, fType,
-                        FrancaPackage.Literals.FENUMERATION_TYPE__BASE, -1,
-                        null);
-        } catch (NullPointerException npe) {
-            if (((FEnumerationType) fType).getBase() != null)
-                messageAcceptor.acceptError("Derives from an undefined type!",
-                        fType, FrancaPackage.Literals.FENUMERATION_TYPE__BASE,
-                        -1, null);
-        }
-    }
-
-    private void validateFType(FTypeDef fType,
-            ValidationMessageAcceptor messageAcceptor) {
-        try {
-            if (cycleDetector.hasCycle(fType))
-                messageAcceptor
-                        .acceptError("Cyclic dependencie: "
-                                + cycleDetector.outErrorString, fType,
-                                FrancaPackage.Literals.FTYPE_DEF__ACTUAL_TYPE,
-                                -1, null);
-        } catch (NullPointerException npe) {
-            messageAcceptor.acceptError("Derives from an undefined type!",
-                    fType, FrancaPackage.Literals.FTYPE_DEF__ACTUAL_TYPE, -1,
-                    null);
-        }
     }
 
     private HashMap<String, HashSet<String>> buildImportList(

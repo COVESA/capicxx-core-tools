@@ -19,7 +19,7 @@
       <import plugin="org.eclipse.xtend2.lib" version="2.4.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.xtext.generator" version="2.4.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.xtext.util" version="2.4.0" match="greaterOrEqual"/>
-      <import plugin="org.franca.core.dsl" version="0.8.8" match="greaterOrEqual"/>
+      <import plugin="org.franca.core.dsl" version="0.8.9" match="equivalent"/>
       <import plugin="javax.inject"/>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.eclipse.core.expressions" version="3.4.400" match="greaterOrEqual"/>

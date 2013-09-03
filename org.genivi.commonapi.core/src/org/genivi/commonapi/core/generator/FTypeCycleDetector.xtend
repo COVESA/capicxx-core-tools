@@ -51,7 +51,6 @@ class FTypeCycleDetector {
      * @param type
      *            start searching from type.
      * @return <code>true</code> if a dependency cycle was detected.
-
      */
     def private boolean tarjan(FType type) {
         indices.put(type, index)
