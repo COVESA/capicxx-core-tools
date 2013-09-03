@@ -583,7 +583,7 @@ class FrancaGeneratorExtensions {
     def getStubAdapterClassFireSelectiveMethodName(FBroadcast fBroadcast) {
         'fire' + fBroadcast.name.toFirstUpper + 'Selective';
     }
-
+    
     def getStubAdapterClassSendSelectiveMethodName(FBroadcast fBroadcast) {
         'send' + fBroadcast.name.toFirstUpper + 'Selective';
     }
@@ -600,6 +600,9 @@ class FrancaGeneratorExtensions {
         'on' + fBroadcast.name.toFirstUpper + 'SelectiveSubscriptionChanged';
     }
 
+    def getSubscriptionRequestedMethodName(FBroadcast fBroadcast) {
+        'on' + fBroadcast.name.toFirstUpper + 'SelectiveSubscriptionRequested';
+    }
 
     def getStubAdapterClassSubscribersMethodName(FBroadcast fBroadcast) {
         'getSubscribersFor' + fBroadcast.name.toFirstUpper + 'Selective';

@@ -277,17 +277,6 @@ class FInterfaceProxyGenerator {
             return delegate_->getInterfaceVersionAttribute();
         }
 
-        «FOR broadcast : fInterface.broadcasts.filter[!selective.nullOrEmpty]»
-            template <typename ... _AttributeExtensions>
-            CommonAPI::SelectiveBroadcastSubscriptionResult<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»>::SubscriptionResult «fInterface.proxyClassName»<_AttributeExtensions...>::«broadcast.getSubscribeSelectiveMethodName»(CommonAPI::SelectiveBroadcastFunctorHelper<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(", ")»>::SelectiveBroadcastFunctor callback) {
-                return delegate_->«broadcast.getSubscribeSelectiveMethodName»(callback);
-            }
-            template <typename ... _AttributeExtensions>
-            void «fInterface.proxyClassName»<_AttributeExtensions...>::«broadcast.getUnsubscribeSelectiveMethodName»(«broadcast.className»::Subscription subscription) {
-                return delegate_->«broadcast.getUnsubscribeSelectiveMethodName»(subscription);
-            }
-        «ENDFOR»
-
         «fInterface.model.generateNamespaceEndDeclaration»
 
         «IF fInterface.hasAttributes»
