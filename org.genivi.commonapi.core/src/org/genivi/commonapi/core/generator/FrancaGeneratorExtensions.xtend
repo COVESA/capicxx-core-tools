@@ -42,6 +42,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 import static com.google.common.base.Preconditions.*
 import org.franca.core.franca.FTypedElement
 import java.util.Collection
+import org.genivi.commonapi.core.preferences.FPreferences
 
 class FrancaGeneratorExtensions {
     def String getFullyQualifiedName(FModelElement fModelElement) {
@@ -119,7 +120,8 @@ class FrancaGeneratorExtensions {
         val maxCount = Ints::min(sourceNamespaceList.size, destinationNamespaceList.size)
         var dropCount = 0
 
-        while (dropCount < maxCount && sourceNamespaceList.get(dropCount).equals(destinationNamespaceList.get(dropCount)))
+        while (dropCount < maxCount &&
+            sourceNamespaceList.get(dropCount).equals(destinationNamespaceList.get(dropCount)))
             dropCount = dropCount + 1
 
         return destinationNamespaceList.drop(dropCount)
@@ -502,7 +504,8 @@ class FrancaGeneratorExtensions {
         }
 
         var errorNameReference = fMethod.errors.errorName
-        errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' + errorNameReference
+        errorNameReference = (fMethod.eContainer as FInterface).getRelativeNameReference(source) + '::' +
+            errorNameReference
         return errorNameReference
     }
 
@@ -730,22 +733,26 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return fTypeDef.actualType.typeStreamSignature(deploymentAccessor)
     }
 
-    def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteVectorType();\n' +
             fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' +
             'typeOutputStream.endWriteVectorType();'
     }
 
-    def private dispatch String typeStreamFTypeSignature(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FMapType fMap,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteMapType();\n' + fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' +
             fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' + 'typeOutputStream.endWriteMapType();'
     }
 
-    def private dispatch String typeStreamFTypeSignature(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FStructType fStructType,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteStructType();\n' +
             fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
             'typeOutputStream.endWriteStructType();'
@@ -756,7 +763,8 @@ class FrancaGeneratorExtensions {
         return fEnumerationType.getBackingType(deploymentAccessor).basicTypeStreamSignature
     }
 
-    def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType,
+        DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.writeVariantType();'
     }
 
@@ -833,7 +841,7 @@ class FrancaGeneratorExtensions {
             hasher.putFTypeObject(fStructType.base)
 
         hasher.putString('FStructType', Charsets::UTF_8)
-        fStructType.elements.forEach[
+        fStructType.elements.forEach [
             hasher.putFTypeRef(type)
             // avoid cases where the positions of 2 consecutive elements of the same type are switched
             hasher.putString(name, Charsets::UTF_8)
@@ -918,16 +926,27 @@ class FrancaGeneratorExtensions {
         return file.location.toString
     }
 
-    def getHeader() {
+    def getHeader(FModel model) {
         val deflt = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "");
-        return InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, deflt);
+        return FPreferences.instance.getPreference(PreferenceConstants.P_LICENSE,
+            InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, deflt), model);
     }
 
-    def generateCommonApiLicenseHeader() '''
+    def generateCommonApiLicenseHeader(FModelElement model) '''
         /*
-        * This file was generated by the CommonAPI Generators.
-        *
-        «getHeader()»
-        */
+         * This file was generated by the CommonAPI Generators.
+         *
+        «getCommentedString(getHeader(model.model))»
+         */
     '''
+
+    def getCommentedString(String string) {
+        val lines = string.split("\n");
+        var builder = new StringBuilder();
+        for (String line : lines) {
+            builder.append(" * " + line + "\n");
+        }
+        return builder.toString()
+    }
+
 }

@@ -26,7 +26,7 @@ class FInterfaceGenerator {
     }
 
     def private generateHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #ifndef «fInterface.defineName»_H_
         #define «fInterface.defineName»_H_
 
@@ -100,7 +100,7 @@ class FInterfaceGenerator {
 
 
     def private generateSource(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #include "«fInterface.headerFile»"
 
         «fInterface.model.generateNamespaceBeginDeclaration»

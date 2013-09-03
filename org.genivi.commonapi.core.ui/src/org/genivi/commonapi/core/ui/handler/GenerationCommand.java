@@ -1,9 +1,11 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/*
+ * Copyright (C) 2013 BMW Group Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de) This Source Code Form is
+ * subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the
+ * MPL was not distributed with this file, You can obtain one at
+ * http://mozilla.org/MPL/2.0/.
+ */
+
 package org.genivi.commonapi.core.ui.handler;
 
 import java.util.Iterator;
@@ -15,6 +17,7 @@ import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -37,8 +40,11 @@ import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.XtextEditor;
 import org.eclipse.xtext.ui.resource.IResourceSetProvider;
 import org.eclipse.xtext.util.concurrent.IUnitOfWork;
+import org.genivi.commonapi.core.preferences.FPreferences;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
+import org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage;
+import org.genivi.commonapi.core.ui.preferences.FieldEditorOverlayPage;
 
 import com.google.inject.Provider;
 
@@ -64,35 +70,35 @@ public class GenerationCommand extends AbstractHandler {
             if (activeEditor instanceof XtextEditor)
                 executeGeneratorForXtextEditor((XtextEditor) activeEditor);
             else
-                throw new ExecutionException("Cannot handle ExecutionEvent: "
-                        + event);
+                throw new ExecutionException("Cannot handle ExecutionEvent: " + event);
         }
 
         return null;
     }
 
-    private void executeGeneratorForSelection(
-            final IStructuredSelection structuredSelection) {
-        final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
-
-        for (Iterator<?> iterator = structuredSelection.iterator(); iterator
-                .hasNext();) {
+    private void executeGeneratorForSelection(final IStructuredSelection structuredSelection) {
+        IProject project = null;
+        for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext();) {
             final Object selectiobObject = iterator.next();
             if (selectiobObject instanceof IFile) {
                 final IFile file = (IFile) selectiobObject;
-                final URI uri = URI.createPlatformResourceURI(file
-                        .getFullPath().toString(), true);
-                final ResourceSet rs = resourceSetProvider.get(file
-                        .getProject());
+                final URI uri = URI.createPlatformResourceURI(file.getFullPath().toString(), true);
+                final ResourceSet rs = resourceSetProvider.get(file.getProject());
                 final Resource r = rs.getResource(uri, true);
 
-                fileSystemAccess.setProject(file.getProject());
+                project = file.getProject();
+                FieldEditorOverlayPage page = new CommonAPIPreferencePage();
+                page.setElement(project);
+                page.createControl(null);
+                FPreferences.init(page.getPreferenceStore(), CommonApiUiPlugin.getDefault().getPreferenceStore(),
+                        project);
+                final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess(project);
+                fileSystemAccess.setProject(project);
                 Job job = new Job("validation and generation") {
 
                     @Override
                     protected IStatus run(IProgressMonitor monitor) {
-                        monitor.beginTask("handle " + file.getName(),
-                                IProgressMonitor.UNKNOWN);
+                        monitor.beginTask("handle " + file.getName(), IProgressMonitor.UNKNOWN);
                         monitor.subTask("validation");
                         if (r.getErrors().size() == 0) {
                             monitor.subTask("Generate");
@@ -106,70 +112,62 @@ public class GenerationCommand extends AbstractHandler {
 
                 };
                 job.schedule();
-
             }
         }
     }
 
     private void executeGeneratorForXtextEditor(final XtextEditor xtextEditor) {
-        final Object fileObject = xtextEditor.getEditorInput().getAdapter(
-                IFile.class);
-
+        final Object fileObject = xtextEditor.getEditorInput().getAdapter(IFile.class);
         if (fileObject instanceof IFile) {
-            final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
-            fileSystemAccess.setProject(((IResource) fileObject).getProject());
+            IProject project = ((IResource) fileObject).getProject();
+            final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess(project);
+            fileSystemAccess.setProject(project);
 
-            xtextEditor.getDocument().readOnly(
-                    new IUnitOfWork<Boolean, XtextResource>() {
+            xtextEditor.getDocument().readOnly(new IUnitOfWork<Boolean, XtextResource>() {
+                @Override
+                public Boolean exec(XtextResource xtextResource) throws Exception {
+                    final XtextResource xtextRes = xtextResource;
+                    Job job = new Job("validation and generation") {
+
                         @Override
-                        public Boolean exec(XtextResource xtextResource)
-                                throws Exception {
-                            final XtextResource xtextRes = xtextResource;
-                            Job job = new Job("validation and generation") {
+                        protected IStatus run(IProgressMonitor monitor) {
+                            try {
 
-                                @Override
-                                protected IStatus run(IProgressMonitor monitor) {
-                                    try {
-
-                                        monitor.beginTask(
-                                                "handle "
-                                                        + ((IResource) fileObject)
-                                                                .getName(),
-                                                IProgressMonitor.UNKNOWN);
-                                        TimeUnit.SECONDS.sleep(1);
-                                        monitor.subTask("validation");
-                                        if (xtextRes.getErrors().size() == 0) {
-                                            monitor.subTask("Generate");
-                                            francaGenerator.doGenerate(
-                                                    xtextRes, fileSystemAccess);
-                                            return Status.OK_STATUS;
-                                        } else {
-                                            return Status.CANCEL_STATUS;
-                                        }
-                                    } catch (InterruptedException ie) {
-                                        return Status.CANCEL_STATUS;
-                                    }
+                                monitor.beginTask("handle " + ((IResource) fileObject).getName(),
+                                        IProgressMonitor.UNKNOWN);
+                                TimeUnit.SECONDS.sleep(1);
+                                monitor.subTask("validation");
+                                if (xtextRes.getErrors().size() == 0) {
+                                    monitor.subTask("Generate");
+                                    francaGenerator.doGenerate(xtextRes, fileSystemAccess);
+                                    return Status.OK_STATUS;
+                                } else {
+                                    return Status.CANCEL_STATUS;
                                 }
-
-                            };
-                            job.schedule();
-                            return Boolean.TRUE;
+                            } catch (InterruptedException ie) {
+                                return Status.CANCEL_STATUS;
+                            }
                         }
-                    });
+
+                    };
+                    job.schedule();
+                    return Boolean.TRUE;
+                }
+            });
         }
     }
 
-    private EclipseResourceFileSystemAccess2 createFileSystemAccess() {
-
-        IPreferenceStore store = CommonApiUiPlugin.getDefault()
-                .getPreferenceStore();
+    private EclipseResourceFileSystemAccess2 createFileSystemAccess(IProject project) {
+        IPreferenceStore store = CommonApiUiPlugin.getDefault().getPreferenceStore();
         String outputDir = store.getString(PreferenceConstants.P_OUTPUT);
-
+        if (FPreferences.getInstance().getPreference(PreferenceConstants.P_OUTPUT, null,
+                project.getFullPath().toPortableString()) != null)
+            outputDir = FPreferences.getInstance().getPreference(PreferenceConstants.P_OUTPUT, null,
+                    project.getFullPath().toPortableString());
         final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
 
         fsa.setOutputPath(outputDir);
-        fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT)
-                .setCreateOutputDirectory(true);
+        fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT).setCreateOutputDirectory(true);
         fsa.setMonitor(new NullProgressMonitor());
 
         return fsa;

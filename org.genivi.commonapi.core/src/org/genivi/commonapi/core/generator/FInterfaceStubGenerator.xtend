@@ -23,7 +23,7 @@ class FInterfaceStubGenerator {
     }
 
     def private generateStubHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #ifndef «fInterface.defineName»_STUB_H_
         #define «fInterface.defineName»_STUB_H_
 
@@ -172,7 +172,7 @@ class FInterfaceStubGenerator {
     '''
 
     def private generateStubDefaultHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #ifndef «fInterface.defineName»_STUB_DEFAULT_H_
         #define «fInterface.defineName»_STUB_DEFAULT_H_
 
@@ -257,7 +257,7 @@ class FInterfaceStubGenerator {
     '''
 
     def private generateStubDefaultSource(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #include <«fInterface.stubDefaultHeaderPath»>
 
         «fInterface.model.generateNamespaceBeginDeclaration»

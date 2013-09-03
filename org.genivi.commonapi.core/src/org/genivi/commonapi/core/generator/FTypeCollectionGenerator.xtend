@@ -27,7 +27,7 @@ class FTypeCollectionGenerator {
     }
 
     def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fTypeCollection)»
         #ifndef «fTypeCollection.defineName»_H_
         #define «fTypeCollection.defineName»_H_
 
@@ -91,7 +91,7 @@ class FTypeCollectionGenerator {
 
 
     def private generateSource(FTypeCollection fTypeCollection) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fTypeCollection)»
         #include "«fTypeCollection.headerFile»"
 
         «FOR fStructTypeHeaderPath : fTypeCollection.allDerivedFStructTypeHeaderPaths»

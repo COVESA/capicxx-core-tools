@@ -27,7 +27,7 @@ class FInterfaceProxyGenerator {
     }
 
     def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #ifndef «fInterface.defineName»_PROXY_BASE_H_
         #define «fInterface.defineName»_PROXY_BASE_H_
 
@@ -110,7 +110,7 @@ class FInterfaceProxyGenerator {
     '''
 
     def private generateProxyHeader(FInterface fInterface) '''
-        «generateCommonApiLicenseHeader»
+        «generateCommonApiLicenseHeader(fInterface)»
         #ifndef «fInterface.defineName»_PROXY_H_
         #define «fInterface.defineName»_PROXY_H_
 
