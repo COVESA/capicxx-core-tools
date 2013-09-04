@@ -104,15 +104,17 @@ public class FPreferences {
     }
 
     public String getPreference(String name, String defaultret, FModel model) {
-        if (getPreferencesForPathString(getModelPath(model), true).get(PreferenceConstants.USEPROJECTSETTINGS).equals(
-                Boolean.toString(true)))
-            return getPreferencesForPathString(getModelPath(model), true).get(name);
+        if (getPreferencesForPathString(getModelPath(model), false) != null
+                && getPreferencesForPathString(getModelPath(model), false).get(PreferenceConstants.USEPROJECTSETTINGS)
+                        .equals(Boolean.toString(true)))
+            return getPreferencesForPathString(getModelPath(model), false).get(name);
         return defaultret;
     }
 
     public String getPreference(String name, String defaultret, String path) {
-        if (getPreferencesForPathString(path, false).get(PreferenceConstants.USEPROJECTSETTINGS).equals(
-                Boolean.toString(true)))
+        if (getPreferencesForPathString(path, false) != null
+                && getPreferencesForPathString(path, false).get(PreferenceConstants.USEPROJECTSETTINGS).equals(
+                        Boolean.toString(true)))
             return getPreferencesForPathString(path, false).get(name);
         return defaultret;
     }
