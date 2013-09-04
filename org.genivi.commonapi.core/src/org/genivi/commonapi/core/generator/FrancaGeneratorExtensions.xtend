@@ -929,7 +929,7 @@ class FrancaGeneratorExtensions {
 
     def getHeader(FModel model) {
         val deflt = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "");
-        return FPreferences.instance.getPreference(PreferenceConstants.P_LICENSE,
+        return FPreferences::instance.getPreference(PreferenceConstants::P_LICENSE, 
             InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, deflt), model);
     }
 
