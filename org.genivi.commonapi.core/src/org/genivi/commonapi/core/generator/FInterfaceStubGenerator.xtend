@@ -211,6 +211,7 @@ class FInterfaceStubGenerator {
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
                 virtual void «method.name»(«method.generateStubSignature»);
+                virtual void «method.name»(«method.generateStubSignatureOldStyle»);
 
             «ENDFOR»
 
@@ -336,6 +337,10 @@ class FInterfaceStubGenerator {
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
             void «fInterface.stubDefaultClassName»::«method.name»(«method.generateStubSignature») {
+                // Call old style methods in default 
+                «method.name»(«method.generateArgumentsToStubCompatibility»);
+            }
+            void «fInterface.stubDefaultClassName»::«method.name»(«method.generateStubSignatureOldStyle») {
                 // No operation in default
             }
 

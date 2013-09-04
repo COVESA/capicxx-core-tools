@@ -300,7 +300,20 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
+    
+    def generateStubSignatureOldStyle(FMethod fMethod) {
+        var signature = ''
+        
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
 
+        if (fMethod.hasError || !fMethod.outArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+
+        return signature
+    }
+    
     def generateFireSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface) {
         var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
 
