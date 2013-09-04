@@ -42,7 +42,7 @@ class FTypeGenerator {
         if(annotations == null)
             return false
         for(annotation : annotations.elements) {
-            if(annotation.type.value.equals(FAnnotationType.DEPRECATED_VALUE))
+            if(annotation.type.value.equals(FAnnotationType::DEPRECATED_VALUE))
                 return true;
         }
         return false
@@ -57,13 +57,13 @@ class FTypeGenerator {
         for(anno : annots.elements) {
             if(anno == null){
             }else {
-                if(anno.type.value.equals(FAnnotationType.DESCRIPTION_VALUE))
+                if(anno.type.value.equals(FAnnotationType::DESCRIPTION_VALUE))
                     ret.get(0).add(anno)
-                if(anno.type.value.equals(FAnnotationType.PARAM_VALUE))
+                if(anno.type.value.equals(FAnnotationType::PARAM_VALUE))
                     ret.get(1).add(anno)
-                if(anno.type.value.equals(FAnnotationType.DEPRECATED_VALUE))
+                if(anno.type.value.equals(FAnnotationType::DEPRECATED_VALUE))
                     ret.get(2).add(anno)
-                if(anno.type.value.equals(FAnnotationType.AUTHOR_VALUE))
+                if(anno.type.value.equals(FAnnotationType::AUTHOR_VALUE))
                     ret.get(3).add(anno)
             }
         }
@@ -75,18 +75,18 @@ class FTypeGenerator {
         var temptext = ""
         var i = 0
         var j = 3
-        if(annotation == FAnnotationType.DESCRIPTION_VALUE && text.length > begrenzung) {
+        if(annotation == FAnnotationType::DESCRIPTION_VALUE && text.length > begrenzung) {
             ret = " * " + text.substring(0,text.substring(0, begrenzung).lastIndexOf(" ")) + "\n";
             temptext = text.substring(ret.length-j);
             i = ret.length
-        }else if(annotation != FAnnotationType.DESCRIPTION_VALUE && text.length > begrenzung - 20) {
-            if(annotation == FAnnotationType.AUTHOR_VALUE) {
+        }else if(annotation != FAnnotationType::DESCRIPTION_VALUE && text.length > begrenzung - 20) {
+            if(annotation == FAnnotationType::AUTHOR_VALUE) {
                 ret = " * @author "
                 j = j + 8
-            }if(annotation == FAnnotationType.DEPRECATED_VALUE){
+            }if(annotation == FAnnotationType::DEPRECATED_VALUE){
                 ret = " * @deprecated "
                 j = j + 12
-            }if(annotation == FAnnotationType.PARAM_VALUE){
+            }if(annotation == FAnnotationType::PARAM_VALUE){
                 ret = " * @param "
                 j = j + 7
             }
@@ -94,13 +94,13 @@ class FTypeGenerator {
             temptext = text.substring(ret.length - j);
             i = ret.length
         }else {
-            if(annotation == FAnnotationType.AUTHOR_VALUE)
+            if(annotation == FAnnotationType::AUTHOR_VALUE)
                 ret = " * @author "
-            if(annotation == FAnnotationType.DEPRECATED_VALUE)
+            if(annotation == FAnnotationType::DEPRECATED_VALUE)
                 ret = " * @deprecated "
-            if(annotation == FAnnotationType.PARAM_VALUE)
+            if(annotation == FAnnotationType::PARAM_VALUE)
                 ret = " * @param "
-            if(annotation == FAnnotationType.DESCRIPTION_VALUE)
+            if(annotation == FAnnotationType::DESCRIPTION_VALUE)
                 ret = " * "
             ret = ret + text + "\n";
         }
@@ -122,10 +122,10 @@ class FTypeGenerator {
         if( model != null && model.comment != null){
             for (list : sortAnnotations(model.comment)){
                 for (comment : list){
-                    if(comment.type.value.equals(FAnnotationType.DESCRIPTION_VALUE) || 
-                        (comment.type.value.equals(FAnnotationType.AUTHOR_VALUE) && typ == ModelTyp.INTERFACE) || 
-                        (comment.type.value.equals(FAnnotationType.DEPRECATED_VALUE) && (typ == ModelTyp.METHOD || typ==ModelTyp.ENUM)) || 
-                        (comment.type.value.equals(FAnnotationType.PARAM_VALUE) && typ == ModelTyp.METHOD)){
+                    if(comment.type.value.equals(FAnnotationType::DESCRIPTION_VALUE) || 
+                        (comment.type.value.equals(FAnnotationType::AUTHOR_VALUE) && typ == ModelTyp::INTERFACE) || 
+                        (comment.type.value.equals(FAnnotationType::DEPRECATED_VALUE) && (typ == ModelTyp::METHOD || typ==ModelTyp::ENUM)) || 
+                        (comment.type.value.equals(FAnnotationType::PARAM_VALUE) && typ == ModelTyp::METHOD)){
                         if(!inline && !commexists)
                             ret = "/**\n"
                         commexists = true
@@ -143,12 +143,12 @@ class FTypeGenerator {
     
     def static getTyp(FModelElement element) {
         if(element instanceof FInterface || element instanceof FTypeCollection)
-            return ModelTyp.INTERFACE
+            return ModelTyp::INTERFACE
         if(element instanceof FMethod)
-            return ModelTyp.METHOD
+            return ModelTyp::METHOD
         if(element instanceof FEnumerationType)
-            return ModelTyp.ENUM
-        return ModelTyp.UNKNOWN
+            return ModelTyp::ENUM
+        return ModelTyp::UNKNOWN
     }
 
     def generateFTypeDeclarations(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
