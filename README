@@ -68,13 +68,34 @@ These are Eclipse Plug-In projects which require Xtext2 and Franca as dependenci
 
 To build first import the three projects
 ----
-org.genivi.commonapi.core.
+org.genivi.commonapi.core
 org.genivi.commonapi.core.ui
 org.genivi.commonapi.core.feature
 ----
 
 in to Eclipse. Then simply build the workspace. Then right-click on the .feature project and select "Run as Eclipse Application" to launch 
 the built projects.
+
+The project 
+----
+org.genivi.commonapi.core.ui.validator
+----
+which can be built in the same way provides a validator which automatically checks franca files for issues which would cause problems in 
+C++ generation or compilation.
+
+The project 
+----
+org.genivi.commonapi.core.cli
+----
+which should be exported as a runnable JAR provides a command line version of the generators. This should be called as:
+----
+java -jar generator.jar [options] file [file...]
+                            Valid Options are:
+                            -dbus -> to generate files with the FrancaDBUSGenerator
+                            -dest path/to/output/folder -> the generated files will be saved at this Location
+                            -pref path/to/header/file -> here you can set the text which will be placed as a comment
+                            on each generated file (for example your license)
+----
 
 == Working on the code & contribution
 
