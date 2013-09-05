@@ -623,7 +623,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
         if (value.length() == 1) {
             if (48 > (int) value.charAt(0) || (int) value.charAt(0) > 57) {
-                messageAcceptor.acceptError("Not a valid number!", fEnumerator,
+                messageAcceptor.acceptWarning("Not a valid number!", fEnumerator,
                         FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
                 return;
             }
@@ -635,7 +635,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 if (value.charAt(1) == 'b') {
                     for (int i = 2; i < value.length(); i++) {
                         if (value.charAt(i) != '0' && value.charAt(i) != '1') {
-                            messageAcceptor.acceptError(
+                            messageAcceptor.acceptWarning(
                                     "Not a valid number! Should be binary",
                                     fEnumerator,
                                     FrancaPackage.Literals.FENUMERATOR__VALUE,
@@ -653,7 +653,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                                 && (97 > (int) value.charAt(i) || (int) value
                                         .charAt(i) > 102)) {
                             messageAcceptor
-                                    .acceptError(
+                                    .acceptWarning(
                                             "Not a valid number! Should be hexadecimal",
                                             fEnumerator,
                                             FrancaPackage.Literals.FENUMERATOR__VALUE,
@@ -670,7 +670,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             for (int i = 1; i < value.length(); i++) {
                 if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 55) {
                     messageAcceptor
-                            .acceptError("Not a valid number! Should be octal",
+                            .acceptWarning("Not a valid number! Should be octal",
                                     fEnumerator,
                                     FrancaPackage.Literals.FENUMERATOR__VALUE,
                                     -1, null);
@@ -682,7 +682,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
         // dec
         for (int i = 0; i < value.length(); i++) {
             if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 57) {
-                messageAcceptor.acceptError(
+                messageAcceptor.acceptWarning(
                         "Not a valid number! Should be decimal", fEnumerator,
                         FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
                 return;
