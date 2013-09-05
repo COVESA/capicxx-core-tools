@@ -27,7 +27,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
     public void initializeDefaultPreferences() {
         IPreferenceStore store = CommonApiUiPlugin.getDefault().getPreferenceStore();
         store.setDefault(PreferenceConstants.USEPROJECTSETTINGS, true);
-        store.setDefault(PreferenceConstants.P_LICENSE, "");
+        store.setDefault(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
         store.setDefault(PreferenceConstants.P_OUTPUT, PreferenceConstants.DEFAULT_OUTPUT);
     }
 
