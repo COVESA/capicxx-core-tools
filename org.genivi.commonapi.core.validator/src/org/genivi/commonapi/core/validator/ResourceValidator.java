@@ -5,6 +5,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+
+
 package org.genivi.commonapi.core.validator;
 
 import java.io.IOException;
@@ -87,6 +89,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
         HashSet<String> importedFiles = new HashSet<String>();
         ArrayList<String> importUriAndNamesspace = new ArrayList<String>();
         for (Import fImport : model.getImports()) {
+
             if (importUriAndNamesspace.contains(fImport.getImportURI() + ","
                     + fImport.getImportedNamespace()))
                 messageAcceptor.acceptWarning("Multiple times imported!",
@@ -111,9 +114,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
             importUriAndNamesspace.add(fImport.getImportURI() + ","
                     + fImport.getImportedNamespace());
-
         }
-        importUriAndNamesspace.clear();
+
         importList.put(filePath.toString(), importedFiles);
         ArrayList<String> start = new ArrayList<String>();
         try {
@@ -137,12 +139,58 @@ public class ResourceValidator implements IFrancaExternalValidator {
         start.clear();
         List<String> interfaceTypecollectionNames = new ArrayList<String>();
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
-            interfaceTypecollectionNames.add(fTypeCollection.getName());
+            for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
+                if(!entry.getKey().equals(cwd+"/"+file.getName())){
+                    if(entry.getValue().packageName.startsWith(model.getName()+"."+fTypeCollection.getName())){
+                        if(importList.get(cwd+"/"+file.getName()).contains(entry.getKey())){
+                            messageAcceptor.acceptError(
+                                    "Imported file's package "
+                                            + entry.getValue().packageName
+                                            + " may not start with package "
+                                            + model.getName() + " + TypeCollectionName "
+                                            + fTypeCollection.getName(), fTypeCollection,
+                                    null, -1, null);
+                        }else{
+                            messageAcceptor.acceptWarning(
+                                    entry.getKey()+". File's package "
+                                            + entry.getValue().packageName
+                                            + " starts with package "
+                                            + model.getName() + " + TypeCollectionName "
+                                            + fTypeCollection.getName(), fTypeCollection,
+                                    null, -1, null);
+                        }
+                    }
+                }
+            }
         }
         for (FInterface fInterface : model.getInterfaces()) {
-            interfaceTypecollectionNames.add(fInterface.getName());
+            
+            for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
+                if(!entry.getKey().equals(cwd+"/"+file.getName())){
+                    if(entry.getValue().packageName.startsWith(model.getName()+"."+fInterface.getName())){
+                        if(importList.get(cwd+"/"+file.getName()).contains(entry.getKey())){
+                            messageAcceptor.acceptError(
+                                    "Imported file's package "
+                                            + entry.getValue().packageName
+                                            + " may not start with package "
+                                            + model.getName() + " + InterfaceName "
+                                            + fInterface.getName(), fInterface,
+                                    null, -1, null);
+                        }else{
+                            messageAcceptor.acceptWarning(
+                                    entry.getKey()+". File's package "
+                                            + entry.getValue().packageName
+                                            + " starts with package "
+                                            + model.getName() + " + InterfaceName "
+                                            + fInterface.getName(), fInterface,
+                                    null, -1, null);
+                        }
+                    }
+                }
+            }
+            
         }
-
+        importUriAndNamesspace.clear();
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
             validateName(fTypeCollection.getName(), messageAcceptor,
                     fTypeCollection);
@@ -230,9 +278,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                             }
                     }
                 }
-
             } catch (Exception e) {
-                e.printStackTrace();
             }
 
             if (fInterface.getVersion() == null)
@@ -479,8 +525,9 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
         if (value.length() == 1) {
             if (48 > (int) value.charAt(0) || (int) value.charAt(0) > 57) {
-                messageAcceptor.acceptWarning("Not a valid number!", fEnumerator,
-                        FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+                messageAcceptor.acceptWarning("Not a valid number!",
+                        fEnumerator, FrancaPackage.Literals.FENUMERATOR__VALUE,
+                        -1, null);
                 return;
             }
         }
@@ -526,7 +573,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
             for (int i = 1; i < value.length(); i++) {
                 if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 55) {
                     messageAcceptor
-                            .acceptWarning("Not a valid number! Should be octal",
+                            .acceptWarning(
+                                    "Not a valid number! Should be octal",
                                     fEnumerator,
                                     FrancaPackage.Literals.FENUMERATOR__VALUE,
                                     -1, null);
