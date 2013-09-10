@@ -166,7 +166,7 @@ class FInterfaceStubGenerator {
                 «ELSE»
                     /// Sends a broadcast event for «broadcast.name».
                     virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
-                «ENDIF».
+                «ENDIF»
             «ENDFOR»
         };
 
