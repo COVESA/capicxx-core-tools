@@ -12,6 +12,7 @@ import org.franca.core.franca.FInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import java.util.Collection
 import java.util.HashSet
+import org.franca.core.franca.FMethod
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
@@ -120,11 +121,15 @@ class FInterfaceGenerator {
     def void getRequiredHeaderFiles(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         libraryHeaders.add('CommonAPI/types.h')
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
-        fInterface.methods.filter[errors != null].forEach[
-            if (errors.base != null) {
-                errors.base.addRequiredHeaders(generatedHeaders, libraryHeaders)
-            }
-        ]
+        var Iterable<FMethod> errorMethods = fInterface.methods.filter[errors!=null]
+        if(errorMethods.size!=0){
+            libraryHeaders.addAll('CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h')
+            errorMethods.forEach[
+                if (errors.base != null) {
+                   errors.base.addRequiredHeaders(generatedHeaders, libraryHeaders)
+                }
+            ]
+        }
 
         generatedHeaders.remove(fInterface.headerPath)
     }
