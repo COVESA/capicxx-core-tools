@@ -118,10 +118,12 @@ class FInterfaceStubGenerator {
             virtual ~«fInterface.stubRemoteEventClassName»() { }
 
             «FOR attribute : fInterface.attributes»
-               /// Verification callback for remote set requests on the attribute «attribute.name»
-                virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» «attribute.name») = 0;
-                /// Action callback for remote set requests on the attribute «attribute.name»
-                virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
+                «IF !attribute.readonly»
+                    /// Verification callback for remote set requests on the attribute «attribute.name»
+                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» «attribute.name») = 0;
+                    /// Action callback for remote set requests on the attribute «attribute.name»
+                    virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
+                «ENDIF»
 
             «ENDFOR»
         };
@@ -205,7 +207,9 @@ class FInterfaceStubGenerator {
                 virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»();
                 virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId);
                 virtual void «attribute.stubDefaultClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value);
-                virtual void «attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value);
+                «IF !attribute.readonly»
+                    virtual void «attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value);
+                «ENDIF»
             «ENDFOR»
 
             «FOR method: fInterface.methods»
@@ -232,9 +236,11 @@ class FInterfaceStubGenerator {
          protected:
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
-                virtual void «attribute.stubRemoteEventClassChangedMethodName»();
                 virtual bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.getTypeName(fInterface.model)» value);
                 virtual bool «attribute.stubDefaultClassValidateMethodName»(const «attribute.getTypeName(fInterface.model)»& value);
+                «IF !attribute.readonly»
+                    virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                «ENDIF»
             «ENDFOR»
             std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter_;
          private:
@@ -244,9 +250,11 @@ class FInterfaceStubGenerator {
 
                 «FOR attribute : fInterface.attributes»
                     «FTypeGenerator::generateComments(attribute, false)»
-                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value);
-                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value);
-                    virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                    «IF !attribute.readonly»
+                        virtual bool «attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value);
+                        virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value);
+                        virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                    «ENDIF»
 
                 «ENDFOR»
 
@@ -294,17 +302,10 @@ class FInterfaceStubGenerator {
             void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
                 «IF attribute.isObservable»
-                    if (valueChanged)
+                    if (valueChanged) {
                         stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                    }
                 «ENDIF»
-            }
-
-            void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value) {
-                   «attribute.stubDefaultClassSetMethodName»(value);
-            }
-
-            void «fInterface.stubDefaultClassName»::«attribute.stubRemoteEventClassChangedMethodName»() {
-                // No operation in default
             }
 
             bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassTrySetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
@@ -320,17 +321,27 @@ class FInterfaceStubGenerator {
                 return true;
             }
 
-            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
-                return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
-            }
+            «IF !attribute.readonly»
+                void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value) {
+                    «attribute.stubDefaultClassSetMethodName»(value);
+                }
 
-            bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value) {
-                return «attribute.stubRemoteEventClassSetMethodName»(value);
-            }
+                void «fInterface.stubDefaultClassName»::«attribute.stubRemoteEventClassChangedMethodName»() {
+                    // No operation in default
+                }
 
-            void «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassChangedMethodName»() {
-                defaultStub_->«attribute.stubRemoteEventClassChangedMethodName»();
-            }
+                void «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassChangedMethodName»() {
+                    defaultStub_->«attribute.stubRemoteEventClassChangedMethodName»();
+                }
+
+                bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
+                    return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
+                }
+
+                bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» value) {
+                    return «attribute.stubRemoteEventClassSetMethodName»(value);
+                }
+            «ENDIF»
 
         «ENDFOR»
 
