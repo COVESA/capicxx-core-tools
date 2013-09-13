@@ -607,11 +607,11 @@ class FrancaGeneratorExtensions {
     }
 
     def getSubscribeSelectiveMethodName(FBroadcast fBroadcast) {
-        'subscribeFor' + fBroadcast.name.toFirstUpper + 'Selective';
+        'subscribeFor' + fBroadcast.name + 'Selective';
     }
 
     def getUnsubscribeSelectiveMethodName(FBroadcast fBroadcast) {
-        'unsubscribeFrom' + fBroadcast.name.toFirstUpper + 'Selective';
+        'unsubscribeFrom' + fBroadcast.name + 'Selective';
     }
 
     def getSubscriptionChangedMethodName(FBroadcast fBroadcast) {
