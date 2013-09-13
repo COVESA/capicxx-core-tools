@@ -17,6 +17,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+
 import org.genivi.commonapi.core.generator.FTypeCycleDetector;
 
 import org.eclipse.core.resources.IFile;
@@ -42,6 +44,7 @@ import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -163,8 +166,9 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
             }
         }
+        HashMap<FInterface,EList<FInterface>> managedInterfaces = new HashMap<FInterface,EList<FInterface>>();
         for (FInterface fInterface : model.getInterfaces()) {
-            
+            managedInterfaces.put(fInterface, fInterface.getManagedInterfaces());
             for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
                 if(!entry.getKey().equals(cwd+"/"+file.getName())){
                     if(entry.getValue().packageName.startsWith(model.getName()+"."+fInterface.getName())){
@@ -246,8 +250,23 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
             }
         }
-
+        
+        
         for (FInterface fInterface : model.getInterfaces()) {
+            //TODO hier die findcyclic improt spacko scheiße einfüttern!;
+            ArrayList<FInterface> startI = new ArrayList<FInterface>();
+            int index = 0 ;
+            startI.add(fInterface);
+            ArrayList<FInterface> managedList = new ArrayList<FInterface>();
+            for(FInterface managedInterface : fInterface.getManagedInterfaces()){
+                findCyclicManagedInterfaces(managedInterface, startI , fInterface, messageAcceptor, index);
+                if(managedList.contains(managedInterface))
+                    messageAcceptor.acceptError("Interface "+ managedInterface.getName() +" is already managed! Delete this equivalent!", fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, null);
+                managedList.add(managedInterface);
+                index++;
+            }
+            
+            
             validateName(fInterface.getName(), messageAcceptor, fInterface);
             if (interfaceTypecollectionNames.indexOf(fInterface.getName()) != interfaceTypecollectionNames
                     .lastIndexOf(fInterface.getName())) {
@@ -478,6 +497,22 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         messageAcceptor);
             }
             cyclicList.remove(cyclicList.size() - 1);
+        }
+    }
+    private void findCyclicManagedInterfaces(FInterface rekInterface, ArrayList<FInterface> interfaceList, FInterface fInterface, ValidationMessageAcceptor messageAcceptor, int index){
+        if(interfaceList.contains(rekInterface)){
+            String errorString="";
+            for(FInterface a : interfaceList ){
+                errorString=errorString + a.getName()+" -> ";
+            }
+            errorString = errorString + rekInterface.getName();
+            messageAcceptor.acceptError("Cycle detected: " +errorString, fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, null);
+        }else{
+            interfaceList.add(rekInterface);
+            for(FInterface nextINterface :rekInterface.getManagedInterfaces()){
+                findCyclicManagedInterfaces(nextINterface, interfaceList, fInterface, messageAcceptor, index);
+            }
+            interfaceList.remove(rekInterface);
         }
     }
 
