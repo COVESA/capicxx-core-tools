@@ -1,0 +1,412 @@
+GENIVI_CommonAPI
+================
+:Author: Juergen Gehring - juergen.gehring@bmw.de, Manfred Bathelt - manfred.bathelt@bmw.de
+:doctitle: GENIVI_CommonAPI_Tutorial
+
+Copyright
+---------
+Copyright (C) 2013, GENIVI Alliance, Inc.
+Copyright (C) 2013, BMW AG
+
+This file is part of GENIVI Project IPC Common API.
+
+Contributions are licensed to the GENIVI Alliance under one or more
+Contribution License Agreements or MPL 2.0 .
+
+(C) Copyright
+This Source Code Form is subject to the terms of the
+Mozilla Public License, v. 2.0. If a  copy of the MPL was not distributed with
+this file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+For further information see https://collab.genivi.org/wiki/display/genivi/SysInfraEGCommonIDLCommon APIGuide
+
+== License
+This project is licensed under MPL 2.0
+
+Contribution is done under GENIVI CLA or MPL2.0.
+
+== Version
+The current version can be taken from the git.
+
+== Common API Overview
+
+Common API and its mechanism specific bindings (e.g. Common API D-Bus) provide a set of libraries and tools to work with
+RMI communication in a way independent of wich mechanism is used. The main intention is to ease porting your project to
+new communication mechanisms and to enable testing of your application way before setting it up on the precise environment
+and the communication mechanism it is meant to use.
+
+Common API consists of two main parts:
+* The Common API runtime, which is the basic library required to enable Common API functionality.
+* The Common API generator Eclipse plugin, which allows the generation of Common API proxy and stub code out of Franca IDL files.
+
+The application will use both the Common API runtime and the generated code to implement client and/or service.
+
+In order to enable communication via a specific communication mechanism, the corresponding Common API middleware library
+and middleware generator plugin is required in addition. However, both the middleware specific library and the middleware
+specific generated code will NEVER be seen or used by the application code. It is solely the responsibility of the basic
+Common API library to enable communication by using this specific middleware library and code.
+
+
+== Getting started with Common API
+
+The following subsections are meant as a step by step tutorial on how to set up Common API on your system. Additionally,
+the Common API middleware library for D-Bus will be installed and an example application will be created that will
+communicate via D-Bus.
+
+Note that you later can switch D-Bus for any other communication layer (provided it has Common API support)
+_without the need to touch your code or your binary at all!_.
+
+Further information on Common API and Common API D-Bus is provided in the individual README files accompanying both packages.
+
+
+=== Setting up the Environment
+
+==== Requirements
+
+First, make sure all requirements to build the CommonAPI runtime are installed and in the correct version.
+CommonAPI was developed using gcc 4.6 and gcc 4.7, but is feature compatible to gcc 4.5 and compiler compatible to gcc 4.4.
+
+
+==== Setting up Common API
+
+Download the Common API runtime via git from the download site of http://projects.genivi.org/commonapi/, then compile and install the library on your computer:
+----
+$ git clone git://git.projects.genivi.org/ipc/common-api-runtime.git
+$ cd common-api-runtime
+$ autoreconf -i
+$ ./configure
+$ make
+$ sudo make install (or alternative install process, eg. checkinstall on debian-based distributions, such as Ubuntu)
+----
+
+With this, the Common API runtime library will be installed in /usr/local/lib. The package is accessible for your application
+e.g. via pkgconfig. The pkgconfig data is located at /usr/local/lib/pkgconfig.
+
+
+==== Setting up Common API D-Bus
+
+To build Common API D-Bus, the Common API runtime and libdbus version 1.4.16 patched with the marshaling patch must be available through PkgConfig.
+The marshalling patch is provided within the Common API D-Bus package.
+
+Download the Common API D-Bus library via git from the download site of http://projects.genivi.org/commonapi/:
+----
+$ git clone git://git.projects.genivi.org/ipc/common-api-dbus-runtime.git
+----
+
+Download, patch and install version 1.4.16 of libdbus (*WARNING*: _Not_ following these instructions may result in corruption of the preinstalled libdbus
+library of your computer, thereby rendering your system unusable):
+----
+$ wget http://dbus.freedesktop.org/releases/dbus/dbus-1.4.16.tar.gz
+$ tar -xzf dbus-1.4.16.tar.gz
+$ cd dbus-1.4.16
+$ patch -p1 < </your/download/path>/common-api-dbus-runtime/dbus-DBusMessage-add-support-for-custom-marshaling.patch
+$ ./configure --prefix=/usr/local
+$ make -C dbus
+$ sudo make -C dbus install
+$ sudo make install-pkgconfigDATA
+----
+
+The path to CommonAPI and patched libdbus pkgconfig files must be added to the PKG_CONFIG_PATH for the rest of the entire build process.
+If you followed the instructions above, both will be located in _/usr/local/lib/pkgconfig_, so you can just type:
+----
+$ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH"
+----
+
+Now, compile and install the Common API D-Bus library on your computer
+----
+$ cd </your/download/path>/common-api-dbus-runtime
+$ autoreconf -i
+$ ./configure
+$ make
+$ sudo make install (or alternative install process, eg. checkinstall on debian-based distributions, such as Ubuntu)
+----
+
+With this, the libraries for Common API and Common API D-Bus are installed and ready for use. The next steps will provide you with the means
+to efficiently design and implement your Common API applications via Eclipse.
+
+
+==== Setting up Eclipse
+
+In order to generate the Common API code that will be used by your client and your service, the Common API generator plugin is
+required. This plugin is an Eclipse plugin, and is provided as an Eclipse update site. For convenience, the generator plugins
+for Common API and Common API D-Bus are packed together.
+
+First, get an appropriate Eclipse up and running. The version of the Common API generator plugin contained in this package was tested
+with the Eclipse Modeling Tools package of Eclipse Juno (4.1) and Eclipse Kepler (4.2). You can get one of them from www.eclipse.org:
+----
+Eclipse Juno: http://www.eclipse.org/downloads/packages/eclipse-modeling-tools/junosr1
+Eclipse Kepler: http://www.eclipse.org/downloads/packages/eclipse-modeling-tools/keplerrc3
+----
+
+Because the generator plugin generates code from Franca IDL files (https://code.google.com/a/eclipselabs.org/p/franca/),
+you will need to have installed the Franca IDL feature in your Eclipse. The plugin was created for Franca IDL version 0.8.9.
+Franca IDL is a language to efficiently design the RMI interface of your applications, independent from specific communication
+mechanisms and also independent from specific programming languages.
+
+Get the appropriate zipped Franca IDL update site (named site_franca_0.8.9.xxx.zip) from
+----
+https://code.google.com/a/eclipselabs.org/p/franca/downloads/list
+----
+Also, download the Common API D-Bus Tooling via git from the download site of http://projects.genivi.org/commonapi/:
+----
+$ git clone git://git.projects.genivi.org/ipc/common-api-dbus-tools.git
+----
+
+Install the Franca IDL plugin and the CommonAPI generator plugins in your Eclipse:
+----
+Help->Install New Software...->Add...->Archive...
+----
+From Franca IDL, you will only need to install the sub-category "Franca Feature" for the Common API and Common API D-Bus generators to work.
+The update site of the Common API generator plugin is located at
+----
+</your/download/path>/common-api-dbus-tools/org.genivi.commonapi.dbus.feature/org.genivi.commonapi.dbus.updatesite.zip
+----
+To develop your application, you will only need the _GENIVI Common API C++ Core Generator_. However, for this tutorial to work and/or if you
+intend to enable your Common API application to communicate via D-Bus, you will also need the _GENIVI Common API C++ D-Bus Generator_.
+
+Restart Eclipse when you are prompted to do so. Now you should be able to use the CommonAPI generators in your Eclipse.
+
+
+=== Creating the Example
+
+The example that will be created in this tutorial from now onwards is provided as ready-to-use source package in
+----
+</your/download/path>/common-api-dbus-tools/CommonAPI-Examples
+----
+The example found here is more verbose than the one we will create, but functionally it will be the same.
+
+It is assumed that you have created a C++ project in your Eclipse in which all further development will happen.
+
+
+==== Creating the RMI interface definition
+
+The first step in developing a Common API application likely will be the definition of the RMI interface the client will use to communicate with
+the server. In the context of CommonAPI, the definition of this interface always happens via the Franca IDL, regardless of which communication
+mechanism you intend to use in the end. For this tutorial, create an arbitrarily namend file ending in _.fidl_ in your Eclipse project. It is
+not relevant where in your project you have placed this file, as the the code generated from this file will always be put in the automatically
+created src-gen folder at the top level of the project hierarchy.
+
+Open your newly created _.fidl_-file, and type the following lines:
+----
+package commonapi.examples
+
+interface HelloWorldInterface {
+    version { major 1 minor 0 }
+
+    method sayHello {
+        in {
+            String name
+        }
+        out {
+            String message
+        }
+    }
+}
+----
+Note that the _version_ parameter in every interface is mandatory! No code will be generated if it is malformed or not present!
+
+Now, save the _.fidl_ file and right click it. As you have installed the Common API and Common API D-Bus generators, you will see
+a menu item saying _"Common API"_, with sub menu items for generating either the Common API level code only ("_Generate C++ Code_")
+or for generating both the Common API level code and the glue code required to run applications with using Common API D-Bus
+("_Generate D-Bus C++ Code_").
+
+
+==== Generating code
+
+We do want to use D-Bus as middleware, so we will need the D-Bus specific glue code as well as the Common API level code which we will
+program agains. Therefore, you might want to chose the latter of the two options provided by the generator plugin ("_Generate D-Bus C++ Code_").
+After having done so, you will see the newly created src-gen folder and it's contents. The files will be created according to their
+fully qualified names relative to src-gen as the top level folder, as defined in the _.fidl_-file:
+----
+HelloWorldInterface.h
+HelloWorldInterfaceProxy.h
+HelloWorldInterfaceProxyBase.h
+HelloWorldInterfaceStub.h
+HelloWorldInterfaceStubDefault.cpp
+HelloWorldInterfaceStubDefault.h
+
+HelloWorldInterfaceDBusProxy.cpp
+HelloWorldInterfaceDBusProxy.h
+HelloWorldInterfaceDBusStubAdapter.cpp
+HelloWorldInterfaceDBusStubAdapter.h
+----
+
+All files that have a "DBus" in their name are glue code required by the D-Bus binding and are not relevant while developing your application,
+they only need to be compiled with your application (there are ways to NOT compile these sources with your applications and include them at
+runtime instead; see the README of Common API D-Bus for details).
+
+All other files that have a _Proxy_ in their name are relevant for you if you develop a client, all other files that have a _Stub_ in their name
+are relevant for you if you develop a service.
+
+A proxy is a class that provides method calls that will result in remote method invocations on the service, plus registration methods for events
+that can be broadcasted by the service.
+
+A stub is the part of the service that will be called when a remote method invocation from a client arrives. It also contains methods to fire
+events (broadcasts) to several or all clients. The Stub comes in two flavors: One default stub that contains empty implementations of all methods,
+thereby allowing you to implement only the ones you are interested in, and a Stub skeleton where you have to implement everything yourself before
+you can use it. A service will have to implement a subclass of either of the two in order to make itself available to the outside world
+(or just use the default stub if your service should not be able to do anything except firing events).
+
+In this tutorial, we will create both a client and a service in order to be able to see some communication going on.
+
+
+==== Implement the Client
+
+Start by creating a new .cpp source file in your project (e.g. helloworld-proxy.cpp). Make sure you have a main method in order to start the client application.
+
+Here, you will need two includes in order to access the Common API client functionality:
+----
+#include <CommonAPI/CommonAPI.h>                           //Defined in the Common API Runtime library
+#include <commonapi/examples/HelloWorldInterfaceProxy.h>   //Part of the code we just generated
+
+#include <iostream>
+#include <future>
+----
+
+The first thing each and every Common API application will do is to load a runtime:
+----
+std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load();
+----
+If you link the Common API DBus library to and compile the generated DBus specific code with your executable, this runtime "magically" will be a
+runtime that provides access to the DBus communication infrastructure via a strictly CommonAPI level interface. If you link the library and add
+the generated code of another Common API middleware binding instead, this runtime will provide access to this other communication infrastructure.
+To not interrupt this tutorial, further explanation on this mechanism is done below in a separate chapter in "Further Reading".
+
+In order to be able to communicate with a specific service, we need a proxy. We can create a proxy by using a factory, which in turn we can get from
+the runtime we just created:
+----
+std::shared_ptr<CommonAPI::Factory> factory = runtime->createFactory();
+const std::string& commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
+std::shared_ptr<commonapi::examples::HelloWorldInterfaceProxy<>> helloWorldProxy = factory->buildProxy<commonapi::examples::HelloWorldInterfaceProxy>(commonApiAddress);
+----
+The parameter _commonApiAddress_ is the address at which the service that shall be accessed will be available. This address will be translated
+internally to an actual DBus-Address - or whatever format fits the communication infrastructure you use. Semantically, this address consists of three parts,
+separated by colons:
+* Domain:     The first part, defines in which domain the service is located. For DBus use cases, only "local" makes any sense, as no services that are more remote than
+              "on the same operating system" are accessible.
+* ServiceID:  The second part. This defines the name or type of the service that shall be accessed.
+* InstanceID: The third part. This defines the specific instance of this service that shall be accessed.
+
+There are ways to influence the translation of the Common API address to the specific address (of course once again without the need to change your code).
+Please have a look at the README of Common API DBus if you want to know more about this possibility in the context of DBus, or the corresponding documentation
+of the other middleware binding you are using.
+
+With this, the client is set up and ready to use. We should wait for the service to be available, then we can start issuing calls:
+----
+while (!helloWorldProxy->isAvailable()) {
+    usleep(10);
+}
+
+const std::string name = "World";
+CommonAPI::CallStatus callStatus;
+std::string helloWorldReturnMessage;
+
+helloWorldProxy->sayHello(name, callStatus, helloWorldReturnMessage);
+if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+    std::cerr << "Remote call failed!\n";
+    return -1;
+}
+
+std::cout << "Got message: '" << helloWorldReturnMessage << "'\n";
+----
+
+
+==== Implement the Service
+
+Works about the same way as implementing the client. The includes that are required are the following:
+----
+#include <commonapi/examples/HelloWorldInterfaceStubDefault.h>
+#include <CommonAPI/CommonAPI.h>
+
+#include <iostream>
+#include <sstream>
+#include <thread>
+----
+
+And we also need a stub that actually does something when the method we call in the client gets called:
+----
+class MyHelloWorldStub: public commonapi::examples::HelloWorldInterfaceStubDefault {
+ public:
+    virtual void sayHello(std::string name, std::string& message) {
+        std::stringstream messageStream;
+
+        messageStream <<  "Hello " << name << "!";
+        message = messageStream.str();
+
+        std::cout << "sayHello('" << name << "'): '" << message << "'\n";
+    }
+};
+----
+
+The rest looks quite similar to the client side, with the difference that we do not issue calls via a proxy, but instead register a service that then
+will be provided to the outside world. The service is registered using the same Common API address, which allows the proxy to actually find the service.
+Afterwards, we just wait for calls:
+----
+std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load();
+std::shared_ptr<CommonAPI::Factory> factory = runtime->createFactory();
+std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher = runtime->getServicePublisher();
+
+const std::string& commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
+std::shared_ptr<MyHelloWorldStub> helloWorldStub = std::make_shared<MyHelloWorldStub>();
+servicePublisher->registerService(helloWorldStub, commonApiAddress, factory);
+
+while(true) {
+    std::cout << "Waiting for calls... (Abort with CTRL+C)\n";
+    std::this_thread::sleep_for(std::chrono::seconds(60));
+}
+----
+
+
+=== Running the Demo
+
+Build the two applications using your favourite build system. If all worked well, you should see communication ongoing via DBus (e.g. via dbus-monitor),
+and you should get output from your client once, saying
+----
+"Got Message: 'Hello World'".
+----
+
+
+== Further reading
+
+Aside from the README files of Common API and the specific bindings.
+
+
+=== The middleware loading mechanism of Common API
+
+
+==== CommonAPI::Runtime::load() returns no runtime object, why?
+
+As it was mentioned before, when you call _CommonAPI::Runtime::load()_.
+you "magically" will have access to a specific middleware library. In a very basic case, the library and thereby communication mechanism you will have access to
+will be the only Common API middleware library you linked to your executable during compilation.
+
+However, this call to _load()_ most likely will *FAIL* if you have no generated middleware specific code that is compiled with your application. Why that?
+The reason is simple, once understood: Most linkers are lazy. They do not link libraries that seem to be unused. Due to the fact that there is no reference
+whatsoever from Common API (and therefore your application) to any of the middleware libraries, the linker considers any and all middleware libraries
+as unused if not referenced by middleware specific generated code, and therefore will not add them to the executable.
+
+You can disable this behavior by passing the linker flag _whole-archive_ during the build process. Note however that this behavior _normally_ is a good optimization
+without repercussions - except probably in the context of CommonAPI.
+
+
+==== Using more than one middleware binding
+
+CommonAPI provides the possibility to use more than one middleware binding at once. In this case, you should no longer use _CommonAPI::Runtime::load()_,
+but instead _CommonAPI::Runtime::load("NameOfSomeMiddleware")_.
+
+The "NameOfSomeMiddleware" is the well known name of the middleware you want to load. It is defined and made public by each of the middlewares that support
+Common API. For DBus, this name is simply "DBus".
+
+
+==== Fully dynamic loading and additional information
+
+This topic is handled in-depth in the README of Common API. Please refer to this file for any further information.
+
+
+=== Online Documentation and Guides
+
+For an in-depth introduction to Franca IDL, please refer to the current user manual found on
+----
+https://code.google.com/a/eclipselabs.org/p/franca/downloads/list
+----
+At the time of writing of this tutorial, _FrancaUserGuide-0.3.0.pdf_ is the most recent version.
