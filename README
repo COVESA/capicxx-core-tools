@@ -76,11 +76,12 @@ org.genivi.commonapi.core.feature
 in to Eclipse. Then simply build the workspace. Then right-click on the .feature project and select "Run as Eclipse Application" to launch 
 the built projects.
 
-The project 
+The projects
 ----
 org.genivi.commonapi.core.ui.validator
+org.genivi.commonapi.core.ui.validator.feature
 ----
-which can be built in the same way provides a validator which automatically checks franca files for issues which would cause problems in 
+which can be built in the same way provide a validator which automatically checks franca files for issues which would cause problems in 
 C++ generation or compilation.
 
 The project 
