@@ -26,7 +26,12 @@ helloworld_proxy_SOURCES = \
 	src-gen/commonapi/examples/HelloWorldInterfaceProxyBase.h \
 	src-gen/commonapi/examples/HelloWorldInterfaceProxy.h \
 	src-gen/commonapi/examples/HelloWorldInterfaceDBusProxy.h \
-	src-gen/commonapi/examples/HelloWorldInterfaceDBusProxy.cpp
+	src-gen/commonapi/examples/HelloWorldInterfaceDBusProxy.cpp \
+	src-gen/commonapi/examples/HelloWorldLeaf.h \
+	src-gen/commonapi/examples/HelloWorldLeafProxyBase.h \
+	src-gen/commonapi/examples/HelloWorldLeafProxy.h \
+	src-gen/commonapi/examples/HelloWorldLeafDBusProxy.h \
+	src-gen/commonapi/examples/HelloWorldLeafDBusProxy.cpp
 
 helloworld_stub_SOURCES = \
 	src/helloworld-stub.cpp \
@@ -35,7 +40,13 @@ helloworld_stub_SOURCES = \
 	src-gen/commonapi/examples/HelloWorldInterfaceStubDefault.h \
 	src-gen/commonapi/examples/HelloWorldInterfaceStubDefault.cpp \
 	src-gen/commonapi/examples/HelloWorldInterfaceDBusStubAdapter.h \
-	src-gen/commonapi/examples/HelloWorldInterfaceDBusStubAdapter.cpp
+	src-gen/commonapi/examples/HelloWorldInterfaceDBusStubAdapter.cpp \
+	src-gen/commonapi/examples/HelloWorldLeaf.h \
+	src-gen/commonapi/examples/HelloWorldLeafStub.h \
+	src-gen/commonapi/examples/HelloWorldLeafStubDefault.h \
+	src-gen/commonapi/examples/HelloWorldLeafStubDefault.cpp \
+	src-gen/commonapi/examples/HelloWorldLeafDBusStubAdapter.h \
+	src-gen/commonapi/examples/HelloWorldLeafDBusStubAdapter.cpp
 
 # ------------------------------------------------------------------------------
 MAINTAINERCLEANFILES = \

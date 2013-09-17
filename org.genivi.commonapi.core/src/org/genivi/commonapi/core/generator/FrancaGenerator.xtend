@@ -190,7 +190,7 @@ class FrancaGenerator implements IGenerator {
                 it.generateStub(fileSystemAccess, res)
             }
         ]
-
+        
         return;
     }
 
@@ -215,6 +215,7 @@ class FrancaGenerator implements IGenerator {
     def private getAllReferencedFInterfaces(FModel fModel) {
         val referencedFInterfaces = fModel.interfaces.toSet
         fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
+        fModel.interfaces.forEach[managedInterfaces.forEach[addFInterfaceTree(referencedFInterfaces)]]
         return referencedFInterfaces
     }
 

@@ -366,7 +366,149 @@ and you should get output from your client once, saying
 "Got Message: 'Hello World'".
 ----
 
+== Advanced Features
+=== Selective
 
+Selective broadcasts, indicated with the selective keword after the name of the broadcast in Franca can be sent to individual clients rather 
+than all participants. This is accomplished with the use of a ClientID parameter which can serve to identify the targets. Note if you wish to 
+identify clients absolutely you must do this on the application level. 
+ 
+We can add a block to our interface for the selective broadcast:
+ 
+----
+broadcast saySomething selective {
+    out {
+        String message
+    }
+}
+----
+
+We can the add some code to our stub implementation to handle this:
+----
+virtual void onSaySomethingSelectiveSubscriptionChanged(const std::shared_ptr<CommonAPI::ClientId> clientId,
+                                                            const CommonAPI::SelectiveBroadcastSubscriptionEvent event) {
+    if (event == CommonAPI::SelectiveBroadcastSubscriptionEvent::SUBSCRIBED) {
+        lastId = clientId;
+    }
+}
+----
+and to the sayHello method:
+----
+std::shared_ptr<CommonAPI::ClientIdList> receivers = std::make_shared<CommonAPI::ClientIdList>();
+if (lastId) {
+    receivers->insert(lastId);
+}
+this->fireSaySomethingSelective("Broadcast to last ID", receivers);
+----
+and finally a member to the stub:
+----
+private:
+  std::shared_ptr<CommonAPI::ClientId> lastId;
+----
+
+The onSaySomethingSelectiveSubscriptionChanged method is called when a subscription for this boroadcast changes. Is added, we set the 
+memeber lastId to this value. Whenever sayHello is called we now also send a broadcast only to the last client which registered.
+The ClientIdList contains all the intended recipients, and the middleware will send the message to all memeber of this list who are
+registered for the broadcast. If NULL is passed instead the broadcast is sent to all clients.
+
+On the client side we can add this before the const std::string name = "World"; line:
+----
+helloWorldProxy->getSaySomethingSelectiveEvent().subscribe([&](const std::string& message) {
+    std::cout << "Received broadcast message: " << message << "\n";
+});
+----
+This casues a subscription to the broadcast, and the lambda function will be called whenever we receive a message.
+
+=== Managed Stubs
+
+In franca a relationship between two interfaces can be declared in the form "x manages y". This indicates that x has a number of y as 
+childeren whose lifecycle is tied to and managed by x. This allows a an application to activare y stubs on an instance of x stubs.
+Similarily on the proxy side a manager for y interfaces is available on the x proxy, where we can be informed of appearing and disappearing
+instances, and interrogate the network about the state of instances.
+
+In our franca change the defenition of the HelloWorldInterface to:
+----
+interface HelloWorldInterface manages HelloWorldLeaf {
+----
+
+and after this interface block add:
+----
+interface HelloWorldLeaf {
+    version { major 1 minor 0 }
+
+    method sayHelloLeaf {
+        in {
+            String name
+        }
+        out {
+            String message
+        }
+    }
+}
+----
+
+This causes HelloWorldInterface to be able to manage HelloWorldLeaf instances. Note that HelloWorldLeaf instances can still be registered 
+and accessed in the normal way via the service publisher and facotry.
+
+To the stub application add to the top as a new class defenition:
+
+----
+class MyHelloWorldLeafStub: public commonapi::examples::HelloWorldLeafStubDefault {
+ public:
+    virtual void sayHelloLeaf(std::string name, std::string& message) {
+        std::stringstream messageStream;
+
+        messageStream <<  "Hello Leaf " << name << "!";
+        message = messageStream.str();
+
+        std::cout << "sayHelloLeaf('" << name << "'): '" << message << "'\n";
+    }
+};
+----
+
+To the bottom of the main function before the while loop add:
+----
+auto helloWorldLeafStub = std::make_shared<MyHelloWorldLeafStub>();
+const std::string leafInstance = "commonapi.examples.HelloWorld.Leaf";
+const bool leafOk = helloWorldStub->registerManagedStubHelloWorldLeaf(helloWorldLeafStub, leafInstance);
+if (!leafOk) {
+    std::cerr << "Error: Unable to register leaf service!\n";
+    return -1;
+}
+----
+
+To the client programm add to the bottom of the main function just before return 0:
+----
+const std::string leafInstance = "commonapi.examples.HelloWorld.Leaf";
+CommonAPI::CallStatus callStatusAv;
+CommonAPI::AvailabilityStatus availabilityStatus;
+helloWorldProxy->getProxyManagerHelloWorldLeaf().getInstanceAvailabilityStatus(leafInstance, callStatusAv, availabilityStatus);
+
+if (callStatusAv == CommonAPI::CallStatus::SUCCESS && availabilityStatus == CommonAPI::AvailabilityStatus::AVAILABLE) {
+    auto helloWorldLeafProxy = helloWorldProxy->getProxyManagerHelloWorldLeaf().buildProxy<commonapi::examples::HelloWorldLeafProxy>(leafInstance);
+
+    const std::string nameLeaf = "WorldLeaf";
+    CommonAPI::CallStatus callStatusLeaf;
+    std::string helloWorldLeafMessage;
+
+    std::cout << "Sending name: '" << nameLeaf << "'\n";
+    helloWorldLeafProxy->sayHelloLeaf("World", callStatusLeaf, helloWorldLeafMessage);
+    if (callStatusLeaf != CommonAPI::CallStatus::SUCCESS) {
+        std::cerr << "Remote call failed!\n";
+        return -1;
+    }
+
+    std::cout << "Got message: '" << helloWorldLeafMessage << "'\n";
+
+} else {
+    std::cout << "Leaf Proxy not available\n";
+    sleep(5);
+    return -1;
+}
+----
+
+This instantiates and calls a managed leaf stub and proxy respectively.
+ 
 == Further reading
 
 Aside from the README files of Common API and the specific bindings.

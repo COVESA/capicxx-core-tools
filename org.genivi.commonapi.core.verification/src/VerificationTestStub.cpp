@@ -24,8 +24,7 @@ VerificationTestStub::VerificationTestStub() :
                 TestInterfaceStubDefault(), calledTestDerivedTypeMethod(0) {
 }
 
-void VerificationTestStub::testPredefinedTypeMethod(const CommonAPI::ClientId& clientId,
-                                                    uint32_t uint32InValue,
+void VerificationTestStub::testPredefinedTypeMethod(uint32_t uint32InValue,
                                                     std::string stringInValue,
                                                     uint32_t& uint32OutValue,
                                                     std::string& stringOutValue) {

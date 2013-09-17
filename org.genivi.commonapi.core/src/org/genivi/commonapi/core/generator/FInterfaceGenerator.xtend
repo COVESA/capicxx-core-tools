@@ -121,6 +121,12 @@ class FInterfaceGenerator {
 
     def void getRequiredHeaderFiles(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         libraryHeaders.add('CommonAPI/types.h')
+        if (!fInterface.methods.filter[errors != null].empty) {
+            libraryHeaders.addAll('CommonAPI/InputStream.h', 'CommonAPI/OutputStream.h')
+        }
+        if (!fInterface.managedInterfaces.empty) {
+            generatedHeaders.add('set');
+        }
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
         var Iterable<FMethod> errorMethods = fInterface.methods.filter[errors!=null]
         if(errorMethods.size!=0){

@@ -6,7 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package commonapi.examples
 
-interface HelloWorldInterface {
+interface HelloWorldInterface manages HelloWorldLeaf {
 	version { major 1 minor 0 }
 
 	method sayHello {
@@ -17,5 +17,23 @@ interface HelloWorldInterface {
 		    String message
 		}
 	}
+	
+	broadcast saySomething selective {
+	    out {
+	        String message
+	    }
+	}
 }
 
+interface HelloWorldLeaf {
+    version { major 1 minor 0 }
+
+    method sayHelloLeaf {
+        in {
+            String name
+        }
+        out {
+            String message
+        }
+    }
+}

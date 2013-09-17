@@ -5,6 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include <commonapi/examples/HelloWorldInterfaceStubDefault.h>
+#include <commonapi/examples/HelloWorldLeafStubDefault.h>
 #include <CommonAPI/CommonAPI.h>
 #include <iostream>
 #include <sstream>
@@ -12,15 +13,48 @@
 
 
 class MyHelloWorldStub: public commonapi::examples::HelloWorldInterfaceStubDefault {
- public:
-	virtual void sayHello(std::string name, std::string& message) {
+    private:
+        std::shared_ptr<CommonAPI::ClientId> lastId;
+
+public:
+    virtual void onSaySomethingSelectiveSubscriptionChanged(const std::shared_ptr<CommonAPI::ClientId> clientId,
+                                                            const CommonAPI::SelectiveBroadcastSubscriptionEvent event) {
+        if (event == CommonAPI::SelectiveBroadcastSubscriptionEvent::SUBSCRIBED) {
+            lastId = clientId;
+        }
+    }
+
+    virtual void sayHello(std::string name, std::string& message) {
 		std::stringstream messageStream;
 
 		messageStream <<  "Hello " << name << "!";
 		message = messageStream.str();
 
 		std::cout << "sayHello('" << name << "'): '" << message << "'\n";
+
+		std::shared_ptr<CommonAPI::ClientIdList> receivers = std::make_shared<CommonAPI::ClientIdList>();
+
+
+		if (lastId) {
+		    receivers->insert(lastId);
+		}
+		this->fireSaySomethingSelective("Broadcast to last ID", receivers);
+
+		//delete receivers;
 	}
+};
+
+
+class MyHelloWorldLeafStub: public commonapi::examples::HelloWorldLeafStubDefault {
+ public:
+    virtual void sayHelloLeaf(std::string name, std::string& message) {
+        std::stringstream messageStream;
+
+        messageStream <<  "Hello Leaf " << name << "!";
+        message = messageStream.str();
+
+        std::cout << "sayHelloLeaf('" << name << "'): '" << message << "'\n";
+    }
 };
 
 
@@ -54,7 +88,7 @@ int main(int argc, char** argv) {
 
 
 	auto helloWorldStub = std::make_shared<MyHelloWorldStub>();
-	const std::string& commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
+	const std::string commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
 	const bool isStubRegistrationSuccessful = servicePublisher->registerService(helloWorldStub, commonApiAddress, factory);
 	if (!isStubRegistrationSuccessful) {
 		std::cerr << "Error: Unable to register service!\n";
@@ -63,6 +97,14 @@ int main(int argc, char** argv) {
 
 	std::cout << "Service registration successful!\n";
 
+
+	auto helloWorldLeafStub = std::make_shared<MyHelloWorldLeafStub>();
+    const std::string leafInstance = "commonapi.examples.HelloWorld.Leaf";
+    const bool leafOk = helloWorldStub->registerManagedStubHelloWorldLeaf(helloWorldLeafStub, leafInstance);
+    if (!leafOk) {
+        std::cerr << "Error: Unable to register leaf service!\n";
+        return -1;
+    }
 
 	while(true) {
 		std::cout << "Waiting for calls... (Abort with CTRL+C)\n";

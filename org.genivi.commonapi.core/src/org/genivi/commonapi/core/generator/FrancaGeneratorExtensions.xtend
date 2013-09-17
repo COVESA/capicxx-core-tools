@@ -44,7 +44,6 @@ import org.franca.core.franca.FTypedElement
 import java.util.Collection
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.osgi.framework.FrameworkUtil
-import org.eclipse.core.runtime.QualifiedName
 import org.eclipse.core.resources.IResource
 import org.osgi.framework.Version
 
@@ -339,7 +338,7 @@ class FrancaGeneratorExtensions {
         if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
 
-        signature = signature + 'const CommonAPI::ClientIdList* receivers'
+        signature = signature + 'const std::shared_ptr<CommonAPI::ClientIdList> receivers'
 
         if (withDefault)
             signature = signature + ' = NULL'
@@ -998,5 +997,41 @@ class FrancaGeneratorExtensions {
             builder.append("* " + line + "\n");
         }
         return builder.toString()
+    }
+    
+    def stubManagedSetName(FInterface fInterface) {
+        'registered' + fInterface.name + 'Instances'
+    }
+    
+    def stubManagedSetGetterName(FInterface fInterface) {
+        'get' + fInterface.name + 'Instances'
+    }
+    
+    def stubRegisterManagedName(FInterface fInterface) {
+        'registerManagedStub' + fInterface.name
+    }
+    
+    def stubRegisterManagedAutoName(FInterface fInterface) {
+        'registerManagedStub' + fInterface.name + 'AutoInstance'
+    }
+    
+    def stubRegisterManagedMethod(FInterface fInterface) {
+        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '>, const std::string&)'
+    }
+    
+    def stubRegisterManagedMethodImpl(FInterface fInterface) {
+        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '> stub, const std::string& instance)'
+    }    
+    
+    def stubDeregisterManagedName(FInterface fInterface) {
+        'deregisterManagedStub' + fInterface.name
+    }
+    
+    def proxyManagerGetterName(FInterface fInterface) {
+        'getProxyManager' + fInterface.name
+    }
+    
+    def proxyManagerMemberName(FInterface fInterface) {
+        'proxyManager' + fInterface.name + '_'
     }
 }

@@ -5,6 +5,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 #include <commonapi/examples/HelloWorldInterfaceProxy.h>
+#include <commonapi/examples/HelloWorldLeafProxy.h>
 #include <CommonAPI/CommonAPI.h>
 #include <iostream>
 #include <future>
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
 	std::cout << "Factory created!\n";
 
 
-	const std::string& commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
+	const std::string commonApiAddress = "local:commonapi.examples.HelloWorld:commonapi.examples.HelloWorld";
 	auto helloWorldProxy = factory->buildProxy<commonapi::examples::HelloWorldInterfaceProxy>(commonApiAddress);
 	if (!helloWorldProxy) {
 		std::cerr << "Error: Unable to build proxy!\n";
@@ -57,7 +58,11 @@ int main(int argc, char** argv) {
 	std::cout << "Proxy available!\n";
 
 
-	const std::string& name = "World";
+	helloWorldProxy->getSaySomethingSelectiveEvent().subscribe([&](const std::string& message) {
+	    std::cout << "Received broadcast message: " << message << "\n";
+    });
+
+	const std::string name = "World";
 	CommonAPI::CallStatus callStatus;
 	std::string helloWorldMessage;
 
@@ -69,6 +74,33 @@ int main(int argc, char** argv) {
 	}
 
 	std::cout << "Got message: '" << helloWorldMessage << "'\n";
+
+	const std::string leafInstance = "commonapi.examples.HelloWorld.Leaf";
+    CommonAPI::CallStatus callStatusAv;
+    CommonAPI::AvailabilityStatus availabilityStatus;
+	helloWorldProxy->getProxyManagerHelloWorldLeaf().getInstanceAvailabilityStatus(leafInstance, callStatusAv, availabilityStatus);
+
+	if (callStatusAv == CommonAPI::CallStatus::SUCCESS && availabilityStatus == CommonAPI::AvailabilityStatus::AVAILABLE) {
+	    auto helloWorldLeafProxy = helloWorldProxy->getProxyManagerHelloWorldLeaf().buildProxy<commonapi::examples::HelloWorldLeafProxy>(leafInstance);
+
+	    const std::string nameLeaf = "WorldLeaf";
+        CommonAPI::CallStatus callStatusLeaf;
+        std::string helloWorldLeafMessage;
+
+        std::cout << "Sending name: '" << nameLeaf << "'\n";
+        helloWorldLeafProxy->sayHelloLeaf("World", callStatusLeaf, helloWorldLeafMessage);
+        if (callStatusLeaf != CommonAPI::CallStatus::SUCCESS) {
+            std::cerr << "Remote call failed!\n";
+            return -1;
+        }
+
+        std::cout << "Got message: '" << helloWorldLeafMessage << "'\n";
+
+	} else {
+	    std::cout << "Leaf Proxy not available\n";
+	    sleep(5);
+	    return -1;
+	}
 
 	return 0;
 }

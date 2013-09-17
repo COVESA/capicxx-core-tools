@@ -46,7 +46,7 @@ class FTypeGenerator {
                 return true;
         }
         return false
-    } 
+    }
 
     def static sortAnnotations(FAnnotationBlock annots) {
         var ArrayList<ArrayList<FAnnotation>> ret = new ArrayList<ArrayList<FAnnotation>>(4)
@@ -416,6 +416,9 @@ class FTypeGenerator {
         fInterface.methods.forEach[
             inArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
             outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
+        ]
+        fInterface.managedInterfaces.forEach[
+            generatedHeaders.add(stubHeaderPath)
         ]
         fInterface.broadcasts.forEach[outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]]
 

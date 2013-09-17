@@ -15,7 +15,6 @@ import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 
 import java.util.HashSet
-import org.franca.core.franca.FBroadcast
 import org.eclipse.core.resources.IResource
 
 class FInterfaceProxyGenerator {
@@ -46,11 +45,14 @@ class FInterfaceProxyGenerator {
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
         #endif
-
+        
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
+        «IF !fInterface.managedInterfaces.empty»
+            #include <CommonAPI/ProxyManager.h>
+        «ENDIF»
         «IF fInterface.hasAttributes»
             #include <CommonAPI/Attribute.h>
         «ENDIF»
@@ -107,6 +109,9 @@ class FInterfaceProxyGenerator {
                     virtual «method.generateAsyncDefinition» = 0;
                 «ENDIF»
             «ENDFOR»
+            «FOR managed : fInterface.managedInterfaces»
+                virtual CommonAPI::ProxyManager& «managed.proxyManagerGetterName»() = 0;
+            «ENDFOR»
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
@@ -130,7 +135,7 @@ class FInterfaceProxyGenerator {
             #include <CommonAPI/AttributeExtension.h>
             #include <CommonAPI/Factory.h>
         «ENDIF»
-
+        
         #undef COMMONAPI_INTERNAL_COMPILATION
 
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -143,7 +148,9 @@ class FInterfaceProxyGenerator {
 
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
-                /// Returns the wrapper class that provides access to the attribute «attribute.name».
+                /**
+                 * Returns the wrapper class that provides access to the attribute «attribute.name».
+                 */
                 virtual «attribute.generateGetMethodDefinition» {
                     return delegate_->get«attribute.className»();
                 }
@@ -151,7 +158,9 @@ class FInterfaceProxyGenerator {
 
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
-                /// Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                /**
+                 * Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                 */
                 virtual «broadcast.generateGetMethodDefinition» {
                     return delegate_->get«broadcast.className»();
                 }
@@ -162,8 +171,8 @@ class FInterfaceProxyGenerator {
                 «FTypeGenerator::generateComments(method, true)»
                  * Calls «method.name» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
                  * 
-«IF !method.inArgs.empty»     * All const parameters are input parameters to this method.«ENDIF»
-«IF !method.outArgs.empty»     * All non-const parameters will be filled with the returned values.«ENDIF»
+                «IF !method.inArgs.empty»* All const parameters are input parameters to this method.«ENDIF»
+                «IF !method.outArgs.empty»* All non-const parameters will be filled with the returned values.«ENDIF»
                  * The CallStatus will be filled when the method returns and indicate either
                  * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
                  * will be set.
@@ -183,21 +192,40 @@ class FInterfaceProxyGenerator {
                     virtual «method.generateAsyncDefinition»;
                 «ENDIF»
             «ENDFOR»
+            
+            «FOR managed : fInterface.managedInterfaces»
+                virtual CommonAPI::ProxyManager& «managed.proxyManagerGetterName»();
+            «ENDFOR»
 
-            /// Returns the CommonAPI address of the remote partner this proxy communicates with.
+            /**
+             * Returns the CommonAPI address of the remote partner this proxy communicates with.
+             */
             virtual std::string getAddress() const;
 
-            /// Returns the domain of the remote partner this proxy communicates with.
+            /**
+             * Returns the domain of the remote partner this proxy communicates with.
+             */
             virtual const std::string& getDomain() const;
 
-            /// Returns the service ID of the remote partner this proxy communicates with.
+            /** 
+             * Returns the service ID of the remote partner this proxy communicates with.
+             */
             virtual const std::string& getServiceId() const;
 
-            /// Returns the instance ID of the remote partner this proxy communicates with.
+            /**
+             * Returns the instance ID of the remote partner this proxy communicates with.
+             */
             virtual const std::string& getInstanceId() const;
 
-            /// Returns true if the remote partner for this proxy is available.
+            /**
+             * Returns true if the remote partner for this proxy is currently known to be available.
+             */
             virtual bool isAvailable() const;
+
+            /**
+             * Returns true if the remote partner for this proxy is available.
+             */
+            virtual bool isAvailableBlocking() const;
 
             /**
              * Returns the wrapper class that is used to (de-)register for notifications about
@@ -276,6 +304,11 @@ class FInterfaceProxyGenerator {
         bool «fInterface.proxyClassName»<_AttributeExtensions...>::isAvailable() const {
             return delegate_->isAvailable();
         }
+        
+        template <typename ... _AttributeExtensions>
+        bool «fInterface.proxyClassName»<_AttributeExtensions...>::isAvailableBlocking() const {
+            return delegate_->isAvailableBlocking();
+        }
 
         template <typename ... _AttributeExtensions>
         CommonAPI::ProxyStatusEvent& «fInterface.proxyClassName»<_AttributeExtensions...>::getProxyStatusEvent() {
@@ -286,6 +319,14 @@ class FInterfaceProxyGenerator {
         CommonAPI::InterfaceVersionAttribute& «fInterface.proxyClassName»<_AttributeExtensions...>::getInterfaceVersionAttribute() {
             return delegate_->getInterfaceVersionAttribute();
         }
+        
+                
+        «FOR managed : fInterface.managedInterfaces»
+            template <typename ... _AttributeExtensions>
+            CommonAPI::ProxyManager& «fInterface.proxyClassName»<_AttributeExtensions...>::«managed.proxyManagerGetterName»() {
+                return delegate_->«managed.proxyManagerGetterName»();
+            }
+        «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
 
@@ -300,7 +341,6 @@ class FInterfaceProxyGenerator {
         };
         }
         «ENDIF»
-        
 
         #endif // «fInterface.defineName»_PROXY_H_
     '''

@@ -1,6 +1,6 @@
 AC_PREREQ([2.61])
 AC_INIT([GENIVI Common API C++ Examples],
-        [2.0],
+        [2.1],
         [],
         [CommonAPI-Examples])
 
