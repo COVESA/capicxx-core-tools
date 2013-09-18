@@ -173,7 +173,8 @@ The example that will be created in this tutorial from now onwards is provided a
 ----
 </your/download/path>/common-api-dbus-tools/CommonAPI-Examples
 ----
-The example found here is more verbose than the one we will create, but functionally it will be the same.
+The example found here is more verbose than the one we will create, but functionally it will be the same. The example project can also
+be browsed online at link:CommonAPI-Examples[]
 
 It is assumed that you have created a C++ project in your Eclipse in which all further development will happen.
 
