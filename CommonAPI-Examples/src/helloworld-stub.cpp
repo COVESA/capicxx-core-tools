@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
 
 	while(true) {
 		std::cout << "Waiting for calls... (Abort with CTRL+C)\n";
-		std::this_thread::sleep_for(std::chrono::seconds(60));
+		sleep(60);
     }
 
     return 0;

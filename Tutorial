@@ -259,6 +259,7 @@ Here, you will need two includes in order to access the Common API client functi
 ----
 #include <CommonAPI/CommonAPI.h>                           //Defined in the Common API Runtime library
 #include <commonapi/examples/HelloWorldInterfaceProxy.h>   //Part of the code we just generated
+#include <commonapi/examples/HelloWorldLeafProxy.h>   //Part of the code we just generated
 
 #include <iostream>
 #include <future>
@@ -317,6 +318,7 @@ std::cout << "Got message: '" << helloWorldReturnMessage << "'\n";
 Works about the same way as implementing the client. The includes that are required are the following:
 ----
 #include <commonapi/examples/HelloWorldInterfaceStubDefault.h>
+#include <commonapi/examples/HelloWorldLeafStubDefault.h>
 #include <CommonAPI/CommonAPI.h>
 
 #include <iostream>
@@ -353,7 +355,7 @@ servicePublisher->registerService(helloWorldStub, commonApiAddress, factory);
 
 while(true) {
     std::cout << "Waiting for calls... (Abort with CTRL+C)\n";
-    std::this_thread::sleep_for(std::chrono::seconds(60));
+    sleep(60);
 }
 ----
 
