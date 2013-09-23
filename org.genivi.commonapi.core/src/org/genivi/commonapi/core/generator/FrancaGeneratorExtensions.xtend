@@ -312,7 +312,7 @@ class FrancaGeneratorExtensions {
 
         signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
 
-        if (fMethod.hasError || !fMethod.outArgs.empty)
+        if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
             signature = signature + ', '
 
         signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
