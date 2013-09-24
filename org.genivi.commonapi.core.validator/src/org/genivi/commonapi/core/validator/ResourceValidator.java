@@ -364,6 +364,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
             for (FMethod fMethod : fInterface.getMethods()) {
                 validateName(fMethod.getName(), messageAcceptor, fMethod);
                 for (FArgument out : fMethod.getOutArgs()) {
+                	if (out.getName().equals(fMethod.getName())) {
+						messageAcceptor.acceptError("Parameters cannot share name with method", out,
+								FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+								-1, null);
+                	}
                     validateName(out.getName(), messageAcceptor, out);
                     if (out.getType().getPredefined().toString() == "undefined") {
                         try {
@@ -388,6 +393,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
                 count = 0;
                 for (FArgument in : fMethod.getInArgs()) {
+                	if (in.getName().equals(fMethod.getName())) {
+						messageAcceptor.acceptError("Parameters cannot share name with method", in,
+								FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+								-1, null);
+                	}
                     validateName(in.getName(), messageAcceptor, in);
                     if (in.getType().getPredefined().toString() == "undefined") {
                         try {
