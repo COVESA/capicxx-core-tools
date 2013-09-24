@@ -363,7 +363,7 @@ class FrancaGeneratorExtensions {
     def generateArgumentsToStubCompatibility(FMethod fMethod) {
         var arguments = fMethod.inArgs.map[name].join(', ')
 
-        if (fMethod.hasError || !fMethod.outArgs.empty)
+        if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
             arguments = arguments + ', '
 
         if (fMethod.hasError)

@@ -252,8 +252,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
         }
         
         
+      
         for (FInterface fInterface : model.getInterfaces()) {
-            //TODO hier die findcyclic improt spacko scheiße einfüttern!;
             ArrayList<FInterface> startI = new ArrayList<FInterface>();
             int index = 0 ;
             startI.add(fInterface);
