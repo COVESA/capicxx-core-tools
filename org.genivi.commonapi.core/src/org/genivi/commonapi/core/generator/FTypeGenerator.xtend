@@ -69,30 +69,37 @@ class FTypeGenerator {
         }
         return ret
     }
+    
+    def private static findNextBreak(String text) {
+        var breakIndex = text.substring(0, begrenzung).lastIndexOf(" ");
+        if (breakIndex > -1) {
+            return breakIndex;
+        } else {
+            breakIndex = text.substring(0, begrenzung).lastIndexOf("\n");
+            if (breakIndex > -1) {
+                return breakIndex;
+            } else {
+                return java.lang.Math.min(begrenzung, text.length);
+            }
+        }
+    }
 
     def static breaktext(String text, int annotation) {
         var ret = ""
         var temptext = ""
-        var i = 0
-        var j = 3
         if(annotation == FAnnotationType::DESCRIPTION_VALUE && text.length > begrenzung) {
-            ret = " * " + text.substring(0,text.substring(0, begrenzung).lastIndexOf(" ")) + "\n";
-            temptext = text.substring(ret.length-j);
-            i = ret.length
-        }else if(annotation != FAnnotationType::DESCRIPTION_VALUE && text.length > begrenzung - 20) {
+            ret = " * " + text.substring(0, findNextBreak(text)) + "\n";
+            temptext = text.substring(findNextBreak(text));
+        }else if(annotation != FAnnotationType::DESCRIPTION_VALUE && text.length > begrenzung) {
             if(annotation == FAnnotationType::AUTHOR_VALUE) {
                 ret = " * @author "
-                j = j + 8
             }if(annotation == FAnnotationType::DEPRECATED_VALUE){
                 ret = " * @deprecated "
-                j = j + 12
             }if(annotation == FAnnotationType::PARAM_VALUE){
                 ret = " * @param "
-                j = j + 7
             }
-            ret = ret + text.substring(0, text.substring(0, begrenzung-20).lastIndexOf(" ")) + "\n";
-            temptext = text.substring(ret.length - j);
-            i = ret.length
+            ret = ret + text.substring(0, findNextBreak(text)) + "\n";
+            temptext = text.substring(findNextBreak(text));
         }else {
             if(annotation == FAnnotationType::AUTHOR_VALUE)
                 ret = " * @author "
@@ -104,13 +111,17 @@ class FTypeGenerator {
                 ret = " * "
             ret = ret + text + "\n";
         }
-        while(i != 0 &&temptext.length > begrenzung) {
-            ret = ret + " * " + temptext.substring(0, temptext.substring(0, begrenzung).lastIndexOf(" ")) + "\n";
-            temptext = temptext.substring(ret.length - i - j);
-            j = j + 3
-            i = ret.length;
+        while(temptext.length > begrenzung) {
+            try {
+                ret = ret + " * " + temptext.substring(0, findNextBreak(temptext)) + "\n";
+                temptext = temptext.substring(findNextBreak(temptext));
+            }
+            catch (StringIndexOutOfBoundsException sie) {
+                System.out.println("Comment problem in text " + text);
+                sie.printStackTrace();
+            }
         }
-        if(i != 0)
+        if(temptext.length > 0)
             ret = ret + " * " + temptext + "\n"
         return ret;
     }
