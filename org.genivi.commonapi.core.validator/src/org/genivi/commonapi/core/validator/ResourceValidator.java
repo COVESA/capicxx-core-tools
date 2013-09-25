@@ -71,17 +71,15 @@ public class ResourceValidator implements IFrancaExternalValidator {
         resourceSet = new ResourceSetImpl();
         Resource res = model.eResource();
         URI uri = res.getURI();
+        int segCount = uri.segmentCount() -2; 
         String projectName = uri.segment(1);
-
         final Path platformPath = new Path(res.getURI().toPlatformString(true));
         final IFile file = ResourcesPlugin.getWorkspace().getRoot()
                 .getFile(platformPath);
         IPath filePath = file.getLocation();
-        String cwd = filePath.removeLastSegments(1).toString();
-        String cutCwd = cwd.substring(0, cwd.lastIndexOf(projectName)
-                + projectName.length());
+        String cwd = filePath.removeLastSegments(segCount).toString();
 
-        if (aimBuilder.buildAllInfos(cutCwd)) {
+        if (aimBuilder.buildAllInfos(cwd)) {
             fastAllInfo = aimBuilder.fastAllInfo;
         } else {
             if (!uri.segment(2).toString().equals("bin"))
