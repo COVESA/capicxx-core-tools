@@ -72,7 +72,7 @@ class FTypeGenerator {
     
     def private static findNextBreak(String text) {
         var breakIndex = text.substring(0, begrenzung).lastIndexOf(" ");
-        if (breakIndex > -1) {
+        if (breakIndex > 0) {
             return breakIndex;
         } else {
             breakIndex = text.substring(0, begrenzung).lastIndexOf("\n");
