@@ -499,11 +499,13 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 return;
             }
         } else {
-            cyclicList.add(filePath);
-            for (String importPath : importList.get(filePath)) {
-                findCyclicImports(importPath, filePath, cyclicList, imp,
-                        messageAcceptor);
-            }
+			cyclicList.add(filePath);
+			if (importList.containsKey(filePath)) {
+				for (String importPath : importList.get(filePath)) {
+					findCyclicImports(importPath, filePath, cyclicList, imp,
+							messageAcceptor);
+				}
+			}
             cyclicList.remove(cyclicList.size() - 1);
         }
     }
