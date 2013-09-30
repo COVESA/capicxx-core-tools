@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: GENIVI Common API UI
 Bundle-SymbolicName: org.genivi.commonapi.core.ui;singleton:=true
-Bundle-Version: 2.1.1.qualifier
+Bundle-Version: 2.1.2.qualifier
 Bundle-Activator: org.genivi.commonapi.core.ui.CommonApiUiPlugin
 Bundle-Vendor: BMW AG
 Require-Bundle: org.eclipse.ui,
@@ -14,9 +14,9 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.xtext.ui;bundle-version="2.4.0",
  org.eclipse.xtext.ui.ecore;bundle-version="2.4.0",
  com.google.inject;bundle-version="3.0.0",
- org.genivi.commonapi.core;bundle-version="2.1.1",
+ org.genivi.commonapi.core;bundle-version="2.1.2",
  org.eclipse.cdt.ui;bundle-version="5.5.0"
-Bundle-RequiredExecutionEnvironment: J2SE-1.5
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Bundle-ActivationPolicy: lazy
 Import-Package: javax.inject,
  org.franca.core.dsl.validation,

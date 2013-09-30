@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: GENIVI Common API Generator
 Bundle-Vendor: BMW AG
-Bundle-Version: 2.1.1.qualifier
+Bundle-Version: 2.1.2.qualifier
 Bundle-SymbolicName: org.genivi.commonapi.core;singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.core.resources;bundle-version="3.8.0",
@@ -15,7 +15,7 @@ Require-Bundle: org.eclipse.core.resources;bundle-version="3.8.0",
  org.franca.deploymodel.dsl;bundle-version="0.8.9",
  org.eclipse.jface
 Import-Package: javax.inject;version="1.0.0"
-Bundle-RequiredExecutionEnvironment: J2SE-1.5
+Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Export-Package: org.genivi.commonapi.core.deployment,
  org.genivi.commonapi.core.generator, org.genivi.commonapi.core.preferences
 Bundle-ClassPath: .,lib/guava-14.0.1.jar
