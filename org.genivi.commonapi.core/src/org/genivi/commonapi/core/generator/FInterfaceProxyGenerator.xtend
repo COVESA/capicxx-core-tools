@@ -200,6 +200,7 @@ class FInterfaceProxyGenerator {
                 , _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...
 #endif
         { }
+
         
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
