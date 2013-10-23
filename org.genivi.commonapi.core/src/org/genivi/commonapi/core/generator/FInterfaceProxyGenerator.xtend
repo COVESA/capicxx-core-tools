@@ -44,7 +44,6 @@ class FInterfaceProxyGenerator {
             #include <functional>
             #include <future>
         «ENDIF»
-        #include <vector>
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
@@ -197,11 +196,10 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
                 delegate_(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate))
-        #ifndef _WIN32
+#ifndef WIN32
                 , _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...
-        #endif
-        {
-        }
+#endif
+        { }
         
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
@@ -283,7 +281,9 @@ class FInterfaceProxyGenerator {
 
             static_assert(std::is_base_of<typename CommonAPI::AttributeExtension<«fInterface.proxyBaseClassName»::«fAttribute.className»>, extension_type>::value,
                           "Not CommonAPI Attribute Extension!");
-
+#ifdef WIN32
+            «fAttribute.extensionClassName»() {};
+#endif
             «fAttribute.extensionClassName»(«fInterface.proxyBaseClassName»& proxy): attributeExtension_(proxy.get«fAttribute.className»()) {
             }
 
