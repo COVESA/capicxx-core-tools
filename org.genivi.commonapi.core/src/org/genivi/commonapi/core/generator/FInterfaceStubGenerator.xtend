@@ -415,7 +415,7 @@ class FInterfaceStubGenerator {
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»> stub) {
                 autoInstanceCounter_++;
                 std::stringstream ss;
-                ss << stubAdapter_->getInstanceId() << "." << autoInstanceCounter_;
+                ss << stubAdapter_->getInstanceId() << ".i" << autoInstanceCounter_;
                 std::string instance = ss.str();
                 return stubAdapter_->«managed.stubRegisterManagedName»(stub, instance);
             }
