@@ -658,10 +658,19 @@ class FrancaGeneratorExtensions {
         if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase)
             typeName = 'std::shared_ptr<' + typeName + '>'
 
-        if ("[]".equals(element.array))
-            typeName = 'std::vector<' + element.type.getNameReference(source) + '>'
+        if ("[]".equals(element.array)) {
+            if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase) {
+                typeName = 'std::vector<std::shared_ptr<' + element.type.getNameReference(source) + '>>'
+            } else {
+                typeName = 'std::vector<' + element.type.getNameReference(source) + '>'
+            }
+        }
 
         return typeName
+    }
+
+    def boolean isPolymorphic(FTypeRef typeRef) {
+        return (typeRef.derived != null && typeRef.derived instanceof FStructType && (typeRef.derived as FStructType).polymorphic)
     }
 
     def getNameReference(FTypeRef destination, EObject source) {

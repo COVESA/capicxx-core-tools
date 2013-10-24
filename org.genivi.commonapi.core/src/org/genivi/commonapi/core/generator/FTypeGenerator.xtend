@@ -210,12 +210,16 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
-        typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.elementName»;
+        «IF fArrayType.elementType.derived != null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
+            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»>> «fArrayType.name»;
+        «ELSE»
+            typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.elementName»;
+        «ENDIF»
     '''
 
     def dispatch generateFTypeDeclaration(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fMap, false)»
-        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»«fMap.generateHasher»> «fMap.elementName»;
+        typedef std::unordered_map<«fMap.generateKeyType», «fMap.generateValueType»«fMap.generateHasher»> «fMap.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
@@ -526,14 +530,30 @@ class FTypeGenerator {
         return call
     }
 
-    def private generateKeyType(FMapType fMap) '''«fMap.keyType.getNameReference(fMap.eContainer)»'''
-    def private generateValueType(FMapType fMap) ''', «fMap.valueType.getNameReference(fMap.eContainer)»'''
     def private generateHasher(FMapType fMap) {
         if (fMap.keyType.derived instanceof FEnumerationType)  {
             return ''', CommonAPI::EnumHasher<«fMap.keyType.getNameReference(fMap.eContainer)»>'''
         }
 
         return ""
+    }
+
+    def private generateKeyType(FMapType fMap) {
+        if (fMap.keyType.polymorphic) {
+            return "std::shared_ptr<" + fMap.keyType.getNameReference(fMap.eContainer) + ">"
+        }
+        else {
+            return fMap.keyType.getNameReference(fMap.eContainer)
+        }
+    }
+
+    def private generateValueType(FMapType fMap) {
+        if (fMap.valueType.polymorphic) {
+            return "std::shared_ptr<" + fMap.valueType.getNameReference(fMap.eContainer) + ">"
+        }
+        else {
+            return fMap.valueType.getNameReference(fMap.eContainer)
+        }
     }
 
     def private getBaseStructName(FStructType fStructType) {
