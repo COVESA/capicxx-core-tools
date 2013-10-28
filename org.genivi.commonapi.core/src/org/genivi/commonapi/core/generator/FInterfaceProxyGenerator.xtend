@@ -141,7 +141,7 @@ class FInterfaceProxyGenerator {
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         template <typename ... _AttributeExtensions>
-        class «fInterface.proxyClassName»: virtual public «fInterface.name», virtual public «fInterface.proxyBaseClassName», public _AttributeExtensions... {
+        class «fInterface.proxyClassName»: virtual public «fInterface.elementName», virtual public «fInterface.proxyBaseClassName», public _AttributeExtensions... {
          public:
             «fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate);
             ~«fInterface.proxyClassName»();
@@ -149,7 +149,7 @@ class FInterfaceProxyGenerator {
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 /**
-                 * Returns the wrapper class that provides access to the attribute «attribute.name».
+                 * Returns the wrapper class that provides access to the attribute «attribute.elementName».
                  */
                 virtual «attribute.generateGetMethodDefinition» {
                     return delegate_->get«attribute.className»();
@@ -159,7 +159,7 @@ class FInterfaceProxyGenerator {
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
                 /**
-                 * Returns the wrapper class that provides access to the broadcast «broadcast.name».
+                 * Returns the wrapper class that provides access to the broadcast «broadcast.elementName».
                  */
                 virtual «broadcast.generateGetMethodDefinition» {
                     return delegate_->get«broadcast.className»();
@@ -169,7 +169,7 @@ class FInterfaceProxyGenerator {
             «FOR method : fInterface.methods»
                 /**
                 «FTypeGenerator::generateComments(method, true)»
-                 * Calls «method.name» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
+                 * Calls «method.elementName» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
                  * 
                 «IF !method.inArgs.empty»* All const parameters are input parameters to this method.«ENDIF»
                 «IF !method.outArgs.empty»* All non-const parameters will be filled with the returned values.«ENDIF»
@@ -180,7 +180,7 @@ class FInterfaceProxyGenerator {
                 virtual «method.generateDefinition»;
                 «IF !method.isFireAndForget»
                     /**
-                     * Calls «method.name» with asynchronous semantics.
+                     * Calls «method.elementName» with asynchronous semantics.
                      * 
                      * The provided callback will be called when the reply to this call arrives or
                      * an error occurs during the call. The CallStatus will indicate either "SUCCESS"
@@ -269,13 +269,13 @@ class FInterfaceProxyGenerator {
             «FTypeGenerator::generateComments(method, false)»
             template <typename ... _AttributeExtensions>
             «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                delegate_->«method.name»(«method.generateSyncVariableList»);
+                delegate_->«method.elementName»(«method.generateSyncVariableList»);
             }
             «IF !method.isFireAndForget»
 
                 template <typename ... _AttributeExtensions>
                 «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
-                    return delegate_->«method.name»Async(«method.generateASyncVariableList»);
+                    return delegate_->«method.elementName»Async(«method.generateASyncVariableList»);
                 }
             «ENDIF»
         «ENDFOR»
@@ -402,11 +402,11 @@ class FInterfaceProxyGenerator {
     }
 
     def private getExtensionsSubnamespace(FInterface fInterface) {
-        fInterface.name + 'Extensions'
+        fInterface.elementName + 'Extensions'
     }
 
     def private getProxyClassName(FInterface fInterface) {
-        fInterface.name + 'Proxy'
+        fInterface.elementName + 'Proxy'
     }
 
     def private getExtensionClassName(FAttribute fAttribute) {
@@ -414,20 +414,20 @@ class FInterfaceProxyGenerator {
     }
 
     def private generateSyncVariableList(FMethod fMethod) {
-        val syncVariableList = new ArrayList(fMethod.inArgs.map[name])
+        val syncVariableList = new ArrayList(fMethod.inArgs.map[elementName])
 
         syncVariableList.add('callStatus')
 
         if (fMethod.hasError)
             syncVariableList.add('methodError')
 
-        syncVariableList.addAll(fMethod.outArgs.map[name])
+        syncVariableList.addAll(fMethod.outArgs.map[elementName])
 
         return syncVariableList.join(', ')
     }
 
     def private generateASyncVariableList(FMethod fMethod) {
-        var asyncVariableList = new ArrayList(fMethod.inArgs.map[name])
+        var asyncVariableList = new ArrayList(fMethod.inArgs.map[elementName])
         asyncVariableList.add('callback')
         return asyncVariableList.join(', ')
     }

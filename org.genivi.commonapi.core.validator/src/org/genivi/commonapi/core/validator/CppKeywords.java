@@ -100,6 +100,8 @@ public class CppKeywords {
         keyWords.add("while");
         keyWords.add("xor");
         keyWords.add("xor_eq");
+
+        keyWords.add("AnonymousTypeCollection");
     }
 
 }

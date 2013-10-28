@@ -28,7 +28,7 @@ class FTypeCycleDetector {
         lowlink.clear()
         stack.clear()
         index = 0
-        outErrorString = type.name + "->";
+        outErrorString = type.elementName + "->";
         return tarjan(type)
     }
 
@@ -62,7 +62,7 @@ class FTypeCycleDetector {
         val directlyReferencedTypes = type.directlyReferencedTypes
 
         for (referencedType : directlyReferencedTypes) {
-            outErrorString = outErrorString + referencedType.name + "->"
+            outErrorString = outErrorString + referencedType.elementName + "->"
             if (!indices.containsKey(referencedType)) {
                 if (tarjan(referencedType))
                     return true

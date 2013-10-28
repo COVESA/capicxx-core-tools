@@ -205,36 +205,36 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FTypeDef fTypeDef, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fTypeDef, false)»
-        typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.name»;
+        typedef «fTypeDef.actualType.getNameReference(fTypeDef.eContainer)» «fTypeDef.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
-        typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.name»;
+        typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fMap, false)»
-        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»«fMap.generateHasher»> «fMap.name»;
+        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»«fMap.generateHasher»> «fMap.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fStructType, false)»
-        struct «fStructType.name»: «fStructType.baseStructName» {
+        struct «fStructType.elementName»: «fStructType.baseStructName» {
             «FOR element : fStructType.elements»
                «generateComments(element, false)»
-                «element.getTypeName(fStructType)» «element.name»;
+                «element.getTypeName(fStructType)» «element.elementName»;
             «ENDFOR»
 
-            «fStructType.name»() = default;
+            «fStructType.elementName»() = default;
             «IF fStructType.allElements.size > 0»
-                «fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
+                «fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
             «ENDIF»
 
             «IF fStructType.hasPolymorphicBase»
                 enum: uint32_t { SERIAL_ID = 0x«Integer::toHexString(fStructType.serialId)» };
 
-                static «fStructType.name»* createInstance(const uint32_t& serialId);
+                static «fStructType.elementName»* createInstance(const uint32_t& serialId);
 
                 virtual uint32_t getSerialId() const;
                 virtual void createTypeSignature(CommonAPI::TypeOutputStream& typeOutputStream) const;
@@ -255,20 +255,20 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        generateDeclaration(fEnumerationType, fEnumerationType.name, deploymentAccessor)
+        generateDeclaration(fEnumerationType, fEnumerationType.elementName, deploymentAccessor)
     }
 
     def generateDeclaration(FEnumerationType fEnumerationType, String name, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         enum class «name»: «fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName» {
             «FOR parent : fEnumerationType.baseList SEPARATOR ',\n'»
                 «FOR enumerator : parent.enumerators SEPARATOR ','»
-                    «enumerator.name» = «parent.getRelativeNameReference(fEnumerationType)»::«enumerator.name»
+                    «enumerator.elementName» = «parent.getRelativeNameReference(fEnumerationType)»::«enumerator.elementName»
                 «ENDFOR»
             «ENDFOR»
             «IF fEnumerationType.base != null && !fEnumerationType.enumerators.empty»,«ENDIF»
             «FOR enumerator : fEnumerationType.enumerators SEPARATOR ','»
                 «generateComments(enumerator, false)»
-                «enumerator.name»«enumerator.generateValue»
+                «enumerator.elementName»«enumerator.generateValue»
             «ENDFOR»
         };
 
@@ -278,7 +278,7 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FUnionType fUnionType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fUnionType, false)»
-        typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.name»;
+        typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.elementName»;
     '''
 
     def private String getElementNames(FUnionType fUnion) {
@@ -306,7 +306,7 @@ class FTypeGenerator {
     '''
 
     def dispatch generateFTypeInlineImplementation(FEnumerationType fEnumerationType, FModelElement parent, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        fEnumerationType.generateInlineImplementation(fEnumerationType.name, parent, parent.name, deploymentAccessor)
+        fEnumerationType.generateInlineImplementation(fEnumerationType.elementName, parent, parent.elementName, deploymentAccessor)
     }
 
     def generateInlineImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
@@ -339,10 +339,10 @@ class FTypeGenerator {
 
     def dispatch generateFTypeImplementation(FStructType fStructType, FModelElement parent) '''
         «IF fStructType.allElements.size > 0»
-            «fStructType.getClassNamespace(parent)»::«fStructType.name»(«fStructType.allElements.map[getConstReferenceVariable(fStructType) + "Value"].join(", ")»):
+            «fStructType.getClassNamespace(parent)»::«fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType) + "Value"].join(", ")»):
                     «fStructType.base?.generateBaseConstructorCall(fStructType)»
                     «FOR element : fStructType.elements SEPARATOR ','»
-                        «element.name»(«element.name»Value)
+                        «element.elementName»(«element.elementName»Value)
                     «ENDFOR»
             {
             }
@@ -351,17 +351,17 @@ class FTypeGenerator {
         «IF fStructType.hasPolymorphicBase»
             «fStructType.getClassNamespace(parent)»* «fStructType.getClassNamespace(parent)»::createInstance(const uint32_t& serialId) {
                 if (serialId == SERIAL_ID)
-                    return new «fStructType.name»;
+                    return new «fStructType.elementName»;
 
                 «IF fStructType.hasDerivedFStructTypes»
-                    const std::function<«fStructType.name»*()> createDerivedInstanceFuncs[] = {
+                    const std::function<«fStructType.elementName»*()> createDerivedInstanceFuncs[] = {
                         «FOR derivedFStructType : fStructType.getDerivedFStructTypes SEPARATOR ','»
                             [&]() { return «derivedFStructType.getRelativeNameReference(fStructType)»::createInstance(serialId); }
                         «ENDFOR» 
                     };
 
                     for (auto& createDerivedInstanceFunc : createDerivedInstanceFuncs) {
-                        «fStructType.name»* derivedInstance = createDerivedInstanceFunc();
+                        «fStructType.elementName»* derivedInstance = createDerivedInstanceFunc();
                         if (derivedInstance != NULL)
                             return derivedInstance;
                     }
@@ -375,7 +375,7 @@ class FTypeGenerator {
             }
 
             void «fStructType.getClassNamespace(parent)»::createTypeSignature(CommonAPI::TypeOutputStream& typeOutputStream) const {
-                «fStructType.name»::writeToTypeOutputStream(typeOutputStream);
+                «fStructType.elementName»::writeToTypeOutputStream(typeOutputStream);
             }
         «ENDIF»
 
@@ -389,7 +389,7 @@ class FTypeGenerator {
                         static_cast<«fStructType.base.getClassNamespace(parent)»>(lhs) == static_cast<«fStructType.base.getClassNamespace(parent)»>(rhs) &&
                     «ENDIF»
                     «FOR element : fStructType.elements SEPARATOR ' &&'»
-                        lhs.«element.name» == rhs.«element.name»
+                        lhs.«element.elementName» == rhs.«element.elementName»
                     «ENDFOR»
                 «ELSE»
                     true
@@ -402,7 +402,7 @@ class FTypeGenerator {
                 «fStructType.base.getRelativeNameReference(fStructType)»::readFromInputStream(inputStream);
             «ENDIF»
             «FOR element : fStructType.elements»
-                inputStream >> «element.name»;
+                inputStream >> «element.elementName»;
             «ENDFOR»
         }
 
@@ -411,7 +411,7 @@ class FTypeGenerator {
                 «fStructType.base.getRelativeNameReference(fStructType)»::writeToOutputStream(outputStream);
             «ENDIF»
             «FOR element : fStructType.elements»
-                outputStream << «element.name»;
+                outputStream << «element.elementName»;
             «ENDFOR»
         }
     '''
@@ -508,7 +508,7 @@ class FTypeGenerator {
     }
 
     def private getClassNamespace(FModelElement child, FModelElement parent) {
-        child.getClassNamespaceWithName(child.name, parent, parent.name)
+        child.getClassNamespaceWithName(child.elementName, parent, parent.elementName)
     }
     
     def private getClassNamespaceWithName(FModelElement child, String name, FModelElement parent, String parentName) {
@@ -520,7 +520,7 @@ class FTypeGenerator {
 
     def private generateBaseConstructorCall(FStructType parent, FStructType source) {
         var call = parent.getRelativeNameReference(source)
-        call = call + "(" + parent.allElements.map[name + "Value"].join(", ") + ")"
+        call = call + "(" + parent.allElements.map[elementName + "Value"].join(", ") + ")"
         if (!source.elements.empty)
             call = call + ","
         return call
@@ -547,7 +547,7 @@ class FTypeGenerator {
     }
 
     def private getConstReferenceVariable(FField destination, FModelElement source) {
-        "const " + destination.getTypeName(source) + "& " + destination.name
+        "const " + destination.getTypeName(source) + "& " + destination.elementName
     }
 
     def private List<FField> getAllElements(FStructType fStructType) {
@@ -560,10 +560,10 @@ class FTypeGenerator {
     }
 
     def private generateInlineOperatorWithName(FEnumerationType fEnumerationType, String enumerationName, FEnumerationType base, FModelElement parent, String parentName, String operator, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getClassNamespaceWithName(base.name, base.eContainer as FModelElement, (base.eContainer as FModelElement).name)»& rhs) {
+        inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getClassNamespaceWithName(base.elementName, base.eContainer as FModelElement, (base.eContainer as FModelElement).elementName)»& rhs) {
             return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
         }
-        inline bool operator«operator»(const «base.getClassNamespaceWithName(base.name, base.eContainer as FModelElement, (base.eContainer as FModelElement).name)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
+        inline bool operator«operator»(const «base.getClassNamespaceWithName(base.elementName, base.eContainer as FModelElement, (base.eContainer as FModelElement).elementName)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
             return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
         } 
     '''

@@ -53,21 +53,21 @@ class FInterfaceGenerator {
 
         «fInterface.model.generateNamespaceBeginDeclaration»
 
-        class «fInterface.name»«IF fInterface.base != null»: public «fInterface.base.getRelativeNameReference(fInterface)»«ENDIF» {
+        class «fInterface.elementName»«IF fInterface.base != null»: public «fInterface.base.getRelativeNameReference(fInterface)»«ENDIF» {
          public:
-            virtual ~«fInterface.name»() { }
+            virtual ~«fInterface.elementName»() { }
 
             static inline const char* getInterfaceId();
             static inline CommonAPI::Version getInterfaceVersion();
             «fInterface.generateFTypeDeclarations(deploymentAccessor)»
         };
 
-        const char* «fInterface.name»::getInterfaceId() {
+        const char* «fInterface.elementName»::getInterfaceId() {
             static const char* interfaceId = "«fInterface.fullyQualifiedName»";
             return interfaceId;
         }
 
-        CommonAPI::Version «fInterface.name»::getInterfaceVersion() {
+        CommonAPI::Version «fInterface.elementName»::getInterfaceVersion() {
             return CommonAPI::Version(«fInterface.version.major», «fInterface.version.minor»);
         }
 
@@ -77,7 +77,7 @@ class FInterfaceGenerator {
         «ENDFOR»
         «FOR method : fInterface.methods.filter[errors != null]»
             «FTypeGenerator::generateComments(method, false)»
-            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.name, deploymentAccessor)»
+            «method.errors.generateInlineImplementation(method.errors.errorName, fInterface, fInterface.elementName, deploymentAccessor)»
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»

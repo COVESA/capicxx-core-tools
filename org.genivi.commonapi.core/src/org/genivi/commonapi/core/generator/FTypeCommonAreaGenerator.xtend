@@ -48,7 +48,7 @@ class FTypeCommonAreaGenerator {
     def generateTypeWriters(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «FOR type: fTypes.types»
             «IF type.isFEnumerationType»
-                «generateStreamImplementation(type.getFEnumerationType, type.name, fTypes, fTypes.name, deploymentAccessor)»
+                «generateStreamImplementation(type.getFEnumerationType, type.elementName, fTypes, fTypes.elementName, deploymentAccessor)»
             «ENDIF»
         «ENDFOR»
     '''
@@ -99,7 +99,7 @@ class FTypeCommonAreaGenerator {
         «FOR type: fTypes.types»
             «IF type.isFUnionType»
               «FOR base : type.getFUnionType.baseList»
-                    «generateComparatorImplementation(type.getFUnionType, type.name, base, fTypes, fTypes.name)»
+                    «generateComparatorImplementation(type.getFUnionType, type.elementName, base, fTypes, fTypes.elementName)»
                 «ENDFOR»
             «ENDIF»
         «ENDFOR»
@@ -123,7 +123,7 @@ class FTypeCommonAreaGenerator {
             var item = iter.next
             var lName = "";
             if (item.type.derived != null) {
-                lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.name, parent, parentName)
+                lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.elementName, parent, parentName)
             } else {
                lName = item.getTypeName(fUnion)
             }            
@@ -131,7 +131,7 @@ class FTypeCommonAreaGenerator {
         }
 
         if (fUnion.base != null) {
-            for (base : fUnion.base.getElementTypeNames(fUnion.base.name, parent, parentName)) {
+            for (base : fUnion.base.getElementTypeNames(fUnion.base.elementName, parent, parentName)) {
                 names.add(base);
             }
         }
@@ -159,7 +159,7 @@ class FTypeCommonAreaGenerator {
     def private generateComparatorImplementation(FUnionType fUnionType, String unionName, FUnionType base, FModelElement parent, String parentName) '''
         inline bool operator==(
                 const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.name, parent, parentName)»& rhs) {
+                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& rhs) {
             if (lhs.getValueType() == rhs.getValueType()) {
                 «var list = base.getElementTypeNames(unionName, parent, parentName)»
                 «list.generateVariantComnparatorIf»
@@ -168,19 +168,19 @@ class FTypeCommonAreaGenerator {
         }
 
         inline bool operator==(
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.name, parent, parentName)»& lhs,
+                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& lhs,
                 const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& rhs) {
             return rhs == lhs;
         }
 
         inline bool operator!=(
                 const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.name, parent, parentName)»& rhs) {
+                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& rhs) {
             return lhs != rhs;
         }
 
         inline bool operator!=(
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.name, parent, parentName)»& lhs,
+                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& lhs,
                 const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& rhs) {
             return lhs != rhs;
         }
@@ -198,9 +198,9 @@ class FTypeCommonAreaGenerator {
         return baseList
     }
 
-    def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.name, fTypes, fTypes.name)»'''
+    def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.elementName, fTypes, fTypes.elementName)»'''
 
-    def getFQN(FType type, String name, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(name, fTypes, fTypes.name)»'''
+    def getFQN(FType type, String name, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(name, fTypes, fTypes.elementName)»'''
 
     def generateHash (FType type, String name, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
     //Hash for «name»
@@ -213,11 +213,11 @@ class FTypeCommonAreaGenerator {
     '''
 
     def generateHash (FType type, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-    //Hash for «type.name»
+    //Hash for «type.elementName»
     template<>
     struct hash<«type.getFQN(fTypes)»> {
-        inline size_t operator()(const «type.getFQN(fTypes)»& «type.name.toFirstLower») const {
-            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.name.toFirstLower»);
+        inline size_t operator()(const «type.getFQN(fTypes)»& «type.elementName.toFirstLower») const {
+            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.elementName.toFirstLower»);
         }
     };
     '''

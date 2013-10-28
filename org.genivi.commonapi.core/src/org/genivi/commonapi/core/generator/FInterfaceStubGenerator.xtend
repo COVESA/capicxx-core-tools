@@ -39,7 +39,7 @@ class FInterfaceStubGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        #include "«fInterface.name».h"
+        #include "«fInterface.elementName».h"
 
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
@@ -57,23 +57,23 @@ class FInterfaceStubGenerator {
 
         /**
          * Receives messages from remote and handles all dispatching of deserialized calls
-         * to a stub for the service «fInterface.name». Also provides means to send broadcasts
+         * to a stub for the service «fInterface.elementName». Also provides means to send broadcasts
          * and attribute-changed-notifications of observable attributes as defined by this service.
          * An application developer should not need to bother with this class.
          */
-        class «fInterface.stubAdapterClassName»: virtual public CommonAPI::StubAdapter, public «fInterface.name» {
+        class «fInterface.stubAdapterClassName»: virtual public CommonAPI::StubAdapter, public «fInterface.elementName» {
          public:
             «FOR attribute : fInterface.attributes»
                 «IF attribute.isObservable»
-                    ///Notifies all remote listeners about a change of value of the attribute «attribute.name».
-                    virtual void «attribute.stubAdapterClassFireChangedMethodName»(const «attribute.getTypeName(fInterface.model)»& «attribute.name») = 0;
+                    ///Notifies all remote listeners about a change of value of the attribute «attribute.elementName».
+                    virtual void «attribute.stubAdapterClassFireChangedMethodName»(const «attribute.getTypeName(fInterface.model)»& «attribute.elementName») = 0;
                 «ENDIF»
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
                 «IF !broadcast.selective.nullOrEmpty»
                     /**
-                     * Sends a selective broadcast event for «broadcast.name». Should not be called directly.
+                     * Sends a selective broadcast event for «broadcast.elementName». Should not be called directly.
                      * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
                      */
                     virtual void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateFireSelectiveSignatur(broadcast, fInterface)») = 0;
@@ -83,10 +83,10 @@ class FInterfaceStubGenerator {
                     virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»() = 0;
                 «ELSE»
                     /**
-                     * Sends a broadcast event for «broadcast.name». Should not be called directly.
+                     * Sends a broadcast event for «broadcast.elementName». Should not be called directly.
                      * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
                      */
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
+                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')») = 0;
                 «ENDIF»
             «ENDFOR»
             
@@ -113,7 +113,7 @@ class FInterfaceStubGenerator {
 
         /**
          * Defines the necessary callbacks to handle remote set events related to the attributes
-         * defined in the IDL description for «fInterface.name».
+         * defined in the IDL description for «fInterface.elementName».
          * For each attribute two callbacks are defined:
          * - a verification callback that allows to verify the requested value and to prevent setting
          *   e.g. an invalid value ("onRemoteSet<AttributeName>").
@@ -129,9 +129,9 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 «IF !attribute.readonly»
-                    /// Verification callback for remote set requests on the attribute «attribute.name»
-                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» «attribute.name») = 0;
-                    /// Action callback for remote set requests on the attribute «attribute.name»
+                    /// Verification callback for remote set requests on the attribute «attribute.elementName»
+                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, «attribute.getTypeName(fInterface.model)» «attribute.elementName») = 0;
+                    /// Action callback for remote set requests on the attribute «attribute.elementName»
                     virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
                 «ENDIF»
 
@@ -141,7 +141,7 @@ class FInterfaceStubGenerator {
 
         /**
          * Defines the interface that must be implemented by any class that should provide
-         * the service «fInterface.name» to remote clients.
+         * the service «fInterface.elementName» to remote clients.
          * This class and the one above are the ones an application developer needs to have
          * a look at if he wants to implement a service.
          */
@@ -151,33 +151,33 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
-                /// Provides getter access to the attribute «attribute.name»
+                /// Provides getter access to the attribute «attribute.elementName»
                 virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
             «ENDFOR»
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                /// This is the method that will be called on remote calls on the method «method.name».
-                virtual void «method.name»(«method.generateStubSignature») = 0;
+                /// This is the method that will be called on remote calls on the method «method.elementName».
+                virtual void «method.elementName»(«method.generateStubSignature») = 0;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
                 «IF !broadcast.selective.nullOrEmpty»
                     /**
-                     * Sends a selective broadcast event for «broadcast.name» to the given ClientIds.
+                     * Sends a selective broadcast event for «broadcast.elementName» to the given ClientIds.
                      * The ClientIds must all be out of the set of subscribed clients.
                      * If no ClientIds are given, the selective broadcast is sent to all subscribed clients.
                      */
                     virtual void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)») = 0;
-                    /// retreives the list of all subscribed clients for «broadcast.name»
+                    /// retreives the list of all subscribed clients for «broadcast.elementName»
                     virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»() = 0;
                     /// Hook method for reacting on new subscriptions or removed subscriptions respectively for selective broadcasts.
                     virtual void «broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, const CommonAPI::SelectiveBroadcastSubscriptionEvent event) = 0;
                     /// Hook method for reacting accepting or denying new subscriptions 
                     virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
                 «ELSE»
-                    /// Sends a broadcast event for «broadcast.name».
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») = 0;
+                    /// Sends a broadcast event for «broadcast.elementName».
+                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')») = 0;
                 «ENDIF»
             «ENDFOR»
             
@@ -231,8 +231,8 @@ class FInterfaceStubGenerator {
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                virtual void «method.name»(«method.generateStubSignature»);
-                virtual void «method.name»(«method.generateStubSignatureOldStyle»);
+                virtual void «method.elementName»(«method.generateStubSignature»);
+                virtual void «method.elementName»(«method.generateStubSignatureOldStyle»);
 
             «ENDFOR»
 
@@ -246,7 +246,7 @@ class FInterfaceStubGenerator {
                     /// Hook method for reacting accepting or denying new subscriptions 
                     virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId);
                 «ELSE»
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')»);
+                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')»);
                 «ENDIF»
             «ENDFOR»
             
@@ -377,11 +377,11 @@ class FInterfaceStubGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
-            void «fInterface.stubDefaultClassName»::«method.name»(«method.generateStubSignature») {
+            void «fInterface.stubDefaultClassName»::«method.elementName»(«method.generateStubSignature») {
                 // Call old style methods in default 
-                «method.name»(«method.generateArgumentsToStubCompatibility»);
+                «method.elementName»(«method.generateArgumentsToStubCompatibility»);
             }
-            void «fInterface.stubDefaultClassName»::«method.name»(«method.generateStubSignatureOldStyle») {
+            void «fInterface.stubDefaultClassName»::«method.elementName»(«method.generateStubSignatureOldStyle») {
                 // No operation in default
             }
 
@@ -391,7 +391,7 @@ class FInterfaceStubGenerator {
             «FTypeGenerator::generateComments(broadcast, false)»
             «IF !broadcast.selective.nullOrEmpty»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, false)») {
-                    stubAdapter_->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map[name].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»receivers);
+                    stubAdapter_->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map[elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»receivers);
                 }
                 void «fInterface.stubDefaultClassName»::«broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId, const CommonAPI::SelectiveBroadcastSubscriptionEvent event) {
                     // No operation in default
@@ -405,8 +405,8 @@ class FInterfaceStubGenerator {
                 }
 
             «ELSE»
-                void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')») {
-                    stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map[name].join(', ')»);
+                void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')») {
+                    stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map[elementName].join(', ')»);
                 }
             «ENDIF»
         «ENDFOR»
@@ -438,18 +438,18 @@ class FInterfaceStubGenerator {
     '''
 
     def private getStubDefaultClassSetMethodName(FAttribute fAttribute) {
-        'set' + fAttribute.name.toFirstUpper + 'Attribute'
+        'set' + fAttribute.elementName.toFirstUpper + 'Attribute'
     }
 
     def private getStubDefaultClassTrySetMethodName(FAttribute fAttribute) {
-        'trySet' + fAttribute.name.toFirstUpper + 'Attribute'
+        'trySet' + fAttribute.elementName.toFirstUpper + 'Attribute'
     }
 
     def private getStubDefaultClassValidateMethodName(FAttribute fAttribute) {
-        'validate' + fAttribute.name.toFirstUpper + 'AttributeRequestedValue'
+        'validate' + fAttribute.elementName.toFirstUpper + 'AttributeRequestedValue'
     }
 
     def private getStubDefaultClassVariableName(FAttribute fAttribute) {
-        fAttribute.name.toFirstLower + 'AttributeValue_'
+        fAttribute.elementName.toFirstLower + 'AttributeValue_'
     }
 }

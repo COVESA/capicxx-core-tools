@@ -58,7 +58,7 @@ class FTypeCollectionGenerator {
 
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
 
-        namespace «fTypeCollection.name» {
+        namespace «fTypeCollection.elementName» {
             «fTypeCollection.generateFTypeDeclarations(deploymentAccessor)»
 
         «FOR type : fTypeCollection.types»
@@ -77,7 +77,7 @@ class FTypeCollectionGenerator {
             }
         «ENDIF»
 
-        } // namespace «fTypeCollection.name»
+        } // namespace «fTypeCollection.elementName»
 
         «fTypeCollection.model.generateNamespaceEndDeclaration»
 
@@ -106,14 +106,14 @@ class FTypeCollectionGenerator {
         «ENDFOR»
 
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
-        namespace «fTypeCollection.name» {
+        namespace «fTypeCollection.elementName» {
 
         «FOR type : fTypeCollection.types»
             «/*FTypeGenerator::generateComments(type.comment, false)*/»
             «type.generateFTypeImplementation(type)»
         «ENDFOR»
 
-        } // namespace «fTypeCollection.name»
+        } // namespace «fTypeCollection.elementName»
         «fTypeCollection.model.generateNamespaceEndDeclaration»
     '''
 

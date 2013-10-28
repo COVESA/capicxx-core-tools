@@ -51,8 +51,8 @@ class FrancaGeneratorExtensions {
 
     def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
-            return (fModelElement.eContainer as FModel).name + '.' + fModelElement.name
-        return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.name
+            return (fModelElement.eContainer as FModel).name + '.' + fModelElement.elementName
+        return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.elementName
     }
 
     def splitCamelCase(String string) {
@@ -92,7 +92,7 @@ class FrancaGeneratorExtensions {
     }
 
     def String getDefineName(FModelElement fModelElement) {
-        val defineSuffix = '_' + fModelElement.name.splitCamelCase.join('_')
+        val defineSuffix = '_' + fModelElement.elementName.splitCamelCase.join('_')
 
         if (fModelElement.eContainer instanceof FModelElement)
             return (fModelElement.eContainer as FModelElement).defineName + defineSuffix
@@ -104,6 +104,16 @@ class FrancaGeneratorExtensions {
         fModel.name.toUpperCase.replace('.', '_')
     }
 
+    def getElementName(FModelElement fModelElement) {
+        if(fModelElement.name.nullOrEmpty && fModelElement instanceof FTypeCollection) {
+            return "AnonymousTypeCollection"
+        }
+        else {
+            return fModelElement.name
+        }
+    }
+
+
     def private dispatch List<String> getNamespaceAsList(FModel fModel) {
         newArrayList(fModel.name.split("\\."))
     }
@@ -113,7 +123,7 @@ class FrancaGeneratorExtensions {
         val isRootElement = fModelElement.eContainer instanceof FModel
 
         if (!isRootElement)
-            namespaceList.add((fModelElement.eContainer as FModelElement).name)
+            namespaceList.add((fModelElement.eContainer as FModelElement).elementName)
 
         return namespaceList
     }
@@ -132,7 +142,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getRelativeNameReference(FModelElement destination, EObject source) {
-        var nameReference = destination.name
+        var nameReference = destination.elementName
 
         if (!destination.eContainer.equals(source)) {
             val subnamespaceList = destination.getSubnamespaceList(source)
@@ -144,7 +154,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getHeaderFile(FTypeCollection fTypeCollection) {
-        fTypeCollection.name + ".h"
+        fTypeCollection.elementName + ".h"
     }
 
     def getHeaderPath(FTypeCollection fTypeCollection) {
@@ -152,7 +162,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getSourceFile(FTypeCollection fTypeCollection) {
-        fTypeCollection.name + ".cpp"
+        fTypeCollection.elementName + ".cpp"
     }
 
     def getSourcePath(FTypeCollection fTypeCollection) {
@@ -160,7 +170,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getProxyBaseHeaderFile(FInterface fInterface) {
-        fInterface.name + "ProxyBase.h"
+        fInterface.elementName + "ProxyBase.h"
     }
 
     def getProxyBaseHeaderPath(FInterface fInterface) {
@@ -168,11 +178,11 @@ class FrancaGeneratorExtensions {
     }
 
     def getProxyBaseClassName(FInterface fInterface) {
-        fInterface.name + 'ProxyBase'
+        fInterface.elementName + 'ProxyBase'
     }
 
     def getProxyHeaderFile(FInterface fInterface) {
-        fInterface.name + "Proxy.h"
+        fInterface.elementName + "Proxy.h"
     }
 
     def getProxyHeaderPath(FInterface fInterface) {
@@ -180,7 +190,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubDefaultHeaderFile(FInterface fInterface) {
-        fInterface.name + "StubDefault.h"
+        fInterface.elementName + "StubDefault.h"
     }
 
     def getStubDefaultHeaderPath(FInterface fInterface) {
@@ -188,11 +198,11 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubDefaultClassName(FInterface fInterface) {
-        fInterface.name + 'StubDefault'
+        fInterface.elementName + 'StubDefault'
     }
 
     def getStubDefaultSourceFile(FInterface fInterface) {
-        fInterface.name + "StubDefault.cpp"
+        fInterface.elementName + "StubDefault.cpp"
     }
 
     def getStubDefaultSourcePath(FInterface fInterface) {
@@ -200,15 +210,15 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubRemoteEventClassName(FInterface fInterface) {
-        fInterface.name + 'StubRemoteEvent'
+        fInterface.elementName + 'StubRemoteEvent'
     }
 
     def getStubAdapterClassName(FInterface fInterface) {
-        fInterface.name + 'StubAdapter'
+        fInterface.elementName + 'StubAdapter'
     }
 
     def getStubHeaderFile(FInterface fInterface) {
-        fInterface.name + "Stub.h"
+        fInterface.elementName + "Stub.h"
     }
 
     def getStubHeaderPath(FInterface fInterface) {
@@ -234,7 +244,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubClassName(FInterface fInterface) {
-        fInterface.name + 'Stub'
+        fInterface.elementName + 'Stub'
     }
 
     def hasAttributes(FInterface fInterface) {
@@ -260,13 +270,13 @@ class FrancaGeneratorExtensions {
         if (!parentClassName.nullOrEmpty)
             definition = definition + parentClassName + '::'
 
-        definition = definition + fMethod.name + '(' + fMethod.generateDefinitionSignature + ')'
+        definition = definition + fMethod.elementName + '(' + fMethod.generateDefinitionSignature + ')'
 
         return definition
     }
 
     def generateDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + name].join(', ')
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + elementName].join(', ')
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
@@ -277,13 +287,13 @@ class FrancaGeneratorExtensions {
             signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + name].join(', ')
+            signature = signature + ', ' + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + elementName].join(', ')
 
         return signature
     }
 
     def generateStubSignatureCompatibility(FMethod fMethod) {
-        var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
+        var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
         if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
             signature = signature + ', '
 
@@ -297,7 +307,7 @@ class FrancaGeneratorExtensions {
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
 
-        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
 
         if (fMethod.hasError || !fMethod.outArgs.empty)
             signature = signature + ', '
@@ -310,7 +320,7 @@ class FrancaGeneratorExtensions {
     def generateStubSignatureOldStyle(FMethod fMethod) {
         var signature = ''
 
-        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + name].join(', ')
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
 
         if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
             signature = signature + ', '
@@ -327,13 +337,13 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         signature = signature +
-            fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
+            fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')
 
         return signature
     }
 
     def generateSendSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface, Boolean withDefault) {
-        var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + name].join(', ')
+        var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')
 
         if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
@@ -355,13 +365,13 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         if (!fMethod.outArgs.empty)
-            signature = signature + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + name].join(', ')
+            signature = signature + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + elementName].join(', ')
 
         return signature
     }
 
     def generateArgumentsToStubCompatibility(FMethod fMethod) {
-        var arguments = fMethod.inArgs.map[name].join(', ')
+        var arguments = fMethod.inArgs.map[elementName].join(', ')
 
         if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
             arguments = arguments + ', '
@@ -372,7 +382,7 @@ class FrancaGeneratorExtensions {
             arguments = arguments + ', '
 
         if (!fMethod.outArgs.empty)
-            arguments = arguments + fMethod.outArgs.map[name].join(', ')
+            arguments = arguments + fMethod.outArgs.map[elementName].join(', ')
 
         return arguments
     }
@@ -388,13 +398,13 @@ class FrancaGeneratorExtensions {
             definition = definition + parentClassName + '::'
         }
 
-        definition = definition + fMethod.name + 'Async(' + fMethod.generateAsyncDefinitionSignature + ')'
+        definition = definition + fMethod.elementName + 'Async(' + fMethod.generateAsyncDefinitionSignature + ')'
 
         return definition
     }
 
     def generateAsyncDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + name].join(', ')
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + elementName].join(', ')
         if (!fMethod.inArgs.empty) {
             signature = signature + ', '
         }
@@ -461,7 +471,7 @@ class FrancaGeneratorExtensions {
     }
 
     def private getBasicAsyncCallbackClassName(FMethod fMethod) {
-        fMethod.name.toFirstUpper + 'AsyncCallback'
+        fMethod.elementName.toFirstUpper + 'AsyncCallback'
     }
 
     def private int16Hash(String originalString) {
@@ -530,7 +540,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getClassName(FAttribute fAttribute) {
-        fAttribute.name.toFirstUpper + 'Attribute'
+        fAttribute.elementName.toFirstUpper + 'Attribute'
     }
 
     def generateGetMethodDefinition(FAttribute fAttribute) {
@@ -557,23 +567,23 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubAdapterClassFireChangedMethodName(FAttribute fAttribute) {
-        'fire' + fAttribute.name.toFirstUpper + 'AttributeChanged'
+        'fire' + fAttribute.elementName.toFirstUpper + 'AttributeChanged'
     }
 
     def getStubRemoteEventClassSetMethodName(FAttribute fAttribute) {
-        'onRemoteSet' + fAttribute.name.toFirstUpper + 'Attribute'
+        'onRemoteSet' + fAttribute.elementName.toFirstUpper + 'Attribute'
     }
 
     def getStubRemoteEventClassChangedMethodName(FAttribute fAttribute) {
-        'onRemote' + fAttribute.name.toFirstUpper + 'AttributeChanged'
+        'onRemote' + fAttribute.elementName.toFirstUpper + 'AttributeChanged'
     }
 
     def getStubClassGetMethodName(FAttribute fAttribute) {
-        'get' + fAttribute.name.toFirstUpper + 'Attribute'
+        'get' + fAttribute.elementName.toFirstUpper + 'Attribute'
     }
 
     def getClassName(FBroadcast fBroadcast) {
-        var className = fBroadcast.name.toFirstUpper
+        var className = fBroadcast.elementName.toFirstUpper
 
         if (!fBroadcast.selective.nullOrEmpty)
             className = className + 'Selective'
@@ -599,39 +609,39 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubAdapterClassFireEventMethodName(FBroadcast fBroadcast) {
-        'fire' + fBroadcast.name.toFirstUpper + 'Event'
+        'fire' + fBroadcast.elementName.toFirstUpper + 'Event'
     }
 
     def getStubAdapterClassFireSelectiveMethodName(FBroadcast fBroadcast) {
-        'fire' + fBroadcast.name.toFirstUpper + 'Selective';
+        'fire' + fBroadcast.elementName.toFirstUpper + 'Selective';
     }
 
     def getStubAdapterClassSendSelectiveMethodName(FBroadcast fBroadcast) {
-        'send' + fBroadcast.name.toFirstUpper + 'Selective';
+        'send' + fBroadcast.elementName.toFirstUpper + 'Selective';
     }
 
     def getSubscribeSelectiveMethodName(FBroadcast fBroadcast) {
-        'subscribeFor' + fBroadcast.name + 'Selective';
+        'subscribeFor' + fBroadcast.elementName + 'Selective';
     }
 
     def getUnsubscribeSelectiveMethodName(FBroadcast fBroadcast) {
-        'unsubscribeFrom' + fBroadcast.name + 'Selective';
+        'unsubscribeFrom' + fBroadcast.elementName + 'Selective';
     }
 
     def getSubscriptionChangedMethodName(FBroadcast fBroadcast) {
-        'on' + fBroadcast.name.toFirstUpper + 'SelectiveSubscriptionChanged';
+        'on' + fBroadcast.elementName.toFirstUpper + 'SelectiveSubscriptionChanged';
     }
 
     def getSubscriptionRequestedMethodName(FBroadcast fBroadcast) {
-        'on' + fBroadcast.name.toFirstUpper + 'SelectiveSubscriptionRequested';
+        'on' + fBroadcast.elementName.toFirstUpper + 'SelectiveSubscriptionRequested';
     }
 
     def getStubAdapterClassSubscribersMethodName(FBroadcast fBroadcast) {
-        'getSubscribersFor' + fBroadcast.name.toFirstUpper + 'Selective';
+        'getSubscribersFor' + fBroadcast.elementName.toFirstUpper + 'Selective';
     }
 
     def getStubAdapterClassSubscriberListPropertyName(FBroadcast fBroadcast) {
-        'subscribersFor' + fBroadcast.name.toFirstUpper + 'Selective_';
+        'subscribersFor' + fBroadcast.elementName.toFirstUpper + 'Selective_';
     }
 
     def getStubSubscribeSignature(FBroadcast fBroadcast) {
@@ -662,7 +672,7 @@ class FrancaGeneratorExtensions {
 
     def getErrorName(FEnumerationType fMethodErrors) {
         checkArgument(fMethodErrors.eContainer instanceof FMethod, 'Not FMethod errors')
-        (fMethodErrors.eContainer as FMethod).name + 'Error'
+        (fMethodErrors.eContainer as FMethod).elementName + 'Error'
     }
 
     def getBackingType(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
@@ -863,7 +873,7 @@ class FrancaGeneratorExtensions {
         fStructType.elements.forEach [
             hasher.putFTypeRef(type)
             // avoid cases where the positions of 2 consecutive elements of the same type are switched
-            hasher.putString(name, Charsets::UTF_8)
+            hasher.putString(elementName, Charsets::UTF_8)
         ]
     }
 
@@ -1000,19 +1010,19 @@ class FrancaGeneratorExtensions {
     }
     
     def stubManagedSetName(FInterface fInterface) {
-        'registered' + fInterface.name + 'Instances'
+        'registered' + fInterface.elementName + 'Instances'
     }
     
     def stubManagedSetGetterName(FInterface fInterface) {
-        'get' + fInterface.name + 'Instances'
+        'get' + fInterface.elementName + 'Instances'
     }
     
     def stubRegisterManagedName(FInterface fInterface) {
-        'registerManagedStub' + fInterface.name
+        'registerManagedStub' + fInterface.elementName
     }
     
     def stubRegisterManagedAutoName(FInterface fInterface) {
-        'registerManagedStub' + fInterface.name + 'AutoInstance'
+        'registerManagedStub' + fInterface.elementName + 'AutoInstance'
     }
     
     def stubRegisterManagedMethod(FInterface fInterface) {
@@ -1024,14 +1034,14 @@ class FrancaGeneratorExtensions {
     }    
     
     def stubDeregisterManagedName(FInterface fInterface) {
-        'deregisterManagedStub' + fInterface.name
+        'deregisterManagedStub' + fInterface.elementName
     }
     
     def proxyManagerGetterName(FInterface fInterface) {
-        'getProxyManager' + fInterface.name
+        'getProxyManager' + fInterface.elementName
     }
     
     def proxyManagerMemberName(FInterface fInterface) {
-        'proxyManager' + fInterface.name + '_'
+        'proxyManager' + fInterface.elementName + '_'
     }
 }
