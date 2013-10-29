@@ -215,7 +215,7 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FMapType fMap, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fMap, false)»
-        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»> «fMap.name»;
+        typedef std::unordered_map<«fMap.generateKeyType»«fMap.generateValueType»«fMap.generateHasher»> «fMap.name»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
@@ -526,9 +526,15 @@ class FTypeGenerator {
         return call
     }
 
-
     def private generateKeyType(FMapType fMap) '''«fMap.keyType.getNameReference(fMap.eContainer)»'''
     def private generateValueType(FMapType fMap) ''', «fMap.valueType.getNameReference(fMap.eContainer)»'''
+    def private generateHasher(FMapType fMap) {
+        if (fMap.keyType.derived instanceof FEnumerationType)  {
+            return ''', CommonAPI::EnumHasher<«fMap.keyType.getNameReference(fMap.eContainer)»>'''
+        }
+
+        return ""
+    }
 
     def private getBaseStructName(FStructType fStructType) {
         if (fStructType.base != null)
