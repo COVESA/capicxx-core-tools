@@ -211,7 +211,7 @@ class FTypeGenerator {
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
         «IF fArrayType.elementType.derived != null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
-            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»>> «fArrayType.name»;
+            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»>> «fArrayType.elementName»;
         «ELSE»
             typedef std::vector<«fArrayType.elementType.getNameReference(fArrayType.eContainer)»> «fArrayType.elementName»;
         «ENDIF»
