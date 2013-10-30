@@ -196,7 +196,7 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
                 delegate_(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate))
-#ifndef WIN32
+#if !defined(WIN32) || defined(ENABLE_ATTRIBUTE_EXTENSIONS)
                 , _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...
 #endif
         { }
