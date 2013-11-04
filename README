@@ -45,18 +45,16 @@ CommonAPI-D-Bus-Tools - The eclipse based tools for CommonAPI D-Bus. This is the
 ----
 == Usage Instructions
 
-The simplest way to use the CommonAPI Tools is to add the update site ZIP available in the CommonAPI-D-Bus-Tools project 
-under org.genivi.commonapi.dbus.feature/org.genivi.commonapi.dbus.updatesite.zip to you Eclipse. This is available under:
+The simplest way to use the CommonAPI Tools is to add the update site available on the GENIVI project servers to you Eclipse. 
+This is available under:
 
 Help->Install New Software->Add Button
 
-There click Browse and navigate to the update site. 
+Enter the following URL: http://docs.projects.genivi.org/yamaica-update-site/CommonAPI/updatesite/ and confirm. 
 
-In order for dependencies to be resolved you must have a franca update site zip 
-(available from https://code.google.com/a/eclipselabs.org/p/franca/downloads/list) and the xtext update site url 
-(http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/) also added to your eclipse sources in the same manner. 
+This provides CommonAPI, CommonAPI-D-Bus and all dependencies. 
 
-Then select "All available sites" in the site selection dropdown box, and in the Software selection window, 
+Then select the newly added site in the site selection dropdown box, and in the Software selection window, 
 select the entire "GENIVI Common API" Tree.   
 
 After the software has been installed in Eclipse you can right-click on any .fidl file and generate C++ code for CommonAPI D-Bus 
