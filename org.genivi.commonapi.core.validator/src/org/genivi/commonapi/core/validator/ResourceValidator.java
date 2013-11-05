@@ -17,14 +17,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 
 import org.genivi.commonapi.core.generator.FTypeCycleDetector;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 
-import org.eclipse.ui.IWorkbench;
 import org.eclipse.xtext.validation.ValidationMessageAcceptor;
 import org.franca.core.dsl.validation.IFrancaExternalValidator;
 import org.franca.core.franca.FArgument;
@@ -35,11 +33,14 @@ import org.franca.core.franca.FEnumerationType;
 import org.franca.core.franca.FEnumerator;
 import org.franca.core.franca.FField;
 import org.franca.core.franca.FInterface;
+import org.franca.core.franca.FMapType;
 import org.franca.core.franca.FMethod;
 import org.franca.core.franca.FModel;
 import org.franca.core.franca.FStructType;
 import org.franca.core.franca.FType;
 import org.franca.core.franca.FTypeCollection;
+import org.franca.core.franca.FTypeRef;
+import org.franca.core.franca.FTypeDef;
 import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
 import org.eclipse.core.runtime.IPath;
@@ -190,8 +191,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
                     }
                 }
             }
-            
         }
+
         importUriAndNamesspace.clear();
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
             validateName(fTypeCollection.getName(), messageAcceptor,
@@ -224,7 +225,6 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         }
                     }
                 }
-
             }
             for (FType fType : fTypeCollection.getTypes()) {
                 validateName(fType.getName(), messageAcceptor, fType);
@@ -233,6 +233,10 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         validateName(fField.getName(), messageAcceptor, fField);
                     }
                 }
+
+                if (fType instanceof FMapType)
+                    validateMapKey((FMapType) fType, messageAcceptor);
+
                 if (fType instanceof FEnumerationType) {
                     for (FEnumerator fEnumerator : ((FEnumerationType) fType)
                             .getEnumerators()) {
@@ -248,9 +252,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
             }
         }
-        
-        
-      
+
         for (FInterface fInterface : model.getInterfaces()) {
             ArrayList<FInterface> startI = new ArrayList<FInterface>();
             int index = 0 ;
@@ -263,8 +265,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 managedList.add(managedInterface);
                 index++;
             }
-            
-            
+
             validateName(fInterface.getName(), messageAcceptor, fInterface);
             if (interfaceTypecollectionNames.indexOf(fInterface.getName()) != interfaceTypecollectionNames
                     .lastIndexOf(fInterface.getName())) {
@@ -362,11 +363,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
             for (FMethod fMethod : fInterface.getMethods()) {
                 validateName(fMethod.getName(), messageAcceptor, fMethod);
                 for (FArgument out : fMethod.getOutArgs()) {
-                	if (out.getName().equals(fMethod.getName())) {
-						messageAcceptor.acceptError("Parameters cannot share name with method", out,
-								FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
-								-1, null);
-                	}
+                    if (out.getName().equals(fMethod.getName())) {
+                        messageAcceptor.acceptError("Parameters cannot share name with method", out,
+                                FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+                                -1, null);
+                    }
                     validateName(out.getName(), messageAcceptor, out);
                     if (out.getType().getPredefined().toString() == "undefined") {
                         try {
@@ -391,11 +392,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
                 count = 0;
                 for (FArgument in : fMethod.getInArgs()) {
-                	if (in.getName().equals(fMethod.getName())) {
-						messageAcceptor.acceptError("Parameters cannot share name with method", in,
-								FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
-								-1, null);
-                	}
+                    if (in.getName().equals(fMethod.getName())) {
+                        messageAcceptor.acceptError("Parameters cannot share name with method", in,
+                                FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+                                -1, null);
+                    }
                     validateName(in.getName(), messageAcceptor, in);
                     if (in.getType().getPredefined().toString() == "undefined") {
                         try {
@@ -425,7 +426,6 @@ public class ResourceValidator implements IFrancaExternalValidator {
 
         interfaceTypecollectionNames.clear();
         importList.clear();
-
     }
 
     private HashMap<String, HashSet<String>> buildImportList(
@@ -499,13 +499,13 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 return;
             }
         } else {
-			cyclicList.add(filePath);
-			if (importList.containsKey(filePath)) {
-				for (String importPath : importList.get(filePath)) {
-					findCyclicImports(importPath, filePath, cyclicList, imp,
-							messageAcceptor);
-				}
-			}
+            cyclicList.add(filePath);
+            if (importList.containsKey(filePath)) {
+                for (String importPath : importList.get(filePath)) {
+                    findCyclicImports(importPath, filePath, cyclicList, imp,
+                            messageAcceptor);
+                }
+            }
             cyclicList.remove(cyclicList.size() - 1);
         }
     }
@@ -653,5 +653,38 @@ public class ResourceValidator implements IFrancaExternalValidator {
                         eObject, null, -1, null);
             }
         }
+    }
+
+    private void validateMapKey(FMapType m, ValidationMessageAcceptor messageAcceptor) {
+        if (cycleDetector.hasCycle(m)) {
+            return;
+        }
+
+        FTypeRef key = m.getKeyType();
+        if (isTypeAcceptableAsMapKey(key)) {
+            return;
+        }
+
+        while (key.getDerived() instanceof FTypeDef) {
+            key = ((FTypeDef) key.getDerived()).getActualType();
+
+            if (isTypeAcceptableAsMapKey(key)) {
+                return;
+            }
+        }
+
+       messageAcceptor.acceptError("Key type has to be an primitive type!", m, FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1, null);
+    }
+
+    private boolean isTypeAcceptableAsMapKey(FTypeRef typeRef) {
+        boolean accepted = false;
+
+        if (!typeRef.getPredefined().toString().equals("undefined")) {
+            accepted = true; // basic types are ok
+        } else if (typeRef.getDerived() instanceof FEnumerationType) {
+            accepted = true; // enums are also ok
+        }
+
+        return accepted;
     }
 }
