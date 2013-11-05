@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.emf.common.util.URI;
@@ -48,7 +49,7 @@ public class CommandlineToolMain {
     public static final String FILESEPARATOR = System.getProperty("file.separator");
 
     public static final String FILESEPARATORIMP = "/";
-    public static final String TEMP_PFAD = System.getProperty("user.dir") + FILESEPARATOR + "temp";
+    public static final String TEMP_PFAD = System.getProperty("user.dir") + FILESEPARATOR + "temp/";
     public static final String CORE_DEPL = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core" + FILESEPARATOR
             + "deployment" + FILESEPARATOR + "CommonAPI_deployment.fdepl";
     public static final String CORE_PFAD = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core" + FILESEPARATOR
@@ -94,8 +95,10 @@ public class CommandlineToolMain {
                 }
                 File file = new File(args[i + 1]);
                 if (!file.exists() || !file.isDirectory()) {
-                    System.err.println("Please use only existing folders after -dest as arguments");
-                    System.exit(-1);
+                    if (!file.mkdirs()) {
+                    	System.err.println("Could not create dest path");
+                        System.exit(-1);
+                    }
                 }
                 dest = createAbsolutPath(args[i + 1]);
                 i++;
@@ -159,10 +162,9 @@ public class CommandlineToolMain {
              * same time the temporary path to the modified file will be saved
              * instead of the original one
              */
-            for (String file : filelist) {
-                String nfile = handleArgs(file);
-                filelist.remove(file);
-                filelist.add(nfile);
+
+            for (int i = 0; i < filelist.size() ; i++) {
+            	filelist.set(i, rewriteImports(filelist.get(i)));
             }
 
             Injector injectorcore = new StandaloneSetup().createInjectorAndDoEMFRegistration();
@@ -185,7 +187,7 @@ public class CommandlineToolMain {
                 uri = URI.createFileURI(file);
                 Resource rs = rsset.createResource(uri);
                 if (dbus)
-                    // Attention!!! some Methods form the generator are
+                    // Attention!!! some Methods from the generator are
                     // deprecated because of this it could be in the near future
                     // that URI's will be used
                     dbusgenerator.doGenerate(rs, fsa);
@@ -194,7 +196,7 @@ public class CommandlineToolMain {
             }
 
         } finally {
-            deleteDir(tempfolder);
+            deleteTempFiles(tempfolder);
         }
     }
 
@@ -219,7 +221,7 @@ public class CommandlineToolMain {
      *            the path to the file which has to be loaded and analyzed
      * @return the new path to the file
      */
-    private static String handleArgs(String path) {
+    private static String rewriteImports(String path) {
         files.add(path);
         String ret = path;
         if (path.endsWith(".fdepl")) {
@@ -227,7 +229,6 @@ public class CommandlineToolMain {
             String uristr = "";
             File fileout = null;
             uristr = TEMP_FDEPL_PFAD + FILESEPARATOR + getFileName(path);
-            // System.out.println(uristr);
             fileout = new File(uristr);
             ret = uristr;
             File folder = new File(TEMP_FDEPL_PFAD);
@@ -249,7 +250,7 @@ public class CommandlineToolMain {
 
                     // the imported files will only be handled if they weren't
                     // handled before
-                    if (line.contains("import")) {
+                    if (line.trim().startsWith("import")) {
                         if (line.contains("dbus/deployment/CommonAPI-DBus_deployment.fdepl")) {
                             line = "import \"file:" + FILESEPARATORIMP + replaceAll(DBUS_DEPL, "\\", "/") + "\"";
                             if (!files.contains(DBUS_DEPL)) {
@@ -265,7 +266,7 @@ public class CommandlineToolMain {
                             line = "import \"file:" + FILESEPARATORIMP + replaceAll(TEMP_FDEPL_PFAD, "\\", "/")
                                     + FILESEPARATORIMP + getImportsName(line) + "\"";
                             if (!files.contains(createAbsolutPath(getImportPath(cp), path)))
-                                handleArgs(createAbsolutPath(getImportPath(cp), path));
+                                rewriteImports(createAbsolutPath(getImportPath(cp), path));
                         } else if (line.contains(".fidl")) {
                             String fidlpath = createAbsolutPath(getImportPath(line),
                                     path.substring(0, path.lastIndexOf(FILESEPARATOR)));
@@ -461,11 +462,11 @@ public class CommandlineToolMain {
      * @param path
      *            the path to the folder which has to be deleted
      */
-    public static void deleteDir(File path) {
+    public static void deleteTempFiles(File path) {
         if (path != null && path.isDirectory()) {
             for (File file : path.listFiles()) {
                 if (file.isDirectory())
-                    deleteDir(file);
+                    deleteTempFiles(file);
                 file.delete();
             }
         }
