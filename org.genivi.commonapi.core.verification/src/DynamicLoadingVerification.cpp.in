@@ -1,0 +1,158 @@
+/* Copyright (C) 2013 BMW Group
+ * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include <functional>
+#include <fstream>
+#include <gtest/gtest.h>
+#include "CommonAPI/CommonAPI.h"
+#include "utils/VerificationMainLoop.h"
+#include "commonapi/tests/TestInterfaceProxy.h"
+#include "utils/VerificationTestStub.h"
+
+const std::string testAddress = "local:my.test:commonapi.address";
+
+const std::string configString =
+        "{binding:@BINDING_NAME@}\n"
+        "libpath=@BINDING_SO@\n"
+        "alias=TestAlias\n"
+        "genpath=@GLUECODE_SO@\n"
+        "default"
+;
+
+const std::string COMMONAPI_CONFIG_SUFFIX = ".conf";
+
+
+
+class Environment: public ::testing::Environment {
+public:
+    virtual ~Environment() {
+    }
+
+    virtual void SetUp() {
+        configFileName_ = CommonAPI::getCurrentBinaryFileFQN();
+        configFileName_ += COMMONAPI_CONFIG_SUFFIX;
+        std::ofstream configFile(configFileName_);
+        ASSERT_TRUE(configFile.is_open());
+        configFile << configString;
+        configFile.close();
+    }
+
+    virtual void TearDown() {
+        std::remove(configFileName_.c_str());
+    }
+
+    std::string configFileName_;
+};
+
+
+
+
+class DynamicLoadingTest: public ::testing::Test {
+
+protected:
+    void SetUp() {
+    }
+
+    void TearDown() {
+    }
+
+    std::string configFileName_;
+};
+
+
+TEST_F(DynamicLoadingTest, LoadsDefaultRuntime) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load();
+    ASSERT_TRUE((bool)runtime);
+}
+
+TEST_F(DynamicLoadingTest, LoadsRuntimeByBindingName) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("@BINDING_NAME@");
+    ASSERT_TRUE((bool)runtime);
+}
+
+TEST_F(DynamicLoadingTest, LoadsRuntimeByAlias) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
+    ASSERT_TRUE((bool)runtime);
+}
+
+TEST_F(DynamicLoadingTest, LoadedRuntimeCanCreateFactory) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<CommonAPI::Factory> factory = runtime->createFactory();
+    ASSERT_TRUE((bool)factory);
+}
+
+TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubs) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<CommonAPI::Factory> factoryProxy = runtime->createFactory();
+    ASSERT_TRUE((bool)factoryProxy);
+
+    std::shared_ptr<CommonAPI::Factory> factoryStub = runtime->createFactory();
+    ASSERT_TRUE((bool)factoryStub);
+
+    auto proxy = factoryProxy->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress);
+    ASSERT_TRUE((bool)proxy);
+
+    auto servicePublisher = runtime->getServicePublisher();
+    ASSERT_TRUE((bool) servicePublisher);
+
+    auto stub = std::make_shared<commonapi::verification::VerificationTestStub>();
+    ASSERT_TRUE(servicePublisher->registerService(stub, testAddress, factoryStub));
+
+    servicePublisher->unregisterService(testAddress);
+    sleep(2);
+}
+
+TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubsThatCommunicate) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<CommonAPI::Factory> factoryProxy = runtime->createFactory();
+    ASSERT_TRUE((bool)factoryProxy);
+
+    std::shared_ptr<CommonAPI::Factory> factoryStub = runtime->createFactory();
+    ASSERT_TRUE((bool)factoryStub);
+
+    auto proxy = factoryProxy->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress);
+    ASSERT_TRUE((bool)proxy);
+
+    auto servicePublisher = runtime->getServicePublisher();
+    ASSERT_TRUE((bool) servicePublisher);
+
+    auto stub = std::make_shared<commonapi::verification::VerificationTestStub>();
+    ASSERT_TRUE(servicePublisher->registerService(stub, testAddress, factoryStub));
+
+    CommonAPI::CallStatus callStatus;
+    std::string outString;
+    uint32_t outInt = 0;
+
+    for(int i=0; i<10; i++)
+    {
+        if(proxy->isAvailable()) {
+            break;
+        }
+
+        usleep(50);
+    }
+
+    ASSERT_TRUE(proxy->isAvailable());
+
+    proxy->testPredefinedTypeMethod(0, "", callStatus, outInt, outString);
+    ASSERT_EQ(1, outInt);
+
+    servicePublisher->unregisterService(testAddress);
+    sleep(2);
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    ::testing::AddGlobalTestEnvironment(new Environment());
+    return RUN_ALL_TESTS();
+}

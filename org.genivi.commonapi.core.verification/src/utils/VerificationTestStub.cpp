@@ -6,6 +6,7 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "VerificationTestStub.h"
+#include <unistd.h>
 
 namespace commonapi {
 namespace verification {
@@ -24,7 +25,8 @@ VerificationTestStub::VerificationTestStub() :
                 TestInterfaceStubDefault(), calledTestDerivedTypeMethod(0) {
 }
 
-void VerificationTestStub::testPredefinedTypeMethod(uint32_t uint32InValue,
+void VerificationTestStub::testPredefinedTypeMethod(const std::shared_ptr<CommonAPI::ClientId> clientId,
+                                                    uint32_t uint32InValue,
                                                     std::string stringInValue,
                                                     uint32_t& uint32OutValue,
                                                     std::string& stringOutValue) {
@@ -36,7 +38,7 @@ void VerificationTestStub::testPredefinedTypeMethod(uint32_t uint32InValue,
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
-    sleep(10);
+    sleep(5);
 }
 
 } /* namespace verification */
