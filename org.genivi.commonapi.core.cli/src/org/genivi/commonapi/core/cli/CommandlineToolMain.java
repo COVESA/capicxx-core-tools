@@ -250,12 +250,12 @@ public class CommandlineToolMain {
                     // the imported files will only be handled if they weren't
                     // handled before
                     if (line.contains("import")) {
-                        if (line.contains("dbus/deployment/deployment.fdepl")) {
+                        if (line.contains("dbus/deployment/CommonAPI-DBus_deployment.fdepl")) {
                             line = "import \"file:" + FILESEPARATORIMP + replaceAll(DBUS_DEPL, "\\", "/") + "\"";
                             if (!files.contains(DBUS_DEPL)) {
                                 handleDeployment(false);
                             }
-                        } else if (line.contains("core/deployment/deployment.fdepl")) {
+                        } else if (line.contains("core/deployment/CommonAPI_deployment.fdepl")) {
                             line = "import \"file:" + FILESEPARATORIMP + replaceAll(CORE_DEPL, "\\", "/") + "\"";
                             if (!files.contains(CORE_DEPL)) {
                                 handleDeployment(true);
