@@ -446,6 +446,10 @@ class FrancaGeneratorExtensions {
         "Ce" + fType.fullyQualifiedName
     }
 
+    def private dispatch String getDerivedMangledName(FMapType fType) {
+        "Cm" + fType.fullyQualifiedName
+    }
+
     def private dispatch String getDerivedMangledName(FStructType fType) {
         "Cs" + fType.fullyQualifiedName
     }
