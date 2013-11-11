@@ -673,7 +673,7 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
         }
 
-       messageAcceptor.acceptError("Key type has to be an primitive type!", m, FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1, null);
+       messageAcceptor.acceptError("Key type has to be a primitive type!", m, FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1, null);
     }
 
     private boolean isTypeAcceptableAsMapKey(FTypeRef typeRef) {
@@ -683,6 +683,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
             accepted = true; // basic types are ok
         } else if (typeRef.getDerived() instanceof FEnumerationType) {
             accepted = true; // enums are also ok
+        } else if (typeRef.getDerived() instanceof FStructType) {
+            accepted = true; // structs are also accepted
         }
 
         return accepted;
