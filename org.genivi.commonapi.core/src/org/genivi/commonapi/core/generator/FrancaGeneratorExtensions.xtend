@@ -984,6 +984,7 @@ class FrancaGeneratorExtensions {
                 }
             }
         }
+        return new Version("0.8.9")
     }
 
     def getCoreVersion() {
@@ -996,7 +997,7 @@ class FrancaGeneratorExtensions {
                 }
             }
         }
-        return new Version("2.1.0")
+        return new Version("2.1.4")
     }
 
     def generateCommonApiLicenseHeader(FModelElement model, IResource modelid) '''
