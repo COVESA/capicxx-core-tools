@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.core.feature"
       label="%featureName"
-      version="2.1.3.qualifier"
+      version="2.1.4.qualifier"
       provider-name="%providerName">
 
    <copyright>
@@ -27,7 +27,7 @@
       <import plugin="org.eclipse.xtext.ui" version="2.4.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.xtext.ui.ecore" version="2.4.0" match="greaterOrEqual"/>
       <import plugin="com.google.inject" version="3.0.0" match="greaterOrEqual"/>
-      <import plugin="org.genivi.commonapi.core" version="2.1.3" match="greaterOrEqual"/>
+      <import plugin="org.genivi.commonapi.core" version="2.1.4" match="greaterOrEqual"/>
    </requires>
 
    <plugin
