@@ -38,7 +38,7 @@ class VerificationMainLoop {
     explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context) :
             context_(context), currentMinimalTimeoutInterval_(TIMEOUT_INFINITE), running_(false), breakLoop_(false), dispatchWatchesTooLong(false) {
         wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
-        wakeFd_.events = POLLIN | POLLOUT;
+        wakeFd_.events = POLLIN;
 
         assert(wakeFd_.fd != -1);
         registerFileDescriptor(wakeFd_);
@@ -79,8 +79,6 @@ class VerificationMainLoop {
             doSingleIteration(timeoutInterval);
         }
     }
-
-
 
     void runVerification(const int64_t& timeoutInterval, bool dispatchTimeoutAndWatches = false, bool dispatchDispatchSources = false) {
         running_ = true;
@@ -204,7 +202,6 @@ class VerificationMainLoop {
             }
         }
 
-
         for(auto dispatchSourceIterator = registeredDispatchSources_.begin(); dispatchSourceIterator != registeredDispatchSources_.end(); ++dispatchSourceIterator) {
             if((std::get<1>(*dispatchSourceIterator))->check()) {
                 sourcesToDispatch_.insert( {std::get<0>(*dispatchSourceIterator), std::get<1>(*dispatchSourceIterator)});
@@ -227,8 +224,8 @@ class VerificationMainLoop {
     bool dispatchWatchesTooLong;
 
     void wakeup() {
-        uint32_t wake = 1;
-        ::write(wakeFd_.fd, &wake, sizeof(uint32_t));
+        int64_t wake = 1;
+        ::write(wakeFd_.fd, &wake, sizeof(int64_t));
     }
 
     void dispatchTimeouts()
@@ -325,7 +322,6 @@ class VerificationMainLoop {
                 registeredWatches_.erase(watchIterator);
             }
         }
-
     }
 
     void registerTimeout(Timeout* timeout, const DispatchPriority dispatchPriority) {
@@ -345,8 +341,8 @@ class VerificationMainLoop {
     }
 
     void acknowledgeWakeup() {
-        uint32_t buffer;
-        while (::read(wakeFd_.fd, &buffer, sizeof(uint32_t)) == sizeof(buffer));
+        int64_t buffer;
+        while (::read(wakeFd_.fd, &buffer, sizeof(int64_t)) == sizeof(buffer));
     }
 
     std::shared_ptr<MainLoopContext> context_;

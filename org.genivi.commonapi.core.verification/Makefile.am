@@ -1,24 +1,39 @@
 ACLOCAL_AMFLAGS = -I m4
 
+GLUE_LDFLAGS_FOR_A="-Wl,--whole-archive,${GLUECODE_A},${BINDING_A},--no-whole-archive,${BINDING_EXTRA}"
+GLUE_LDFLAGS_FOR_SO="-Wl,--no-as-needed,${GLUECODE_SO},${BINDING_SO},--as-needed,${BINDING_EXTRA}"
+
 AM_CPPFLAGS = \
         -I$(top_srcdir)/src \
-        -I${GLUE_PATH}/src-gen \
+        -I./src-gen \
         -I$(includedir) \
-        ${GLUE_CFLAGS} \
         ${COMMONAPI_CFLAGS} \
         ${GTEST_CPPFLAGS}
 
 check_PROGRAMS = \
-        verification
+        DynamicLoadingVerification \
+        MainLoopVerification
 
+generated = \
+        src-gen/commonapi/tests/DerivedTypeCollection.cpp \
+        src-gen/commonapi/tests/TestInterfaceStubDefault.cpp
 
 TESTS = ${check_PROGRAMS}
 
-verification_SOURCES = \
-            src/VerificationTestStub.h \
-            src/VerificationTestStub.cpp \
-            src/MainLoopTest.cpp
+DynamicLoadingVerification_SOURCES = \
+        ${generated} \
+        src/utils/VerificationTestStub.cpp \
+        src/DynamicLoadingVerification.cpp
 
-verification_CPPFLAGS = ${AM_CPPFLAGS}
-verification_LDADD = ${COMMONAPI_LIBS} ${GLUE_LIBS} ${GTEST_LIBS}
-verification_LDFLAGS = ${GLUE_LDFLAGS}
+MainLoopVerification_SOURCES = \
+        ${generated} \
+        src/utils/VerificationTestStub.cpp \
+        src/MainLoopVerification.cpp
+
+DynamicLoadingVerification_CPPFLAGS = ${AM_CPPFLAGS}
+DynamicLoadingVerification_LDADD = ${COMMONAPI_LIBS} ${GTEST_LIBS}
+DynamicLoadingVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_SO}
+
+MainLoopVerification_CPPFLAGS = ${AM_CPPFLAGS}
+MainLoopVerification_LDADD = ${COMMONAPI_LIBS} ${BINDING_A} ${GTEST_LIBS}
+MainLoopVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_A}
