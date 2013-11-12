@@ -427,6 +427,20 @@ class FTypeGenerator {
     }
 
     def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        
+        if (!fInterface.attributes.filter[(array != null && array.equals("[]"))].nullOrEmpty) {
+            libraryHeaders.add('vector')
+        }
+        if (!fInterface.methods.map[inArgs.filter[(array != null && array.equals("[]"))]].nullOrEmpty) {
+            libraryHeaders.add('vector')
+        }
+        if (!fInterface.methods.map[outArgs.filter[(array != null && array.equals("[]"))]].nullOrEmpty) {
+            libraryHeaders.add('vector')
+        }
+        if (!fInterface.broadcasts.map[outArgs.filter[(array != null && array.equals("[]"))]].nullOrEmpty) {
+            libraryHeaders.add('vector')
+        }
+        
         fInterface.attributes.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
         fInterface.methods.forEach[
             inArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
