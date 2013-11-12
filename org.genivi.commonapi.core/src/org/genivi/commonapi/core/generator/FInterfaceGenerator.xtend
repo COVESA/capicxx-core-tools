@@ -40,6 +40,10 @@ class FInterfaceGenerator {
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
+        
+        «IF fInterface.base != null»
+            #include <«fInterface.base.headerPath»>
+        «ENDIF»
 
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
         #define COMMONAPI_INTERNAL_COMPILATION
