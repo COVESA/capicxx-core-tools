@@ -21,3 +21,4 @@ Import-Package: org.eclipse.core.resources,
  org.franca.core.franca,
  org.franca.core.franca.impl,
  org.franca.core.utils
+Export-Package: org.genivi.commonapi.core.validator
