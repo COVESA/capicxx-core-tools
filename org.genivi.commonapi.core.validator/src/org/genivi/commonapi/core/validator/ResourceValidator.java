@@ -48,6 +48,7 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
@@ -88,19 +89,111 @@ public class ResourceValidator implements IFrancaExternalValidator {
             fastAllInfo = aimBuilder.fastAllInfo;
         }
 
+        validateImport(model, messageAcceptor, file, filePath, cwd);
+        List<String> interfaceTypecollectionNames = new ArrayList<String>();
+        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
+            interfaceTypecollectionNames.add(fTypeCollection.getName());
+            validateImportedTypeCollections(model, messageAcceptor, file, cwd,
+                    fTypeCollection);
+        }
+        HashMap<FInterface,EList<FInterface>> managedInterfaces = new HashMap<FInterface,EList<FInterface>>();
+        for (FInterface fInterface : model.getInterfaces()) {
+            interfaceTypecollectionNames.add(fInterface.getName());
+            managedInterfaces.put(fInterface, fInterface.getManagedInterfaces());
+            validateImportedTypeCollections(model, messageAcceptor, file, cwd,
+                    fInterface);
+        }
+
+        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
+            validateTypeCollectionName(model, messageAcceptor, filePath,
+                    interfaceTypecollectionNames, fTypeCollection);
+            validateTypeCollectionElements(messageAcceptor, fTypeCollection);
+        }
+
+        for (FInterface fInterface : model.getInterfaces()) {
+            validateManagedInterfaces(messageAcceptor, fInterface);
+            validateTypeCollectionName(model, messageAcceptor, filePath, interfaceTypecollectionNames, fInterface);
+            validateFInterfaceElements(messageAcceptor, fInterface);
+
+        }
+
+        interfaceTypecollectionNames.clear();
+        importList.clear();
+    }
+    private void validateFInterfaceElements(
+            ValidationMessageAcceptor messageAcceptor, FInterface fInterface) {
+        if (fInterface.getVersion() == null)
+            acceptError(
+                    "Missing version! Add: version(major int minor int)",
+                    fInterface, FrancaPackage.Literals.FINTERFACE__BASE,
+                    -1, messageAcceptor);
+
+        for (FAttribute att : fInterface.getAttributes()) {
+            validateName(att.getName(), messageAcceptor, att);
+        }
+        for (FBroadcast fBroadcast : fInterface.getBroadcasts()) {
+            validateName(fBroadcast.getName(), messageAcceptor, fBroadcast);
+            for (FArgument out : fBroadcast.getOutArgs()) {
+                validateName(out.getName(), messageAcceptor, out);
+            }
+        }
+        for (FMethod fMethod : fInterface.getMethods()) {
+            validateName(fMethod.getName(), messageAcceptor, fMethod);
+            for (FArgument out : fMethod.getOutArgs()) {
+                validateMethodArgument(messageAcceptor, fMethod, out);
+            }
+            for (FArgument in : fMethod.getInArgs()) {
+                validateMethodArgument(messageAcceptor, fMethod, in);
+            }
+        }
+    }
+
+    private void validateTypeCollectionElements(
+            ValidationMessageAcceptor messageAcceptor,
+            FTypeCollection fTypeCollection) {
+        for (FType fType : fTypeCollection.getTypes()) {
+            validateName(fType.getName(), messageAcceptor, fType);
+            if (fType instanceof FStructType) {
+                for (FField fField : ((FStructType) fType).getElements()) {
+                    validateName(fField.getName(), messageAcceptor, fField);
+                }
+            }
+
+            if (fType instanceof FMapType)
+                validateMapKey((FMapType) fType, messageAcceptor);
+
+            if (fType instanceof FEnumerationType) {
+                for (FEnumerator fEnumerator : ((FEnumerationType) fType)
+                        .getEnumerators()) {
+                    validateName(fEnumerator.getName(), messageAcceptor,
+                            fEnumerator);
+                    if (fEnumerator.getValue() != null) {
+                        String enumeratorValue = fEnumerator.getValue()
+                                .toLowerCase();
+                        validateEnumerationValue(enumeratorValue,
+                                messageAcceptor, fEnumerator);
+                    }
+                }
+            }
+        }
+    }
+
+    private void validateImport(FModel model,
+            ValidationMessageAcceptor messageAcceptor, final IFile file,
+            IPath filePath, String cwd) {
         HashSet<String> importedFiles = new HashSet<String>();
         ArrayList<String> importUriAndNamesspace = new ArrayList<String>();
         for (Import fImport : model.getImports()) {
 
             if (importUriAndNamesspace.contains(fImport.getImportURI() + ","
                     + fImport.getImportedNamespace()))
-                messageAcceptor.acceptWarning("Multiple times imported!",
+                acceptWarning("Multiple times imported!",
                         fImport, FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
-                        null);
+                        messageAcceptor);
             if (fImport.getImportURI().equals(file.getName())) {
-                messageAcceptor.acceptError("Class may not import itself!",
+                acceptError("Class may not import itself!",
                         fImport, FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
-                        null);
+                        messageAcceptor);
             } else {
                 Path absoluteImportPath = new Path(fImport.getImportURI());
                 if (!absoluteImportPath.isAbsolute()) {
@@ -117,8 +210,9 @@ public class ResourceValidator implements IFrancaExternalValidator {
             importUriAndNamesspace.add(fImport.getImportURI() + ","
                     + fImport.getImportedNamespace());
         }
-
+        importUriAndNamesspace.clear();
         importList.put(filePath.toString(), importedFiles);
+
         ArrayList<String> start = new ArrayList<String>();
         try {
             importList = buildImportList(importList);
@@ -139,293 +233,124 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
         }
         start.clear();
-        List<String> interfaceTypecollectionNames = new ArrayList<String>();
-        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
-            for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
-                if(!entry.getKey().equals(cwd+"/"+file.getName())){
-                    if(entry.getValue().packageName.startsWith(model.getName()+"."+fTypeCollection.getName())){
-                        if(importList.get(cwd+"/"+file.getName()).contains(entry.getKey())){
-                            messageAcceptor.acceptError(
-                                    "Imported file's package "
-                                            + entry.getValue().packageName
-                                            + " may not start with package "
-                                            + model.getName() + " + TypeCollectionName "
-                                            + fTypeCollection.getName(), fTypeCollection,
-                                    null, -1, null);
-                        }else{
-                            messageAcceptor.acceptWarning(
-                                    entry.getKey()+". File's package "
-                                            + entry.getValue().packageName
-                                            + " starts with package "
-                                            + model.getName() + " + TypeCollectionName "
-                                            + fTypeCollection.getName(), fTypeCollection,
-                                    null, -1, null);
-                        }
+    }
+
+    private void validateMethodArgument(ValidationMessageAcceptor messageAcceptor,
+            FMethod fMethod, FArgument arg) {
+        if (arg.getName().equals(fMethod.getName())) {
+            acceptError("Parameters cannot share name with method", arg,
+                    FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+                    -1, messageAcceptor);
+        }
+        validateName(arg.getName(), messageAcceptor, arg);
+    }
+
+    private void validateTypeCollectionName(FModel model,
+            ValidationMessageAcceptor messageAcceptor, IPath filePath,
+            List<String> interfaceTypecollectionNames,
+            FTypeCollection fTypeCollection) {
+        validateName(fTypeCollection.getName(), messageAcceptor,
+                fTypeCollection);
+        if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
+                .lastIndexOf(fTypeCollection.getName())) {
+            acceptError("Name " + fTypeCollection.getName()
+                    + " isn't unique in this file!", fTypeCollection, FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
+                    -1, messageAcceptor);
+        }
+        if (fastAllInfo.get(fTypeCollection.getName()).get(model.getName())
+                .size() > 1) {
+            for (String s : fastAllInfo.get(fTypeCollection.getName()).get(
+                    model.getName())) {
+                if (!s.equals(filePath.toString())) {
+                    if (importList.containsKey(s)) {
+                                acceptError(
+                                        "Imported file "
+                                                + s
+                                                + " has interface or typeCollection with the same name and same package!",
+                                        fTypeCollection, FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1, messageAcceptor);
+                    } else {
+                                acceptWarning(
+                                        "Interface or typeCollection in file "
+                                                + s
+                                                + " has the same name and same package!",
+                                        fTypeCollection, FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1, messageAcceptor);
                     }
                 }
             }
         }
-        HashMap<FInterface,EList<FInterface>> managedInterfaces = new HashMap<FInterface,EList<FInterface>>();
-        for (FInterface fInterface : model.getInterfaces()) {
-            managedInterfaces.put(fInterface, fInterface.getManagedInterfaces());
-            for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
-                if(!entry.getKey().equals(cwd+"/"+file.getName())){
-                    if(entry.getValue().packageName.startsWith(model.getName()+"."+fInterface.getName())){
-                        if(importList.get(cwd+"/"+file.getName()).contains(entry.getKey())){
-                            messageAcceptor.acceptError(
-                                    "Imported file's package "
-                                            + entry.getValue().packageName
-                                            + " may not start with package "
-                                            + model.getName() + " + InterfaceName "
-                                            + fInterface.getName(), fInterface,
-                                    null, -1, null);
-                        }else{
-                            messageAcceptor.acceptWarning(
-                                    entry.getKey()+". File's package "
-                                            + entry.getValue().packageName
-                                            + " starts with package "
-                                            + model.getName() + " + InterfaceName "
-                                            + fInterface.getName(), fInterface,
-                                    null, -1, null);
-                        }
+    }
+
+    private void validateImportedTypeCollections(FModel model,
+            ValidationMessageAcceptor messageAcceptor, final IFile file,
+            String cwd, FTypeCollection fTypeCollection) {
+        String type="typeCollection name";
+        if(fTypeCollection instanceof FInterface)
+            type = "interface name";
+        for(Entry<String, Triple<String, ArrayList<String>, ArrayList<String>>> entry :aimBuilder.allInfo.entrySet()){
+            if(!entry.getKey().equals(cwd+"/"+file.getName())){
+                if(entry.getValue().packageName.startsWith(model.getName()+"."+fTypeCollection.getName())){
+                    if(importList.get(cwd+"/"+file.getName()).contains(entry.getKey())){
+                        acceptError(
+                                "Imported file's package "
+                                        + entry.getValue().packageName
+                                        + " may not start with package "
+                                        + model.getName() + " + "+type
+                                        + fTypeCollection.getName(), fTypeCollection,
+                                FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1, messageAcceptor);
+                    }else{
+                        acceptWarning(
+                                entry.getKey()+". File's package "
+                                        + entry.getValue().packageName
+                                        + " starts with package "
+                                        + model.getName() + " + "+type
+                                        + fTypeCollection.getName(), fTypeCollection,
+                                null, -1, messageAcceptor);
                     }
                 }
             }
         }
-
-        importUriAndNamesspace.clear();
-        for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
-            validateName(fTypeCollection.getName(), messageAcceptor,
-                    fTypeCollection);
-            if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
-                    .lastIndexOf(fTypeCollection.getName())) {
-                messageAcceptor.acceptError("Name " + fTypeCollection.getName()
-                        + " isn't unique in this file!", fTypeCollection, null,
-                        -1, null);
-            }
-            if (fastAllInfo.get(fTypeCollection.getName()).get(model.getName())
-                    .size() > 1) {
-                for (String s : fastAllInfo.get(fTypeCollection.getName()).get(
-                        model.getName())) {
-                    if (!s.equals(filePath.toString())) {
-                        if (importList.containsKey(s)) {
-                            messageAcceptor
-                                    .acceptError(
-                                            "Imported file "
-                                                    + s
-                                                    + " has interface or typeCollection with the same name and same package!",
-                                            fTypeCollection, null, -1, null);
-                        } else {
-                            messageAcceptor
-                                    .acceptWarning(
-                                            "Interface or typeCollection in file "
-                                                    + s
-                                                    + " has the same name and same package!",
-                                            fTypeCollection, null, -1, null);
-                        }
-                    }
-                }
-            }
-            for (FType fType : fTypeCollection.getTypes()) {
-                validateName(fType.getName(), messageAcceptor, fType);
-                if (fType instanceof FStructType) {
-                    for (FField fField : ((FStructType) fType).getElements()) {
-                        validateName(fField.getName(), messageAcceptor, fField);
-                    }
-                }
-
-                if (fType instanceof FMapType)
-                    validateMapKey((FMapType) fType, messageAcceptor);
-
-                if (fType instanceof FEnumerationType) {
-                    for (FEnumerator fEnumerator : ((FEnumerationType) fType)
-                            .getEnumerators()) {
-                        validateName(fEnumerator.getName(), messageAcceptor,
-                                fEnumerator);
-                        if (fEnumerator.getValue() != null) {
-                            String enumeratorValue = fEnumerator.getValue()
-                                    .toLowerCase();
-                            validateEnumerationValue(enumeratorValue,
-                                    messageAcceptor, fEnumerator);
-                        }
-                    }
-                }
-            }
+    }
+    private void validateManagedInterfaces(
+            ValidationMessageAcceptor messageAcceptor, FInterface fInterface) {
+        ArrayList<FInterface> startI = new ArrayList<FInterface>();
+        int index = 0 ;
+        startI.add(fInterface);
+        ArrayList<FInterface> managedList = new ArrayList<FInterface>();
+        for(FInterface managedInterface : fInterface.getManagedInterfaces()){
+            findCyclicManagedInterfaces(managedInterface, startI , fInterface, messageAcceptor, index, false);
+            if(managedList.contains(managedInterface))
+                acceptError("Interface "+ managedInterface.getName() +" is already managed! Delete this equivalent!", fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
+            managedList.add(managedInterface);
+            index++;
         }
+    }
 
-        for (FInterface fInterface : model.getInterfaces()) {
-            ArrayList<FInterface> startI = new ArrayList<FInterface>();
-            int index = 0 ;
-            startI.add(fInterface);
-            ArrayList<FInterface> managedList = new ArrayList<FInterface>();
-            for(FInterface managedInterface : fInterface.getManagedInterfaces()){
-                findCyclicManagedInterfaces(managedInterface, startI , fInterface, messageAcceptor, index);
-                if(managedList.contains(managedInterface))
-                    messageAcceptor.acceptError("Interface "+ managedInterface.getName() +" is already managed! Delete this equivalent!", fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, null);
-                managedList.add(managedInterface);
-                index++;
-            }
-
-            validateName(fInterface.getName(), messageAcceptor, fInterface);
-            if (interfaceTypecollectionNames.indexOf(fInterface.getName()) != interfaceTypecollectionNames
-                    .lastIndexOf(fInterface.getName())) {
-                messageAcceptor.acceptError("Name " + fInterface.getName()
-                        + " isn't unique in this file!", fInterface, null, -1,
-                        null);
-            }
-            try {
-                if (fastAllInfo.get(fInterface.getName()).get(model.getName())
-                        .size() > 1) {
-                    for (String s : fastAllInfo.get(fInterface.getName()).get(
-                            model.getName())) {
-                        if (!s.equals(filePath.toString()))
-                            if (importList.containsKey(s)) {
-                                messageAcceptor
-                                        .acceptError(
-                                                "Imported file "
-                                                        + s
-                                                        + " has interface or typeCollection with the same name and same package!",
-                                                fInterface, null, -1, null);
-                            } else {
-                                messageAcceptor
-                                        .acceptWarning(
-                                                "Interface or typeCollection in file "
-                                                        + s
-                                                        + " has the same name and same package!",
-                                                fInterface, null, -1, null);
-                            }
+    private void findCyclicManagedInterfaces(FInterface rekInterface,
+            ArrayList<FInterface> interfaceList, FInterface fInterface,
+            ValidationMessageAcceptor messageAcceptor, int index, boolean managed){
+            if(interfaceList.contains(rekInterface)){
+                String errorString="";
+                for(FInterface a : interfaceList ){
+                    errorString=errorString + a.getName()+" -> ";
+                }
+                errorString = errorString + rekInterface.getName();
+                if(rekInterface.equals(fInterface)){
+                    acceptError("Interface "+fInterface.getName()+" manages itself: " +errorString, fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
+                }else{
+                    if(!managed){
+                        acceptError("Cycle detected: " +errorString, fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
                     }
                 }
-            } catch (Exception e) {
-            }
-
-            if (fInterface.getVersion() == null)
-                messageAcceptor.acceptError(
-                        "Missing version! Add: version(major int minor int)",
-                        fInterface, FrancaPackage.Literals.FINTERFACE__BASE,
-                        -1, null);
-
-            for (FAttribute att : fInterface.getAttributes()) {
-                validateName(att.getName(), messageAcceptor, att);
-                if (att.getType().getPredefined().toString() == "undefined") {
-                    try {
-                        if (cycleDetector.hasCycle(att.getType().getDerived())) {
-
-                            messageAcceptor
-                                    .acceptError(
-                                            "Cyclic dependencie: "
-                                                    + cycleDetector.outErrorString,
-                                            att,
-                                            FrancaPackage.Literals.FATTRIBUTE__NO_SUBSCRIPTIONS,
-                                            -1, null);
-                        }
-                    } catch (NullPointerException npe) {
-                        messageAcceptor
-                                .acceptError(
-                                        "Derives from an undefined Type!",
-                                        att,
-                                        FrancaPackage.Literals.FATTRIBUTE__NO_SUBSCRIPTIONS,
-                                        -1, null);
-                    }
+                acceptError("Cycle detected: " +errorString, fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
+            }else{
+                interfaceList.add(rekInterface);
+                for(FInterface nextInterface :rekInterface.getManagedInterfaces()){
+                    findCyclicManagedInterfaces(nextInterface, interfaceList, fInterface, messageAcceptor, index, managed);
                 }
+                if(rekInterface.getBase()!=null)
+                    findCyclicManagedInterfaces(rekInterface.getBase(), interfaceList, fInterface, messageAcceptor, index, true);
+                interfaceList.remove(rekInterface);
             }
-            int count = 0;
-            for (FBroadcast fBroadcast : fInterface.getBroadcasts()) {
-                validateName(fBroadcast.getName(), messageAcceptor, fBroadcast);
-                for (FArgument out : fBroadcast.getOutArgs()) {
-                    validateName(out.getName(), messageAcceptor, out);
-                    if (out.getType().getPredefined().toString() == "undefined") {
-                        try {
-                            if (cycleDetector.hasCycle(out.getType()
-                                    .getDerived())) {
-                                messageAcceptor
-                                        .acceptError(
-                                                "Cyclic dependencie: "
-                                                        + cycleDetector.outErrorString,
-                                                fBroadcast,
-                                                FrancaPackage.Literals.FBROADCAST__OUT_ARGS,
-                                                count, null);
-                            }
-                        } catch (NullPointerException npe) {
-                            messageAcceptor
-                                    .acceptError(
-                                            "Derives from an undefined Type!",
-                                            fBroadcast,
-                                            FrancaPackage.Literals.FBROADCAST__OUT_ARGS,
-                                            count, null);
-                        }
-                    }
-                    count += 1;
-                }
-                count = 0;
-            }
-            count = 0;
-            for (FMethod fMethod : fInterface.getMethods()) {
-                validateName(fMethod.getName(), messageAcceptor, fMethod);
-                for (FArgument out : fMethod.getOutArgs()) {
-                    if (out.getName().equals(fMethod.getName())) {
-                        messageAcceptor.acceptError("Parameters cannot share name with method", out,
-                                FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
-                                -1, null);
-                    }
-                    validateName(out.getName(), messageAcceptor, out);
-                    if (out.getType().getPredefined().toString() == "undefined") {
-                        try {
-                            if (cycleDetector.hasCycle(out.getType()
-                                    .getDerived())) {
-                                messageAcceptor
-                                        .acceptError(
-                                                "Cyclic dependencie: "
-                                                        + cycleDetector.outErrorString,
-                                                fMethod,
-                                                FrancaPackage.Literals.FMETHOD__OUT_ARGS,
-                                                count, null);
-                            }
-                        } catch (NullPointerException npe) {
-                            messageAcceptor.acceptError(
-                                    "Derives from an undefined Type!", fMethod,
-                                    FrancaPackage.Literals.FMETHOD__OUT_ARGS,
-                                    count, null);
-                        }
-                    }
-                    count += 1;
-                }
-                count = 0;
-                for (FArgument in : fMethod.getInArgs()) {
-                    if (in.getName().equals(fMethod.getName())) {
-                        messageAcceptor.acceptError("Parameters cannot share name with method", in,
-                                FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
-                                -1, null);
-                    }
-                    validateName(in.getName(), messageAcceptor, in);
-                    if (in.getType().getPredefined().toString() == "undefined") {
-                        try {
-                            if (cycleDetector.hasCycle(in.getType()
-                                    .getDerived())) {
-                                messageAcceptor
-                                        .acceptError(
-                                                "Cyclic dependencie: "
-                                                        + cycleDetector.outErrorString,
-                                                fMethod,
-                                                FrancaPackage.Literals.FMETHOD__IN_ARGS,
-                                                count, null);
-                            }
-                        } catch (NullPointerException npc) {
-                            messageAcceptor.acceptError(
-                                    "Derives from an undefined Type!", fMethod,
-                                    FrancaPackage.Literals.FMETHOD__IN_ARGS,
-                                    count, null);
-                        }
-                    }
-                    count += 1;
-                }
-                count = 0;
-            }
-
-        }
-
-        interfaceTypecollectionNames.clear();
-        importList.clear();
     }
 
     private HashMap<String, HashSet<String>> buildImportList(
@@ -475,7 +400,6 @@ public class ResourceValidator implements IFrancaExternalValidator {
             return rekImportList;
         }
     }
-
     private void findCyclicImports(String filePath, String prevFilePath,
             ArrayList<String> cyclicList, Import imp,
             ValidationMessageAcceptor messageAcceptor) {
@@ -486,16 +410,15 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
             if (prevFilePath.equals(filePath)) {
                 if (cyclicList.size() > 1)
-                    messageAcceptor
-                            .acceptError("Last file imports itself!: "
+                            acceptError("Last file imports itself!: "
                                     + errorString + filePath, imp,
                                     FrancaPackage.Literals.IMPORT__IMPORT_URI,
-                                    -1, null);
+                                    -1, messageAcceptor);
                 return;
             } else {
-                messageAcceptor.acceptError("Cyclic Imports: " + errorString
+                acceptError("Cyclic Imports: " + errorString
                         + filePath, imp,
-                        FrancaPackage.Literals.IMPORT__IMPORT_URI, -1, null);
+                        FrancaPackage.Literals.IMPORT__IMPORT_URI, -1, messageAcceptor);
                 return;
             }
         } else {
@@ -507,22 +430,6 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 }
             }
             cyclicList.remove(cyclicList.size() - 1);
-        }
-    }
-    private void findCyclicManagedInterfaces(FInterface rekInterface, ArrayList<FInterface> interfaceList, FInterface fInterface, ValidationMessageAcceptor messageAcceptor, int index){
-        if(interfaceList.contains(rekInterface)){
-            String errorString="";
-            for(FInterface a : interfaceList ){
-                errorString=errorString + a.getName()+" -> ";
-            }
-            errorString = errorString + rekInterface.getName();
-            messageAcceptor.acceptError("Cycle detected: " +errorString, fInterface, FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, null);
-        }else{
-            interfaceList.add(rekInterface);
-            for(FInterface nextINterface :rekInterface.getManagedInterfaces()){
-                findCyclicManagedInterfaces(nextINterface, interfaceList, fInterface, messageAcceptor, index);
-            }
-            interfaceList.remove(rekInterface);
         }
     }
 
@@ -558,21 +465,20 @@ public class ResourceValidator implements IFrancaExternalValidator {
         }
         return path;
     }
-
     private void validateEnumerationValue(String enumeratorValue,
             ValidationMessageAcceptor messageAcceptor, FEnumerator fEnumerator) {
         String value = enumeratorValue;
         if (value.length() == 0) {
-            messageAcceptor.acceptWarning("Missing value!", fEnumerator,
-                    FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+            acceptWarning("Missing value!", fEnumerator,
+                    FrancaPackage.Literals.FENUMERATOR__VALUE, -1, messageAcceptor);
             return;
         }
 
         if (value.length() == 1) {
             if (48 > (int) value.charAt(0) || (int) value.charAt(0) > 57) {
-                messageAcceptor.acceptWarning("Not a valid number!",
+                acceptWarning("Not a valid number!",
                         fEnumerator, FrancaPackage.Literals.FENUMERATOR__VALUE,
-                        -1, null);
+                        -1, messageAcceptor);
                 return;
             }
         }
@@ -583,11 +489,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
                 if (value.charAt(1) == 'b') {
                     for (int i = 2; i < value.length(); i++) {
                         if (value.charAt(i) != '0' && value.charAt(i) != '1') {
-                            messageAcceptor.acceptWarning(
+                            acceptWarning(
                                     "Not a valid number! Should be binary",
                                     fEnumerator,
                                     FrancaPackage.Literals.FENUMERATOR__VALUE,
-                                    -1, null);
+                                    -1, messageAcceptor);
                             return;
                         }
                     }
@@ -600,12 +506,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
                                 .charAt(i) > 57)
                                 && (97 > (int) value.charAt(i) || (int) value
                                         .charAt(i) > 102)) {
-                            messageAcceptor
-                                    .acceptWarning(
+                                    acceptWarning(
                                             "Not a valid number! Should be hexadecimal",
                                             fEnumerator,
                                             FrancaPackage.Literals.FENUMERATOR__VALUE,
-                                            -1, null);
+                                            -1, messageAcceptor);
                             return;
                         }
                     }
@@ -617,12 +522,11 @@ public class ResourceValidator implements IFrancaExternalValidator {
             // oct
             for (int i = 1; i < value.length(); i++) {
                 if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 55) {
-                    messageAcceptor
-                            .acceptWarning(
+                            acceptWarning(
                                     "Not a valid number! Should be octal",
                                     fEnumerator,
                                     FrancaPackage.Literals.FENUMERATOR__VALUE,
-                                    -1, null);
+                                    -1, messageAcceptor);
                     return;
                 }
             }
@@ -631,30 +535,28 @@ public class ResourceValidator implements IFrancaExternalValidator {
         // dec
         for (int i = 0; i < value.length(); i++) {
             if (48 > (int) value.charAt(i) || (int) value.charAt(i) > 57) {
-                messageAcceptor.acceptWarning(
+                acceptWarning(
                         "Not a valid number! Should be decimal", fEnumerator,
-                        FrancaPackage.Literals.FENUMERATOR__VALUE, -1, null);
+                        FrancaPackage.Literals.FENUMERATOR__VALUE, -1, messageAcceptor);
                 return;
             }
         }
     }
-
     private void validateName(String name,
             ValidationMessageAcceptor messageAcceptor, EObject eObject) {
         if (cppKeyWords.keyWords.contains(name)) {
-            messageAcceptor.acceptError(
-                    "Name " + name + " is a keyword in c++", eObject, null, -1,
-                    null);
+            acceptError(
+                    "Name " + name + " is a keyword in c++", eObject, FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
+                    messageAcceptor);
             return;
         }
         if (eObject instanceof FTypeCollection) {
             if (name.indexOf(".") != -1) {
-                messageAcceptor.acceptError("Name may not contain '.'",
-                        eObject, null, -1, null);
+                acceptError("Name may not contain '.'",
+                        eObject, FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1, messageAcceptor);
             }
         }
     }
-
     private void validateMapKey(FMapType m, ValidationMessageAcceptor messageAcceptor) {
         if (cycleDetector.hasCycle(m)) {
             return;
@@ -673,9 +575,8 @@ public class ResourceValidator implements IFrancaExternalValidator {
             }
         }
 
-       messageAcceptor.acceptError("Key type has to be an primitive type!", m, FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1, null);
+       acceptError("Key type has to be an primitive type!", m, FrancaPackage.Literals.FMAP_TYPE__KEY_TYPE, -1, messageAcceptor);
     }
-
     private boolean isTypeAcceptableAsMapKey(FTypeRef typeRef) {
         boolean accepted = false;
 
@@ -686,5 +587,12 @@ public class ResourceValidator implements IFrancaExternalValidator {
         }
 
         return accepted;
+    }
+
+    private void acceptError(String message, EObject object, EStructuralFeature feature, int index, ValidationMessageAcceptor messageAcceptor){
+        messageAcceptor.acceptError("CommonAPI validation: "+message, object, feature, index, null);
+    }
+    private void acceptWarning(String message, EObject object, EStructuralFeature feature, int index, ValidationMessageAcceptor messageAcceptor){
+        messageAcceptor.acceptWarning("CommonAPI validation: "+message, object, feature, index, null);
     }
 }
