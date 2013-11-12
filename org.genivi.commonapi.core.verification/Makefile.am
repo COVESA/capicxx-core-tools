@@ -19,5 +19,5 @@ verification_SOURCES = \
             src/MainLoopTest.cpp
 
 verification_CPPFLAGS = ${AM_CPPFLAGS}
-verification_LDADD = ${COMMONAPI_LIBS} ${GLUE_LIBS} ${GTEST_LIBS}
+verification_LDADD = ${COMMONAPI_LIBS} ${GLUE_LIBS} ${GTEST_LIBS} ${BINDING}
 verification_LDFLAGS = ${GLUE_LDFLAGS}

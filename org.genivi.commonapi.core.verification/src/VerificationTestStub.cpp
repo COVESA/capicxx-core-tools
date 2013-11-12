@@ -36,7 +36,7 @@ void VerificationTestStub::testPredefinedTypeMethod(uint32_t uint32InValue,
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
     fireTestPredefinedTypeBroadcastEvent(broadcastNumber++, "");
-    sleep(10);
+    sleep(5);
 }
 
 } /* namespace verification */
