@@ -46,6 +46,7 @@ import org.genivi.commonapi.core.preferences.FPreferences
 import org.osgi.framework.FrameworkUtil
 import org.eclipse.core.resources.IResource
 import org.osgi.framework.Version
+import org.franca.core.franca.FField
 
 class FrancaGeneratorExtensions {
 
@@ -751,9 +752,22 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def String typeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        if (fTypeRef.derived != null)
+    def String typeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor, FField forThisElement) {
+        if (forThisElement.array != null && forThisElement.array.equals("[]")) {
+            var String ret = ""
+            ret = ret + "typeOutputStream.beginWriteVectorType();\n"
+            ret = ret + fTypeRef.actualTypeStreamSignature(deploymentAccessor)
+            ret = ret + "typeOutputStream.endWriteVectorType();\n"
+            return ret
+        }
+        return fTypeRef.actualTypeStreamSignature(deploymentAccessor)
+    }
+
+    def String actualTypeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        if (fTypeRef.derived != null) {
             return fTypeRef.derived.typeStreamFTypeSignature(deploymentAccessor)
+        }
+
         return fTypeRef.predefined.basicTypeStreamSignature
     }
 
@@ -777,20 +791,20 @@ class FrancaGeneratorExtensions {
 
     def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef,
         DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        return fTypeDef.actualType.typeStreamSignature(deploymentAccessor)
+        return fTypeDef.actualType.actualTypeStreamSignature(deploymentAccessor)
     }
 
     def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType,
         DeploymentInterfacePropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteVectorType();\n' +
-            fArrayType.elementType.typeStreamSignature(deploymentAccessor) + '\n' +
+            fArrayType.elementType.actualTypeStreamSignature(deploymentAccessor) + '\n' +
             'typeOutputStream.endWriteVectorType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FMapType fMap,
         DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        return 'typeOutputStream.beginWriteMapType();\n' + fMap.keyType.typeStreamSignature(deploymentAccessor) + '\n' +
-            fMap.valueType.typeStreamSignature(deploymentAccessor) + '\n' + 'typeOutputStream.endWriteMapType();'
+        return 'typeOutputStream.beginWriteMapType();\n' + fMap.keyType.actualTypeStreamSignature(deploymentAccessor) + '\n' +
+            fMap.valueType.actualTypeStreamSignature(deploymentAccessor) + '\n' + 'typeOutputStream.endWriteMapType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FStructType fStructType,
@@ -812,7 +826,7 @@ class FrancaGeneratorExtensions {
 
     def private String getElementsTypeStreamSignature(FStructType fStructType,
         DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor)].join
+        var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor, it)].join
 
         if (fStructType.base != null)
             signature = fStructType.base.getElementsTypeStreamSignature(deploymentAccessor) + signature

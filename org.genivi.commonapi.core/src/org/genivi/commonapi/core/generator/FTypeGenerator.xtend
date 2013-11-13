@@ -252,7 +252,7 @@ class FTypeGenerator {
                     «fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
                 «ENDIF»
                 «FOR element : fStructType.elements»
-                    «element.type.typeStreamSignature(deploymentAccessor)»
+                    «element.type.typeStreamSignature(deploymentAccessor, element)»
                 «ENDFOR»
             }
         };
@@ -494,20 +494,6 @@ class FTypeGenerator {
             libraryHeaders.add('CommonAPI/SerializableVariant.h')
         fUnionType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
         libraryHeaders.addAll('cstdint', 'memory')
-    }
-
-    def private getRequiredHeaderPath(FTypeRef fTypeRef) {
-        if (fTypeRef.derived != null)
-            return fTypeRef.derived.FTypeCollection.headerPath
-        return fTypeRef.predefined.requiredHeaderPath
-    }
-
-    def private getRequiredHeaderPath(FBasicTypeId fBasicTypeId) {
-        switch fBasicTypeId {
-            case FBasicTypeId::STRING : 'string'
-            case FBasicTypeId::BYTE_BUFFER : 'CommonAPI/ByteBuffer.h'
-            default : 'cstdint'
-        }
     }
     
     def private void getRequiredHeaderPath(FTypeRef fTypeRef, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
