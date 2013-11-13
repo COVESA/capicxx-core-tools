@@ -106,7 +106,7 @@ class FTypeGenerator {
                     «fStructType.baseStructName»::writeToTypeOutputStream(typeOutputStream);
                 «ENDIF»
                 «FOR element : fStructType.elements»
-                    «element.type.typeStreamSignature(deploymentAccessor)»
+                    «element.type.typeStreamSignature(deploymentAccessor, element)»
                 «ENDFOR»
             }
         };
