@@ -147,8 +147,12 @@ class FInterfaceStubGenerator {
          */
         class «fInterface.stubClassName» : public CommonAPI::Stub<«fInterface.stubAdapterClassName» , «fInterface.stubRemoteEventClassName»> {
          public:
+            «fInterface.stubClassName»(): interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) { }
             virtual ~«fInterface.stubClassName»() { }
 
+            const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) {
+                return interfaceVersion_;
+            }
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 /// Provides getter access to the attribute «attribute.elementName»
@@ -186,6 +190,8 @@ class FInterfaceStubGenerator {
                 virtual bool «managed.stubDeregisterManagedName»(const std::string&) = 0;
                 virtual std::set<std::string>& «managed.stubManagedSetGetterName»() = 0;
             «ENDFOR»
+         private:
+            const CommonAPI::Version interfaceVersion_;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
