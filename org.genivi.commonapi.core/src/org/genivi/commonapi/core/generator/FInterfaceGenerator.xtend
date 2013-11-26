@@ -96,7 +96,7 @@ class FInterfaceGenerator {
         namespace std {
             //hashes for types
             «fInterface.generateHashers(deploymentAccessor)»
-            
+
             //hashes for error types
             «FOR method : fInterface.methods.filter[errors != null]»
                 «method.errors.generateHash(method.errors.errorName, fInterface, deploymentAccessor)»

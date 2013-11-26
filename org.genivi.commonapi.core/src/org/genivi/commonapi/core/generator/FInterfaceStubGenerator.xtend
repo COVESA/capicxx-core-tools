@@ -32,6 +32,7 @@ class FInterfaceStubGenerator {
         «val generatedHeaders = new HashSet<String>»
         «val libraryHeaders = new HashSet<String>»
 
+        «fInterface.generateInheritanceIncludes(generatedHeaders, libraryHeaders)»
         «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
         «fInterface.generateSelectiveBroadcastStubIncludes(generatedHeaders, libraryHeaders)»
 
@@ -89,15 +90,14 @@ class FInterfaceStubGenerator {
                     virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')») = 0;
                 «ENDIF»
             «ENDFOR»
-            
+
             «FOR managed : fInterface.managedInterfaces»
                 virtual «managed.stubRegisterManagedMethod» = 0;
                 virtual bool «managed.stubDeregisterManagedName»(const std::string&) = 0;
                 virtual std::set<std::string>& «managed.stubManagedSetGetterName»() = 0;
             «ENDFOR»
-            
+
             virtual void deactivateManagedInstances() = 0;
-            
         protected:
             /**
              * Defines properties for storing the ClientIds of clients / proxies that have
@@ -145,14 +145,11 @@ class FInterfaceStubGenerator {
          * This class and the one above are the ones an application developer needs to have
          * a look at if he wants to implement a service.
          */
-        class «fInterface.stubClassName» : public CommonAPI::Stub<«fInterface.stubAdapterClassName» , «fInterface.stubRemoteEventClassName»> {
-         public:
-            «fInterface.stubClassName»(): interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) { }
+        class «fInterface.stubClassName» : public virtual «fInterface.stubCommonAPIClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubClassName»«ENDIF» {
+        public:
             virtual ~«fInterface.stubClassName»() { }
+            virtual const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
 
-            const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) {
-                return interfaceVersion_;
-            }
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 /// Provides getter access to the attribute «attribute.elementName»
@@ -184,14 +181,15 @@ class FInterfaceStubGenerator {
                     virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')») = 0;
                 «ENDIF»
             «ENDFOR»
-            
+
             «FOR managed : fInterface.managedInterfaces»
                 virtual «managed.stubRegisterManagedMethod» = 0;
                 virtual bool «managed.stubDeregisterManagedName»(const std::string&) = 0;
                 virtual std::set<std::string>& «managed.stubManagedSetGetterName»() = 0;
             «ENDFOR»
-         private:
-            const CommonAPI::Version interfaceVersion_;
+            using «fInterface.stubCommonAPIClassName»::initStubAdapter;
+            typedef «fInterface.stubCommonAPIClassName»::StubAdapterType StubAdapterType;
+            typedef «fInterface.stubCommonAPIClassName»::RemoteEventHandlerType RemoteEventHandlerType;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
@@ -204,6 +202,10 @@ class FInterfaceStubGenerator {
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_STUB_DEFAULT_H_
         #define «fInterface.defineName»_STUB_DEFAULT_H_
+
+        «IF fInterface.base != null»
+            #include <«fInterface.base.stubDefaultHeaderPath»>
+        «ENDIF»
 
         #include <«fInterface.stubHeaderPath»>
         #include <sstream>
@@ -220,11 +222,13 @@ class FInterfaceStubGenerator {
          * that would be defined for this service, and/or if you do not need any non-default
          * behaviour.
          */
-        class «fInterface.stubDefaultClassName» : public «fInterface.stubClassName» {
-         public:
+        class «fInterface.stubDefaultClassName» : public virtual «fInterface.stubClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubDefaultClassName»«ENDIF» {
+        public:
             «fInterface.stubDefaultClassName»();
 
             «fInterface.stubRemoteEventClassName»* initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»>& stubAdapter);
+
+            const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId);
 
             «FOR attribute : fInterface.attributes»
                 virtual const «attribute.getTypeName(fInterface.model)»& «attribute.stubClassGetMethodName»();
@@ -255,7 +259,7 @@ class FInterfaceStubGenerator {
                     virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')»);
                 «ENDIF»
             «ENDFOR»
-            
+
             «FOR managed : fInterface.managedInterfaces»
                 bool «managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»>);
                 «managed.stubRegisterManagedMethod»;
@@ -263,7 +267,7 @@ class FInterfaceStubGenerator {
                 std::set<std::string>& «managed.stubManagedSetGetterName»();
             «ENDFOR»
 
-         protected:
+        protected:
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 virtual bool «attribute.stubDefaultClassTrySetMethodName»(«attribute.getTypeName(fInterface.model)» value);
@@ -272,8 +276,7 @@ class FInterfaceStubGenerator {
                     virtual void «attribute.stubRemoteEventClassChangedMethodName»();
                 «ENDIF»
             «ENDFOR»
-            std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter_;
-         private:
+        private:
             class RemoteEventHandler: public «fInterface.stubRemoteEventClassName» {
              public:
                 RemoteEventHandler(«fInterface.stubDefaultClassName»* defaultStub);
@@ -300,7 +303,9 @@ class FInterfaceStubGenerator {
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 «attribute.getTypeName(fInterface.model)» «attribute.stubDefaultClassVariableName»;
-            «ENDFOR»
+            «ENDFOR»            
+
+            CommonAPI::Version interfaceVersion_;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
@@ -318,11 +323,16 @@ class FInterfaceStubGenerator {
                 «IF !fInterface.managedInterfaces.empty»
                     autoInstanceCounter_(0),
                 «ENDIF»
-                remoteEventHandler_(this) {
+                remoteEventHandler_(this),
+                interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) {
+        }
+
+        const CommonAPI::Version& «fInterface.stubDefaultClassName»::getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) {
+            return interfaceVersion_;
         }
 
         «fInterface.stubRemoteEventClassName»* «fInterface.stubDefaultClassName»::initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»>& stubAdapter) {
-            stubAdapter_ = stubAdapter;
+            «fInterface.stubCommonAPIClassName»::stubAdapter_ = stubAdapter;
             return &remoteEventHandler_;
         }
 
@@ -416,7 +426,7 @@ class FInterfaceStubGenerator {
                 }
             «ENDIF»
         «ENDFOR»
-        
+
         «FOR managed : fInterface.managedInterfaces»
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»> stub) {
                 autoInstanceCounter_++;

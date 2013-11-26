@@ -425,6 +425,13 @@ class FTypeGenerator {
     def hasImplementation(FType fType) {
         return (fType instanceof FStructType);
     }
+    
+    def void generateInheritanceIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
+        if(fInterface.base != null) {
+            generatedHeaders.add(fInterface.base.stubHeaderPath)
+        }
+            
+    }
 
     def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         
