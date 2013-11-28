@@ -32,7 +32,7 @@ public class FPreferences {
     private FPreferences() {
         preferences = new HashMap<IResource, Map<String, String>>();
     }
-    
+
     public void resetPreferences(){
         preferences.clear();
     }
@@ -46,7 +46,7 @@ public class FPreferences {
 
     public void addPreferences(IResource res) {
         Map<String, String> map = new HashMap<String, String>();
-        
+
         if (res != null) {
             try {
                 QualifiedName useProjectSettingsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.USEPROJECTSETTINGS);
@@ -69,16 +69,25 @@ public class FPreferences {
             }
 
         } else {
-            if(!preferences.get(null).containsKey(PreferenceConstants.USEPROJECTSETTINGS))
+            if (preferences.get(null) == null) {
+                preferences.put(res, map);
+            }
+
+            if (!preferences.get(null).containsKey(PreferenceConstants.USEPROJECTSETTINGS)) {
                 map.put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.FALSE.toString());
-            if(!preferences.get(null).containsKey(PreferenceConstants.P_OUTPUT))
+            }
+            if (!preferences.get(null).containsKey(PreferenceConstants.P_OUTPUT)) {
                 map.put(PreferenceConstants.P_OUTPUT, PreferenceConstants.DEFAULT_OUTPUT);
-            if(!preferences.get(null).containsKey(PreferenceConstants.P_LICENSE))
+            }
+            if (!preferences.get(null).containsKey(PreferenceConstants.P_LICENSE)) {
                 map.put(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
-            if(!preferences.get(null).containsKey(PreferenceConstants.P_GENERATESTUB))
+            }
+            if (!preferences.get(null).containsKey(PreferenceConstants.P_GENERATESTUB)) {
                 map.put(PreferenceConstants.P_GENERATESTUB, Boolean.TRUE.toString());
-            if(!preferences.get(null).containsKey(PreferenceConstants.P_GENERATEPROXY))
+            }
+            if (!preferences.get(null).containsKey(PreferenceConstants.P_GENERATEPROXY)) {
                 map.put(PreferenceConstants.P_GENERATEPROXY, Boolean.TRUE.toString());
+            }
             map.putAll(preferences.get(null));
         }
         preferences.put(res, map);
@@ -181,5 +190,4 @@ public class FPreferences {
                     defaultstore.getString(PreferenceConstants.P_GENERATESTUB));
         }
     }
-
 }
