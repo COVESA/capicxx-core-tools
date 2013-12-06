@@ -23,4 +23,6 @@ public class PreferenceConstants {
     public static final String P_GENERATEPROXY = "generateproxy";
     public static final String P_GENERATESTUB = "generatestub";
     public static final String PROJECT_PAGEID = "org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage";
+    public static final String FRANCA_VERSION = "francaversion";
+    public static final String CORE_VERSION = "coreversion";
 }
