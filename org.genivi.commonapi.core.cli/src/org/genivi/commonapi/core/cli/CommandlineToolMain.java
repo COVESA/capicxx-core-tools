@@ -66,6 +66,10 @@ public class CommandlineToolMain {
     public static final String TEMP_FDEPL_PFAD = TEMP_PFAD + FILESEPARATOR
             + "fdepl";
     public static List<String> files = new ArrayList<String>();
+    // All given files were saved in this list with an absolute path
+    private static List<String> filelist = new ArrayList<String>();
+    // true if for all interfaces have to be generated the stubs
+    private static boolean allstubs = false;
 
     public static void main(String[] args) {
 
@@ -82,11 +86,12 @@ public class CommandlineToolMain {
                             + "  -dbus                    Additionally generate gluecode for the CommonAPI-D-Bus middleware binding\n"
                             + "  -dest <path/to/folder>   Relative to current location, the generated files will be saved there\n"
                             + "  -pref <path/to/file>     The text in this file which will be inserted as a comment in each generated file (for example your license)\n"
-                            + "  -version                 Used versions from the CommonAPI-Generator and Franca plugin");
+                            + "  -version                 Used versions from the CommonAPI-Generator and Franca plugin\n"
+                            + "  -genallincl              Generates all included fidls too (all Proxys and Stubs will be generated)");
             System.exit(-1);
         }
-        // All given files were saved in this list with an absolute path
-        List<String> filelist = new ArrayList<String>();
+
+        List<String> tempfilelist = new ArrayList<String>();
         FPreferences pref = FPreferences.getInstance();
         pref.clidefPreferences();
         /*
@@ -96,7 +101,8 @@ public class CommandlineToolMain {
         String francaversion = getFrancaVersion();
         String coreversion = FrancaGeneratorExtensions.getCoreVersion();
         pref.setPreference(PreferenceConstants.FRANCA_VERSION, francaversion);
-        pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.TRUE.toString());
+        pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS,
+                Boolean.TRUE.toString());
         for (int i = 0; i < args.length; i++) {
             String arg = args[i];
             if (arg.equals("-dbus"))
@@ -142,6 +148,8 @@ public class CommandlineToolMain {
                 System.out.println("Franca Version: " + francaversion);
                 System.out.println("CommonAPI Version: " + coreversion);
                 System.exit(0);
+            } else if (arg.equals("-genallincl")) {
+                allstubs = true;
             } else {
                 File file = new File(createAbsolutPath(args[i]));
                 if (!file.exists() || file.isDirectory()) {
@@ -149,10 +157,10 @@ public class CommandlineToolMain {
                             .println("The following path won't be generated because it doesn't exists:\n"
                                     + args[i] + "\n");
                 } else
-                    filelist.add(createAbsolutPath(arg));
+                    tempfilelist.add(createAbsolutPath(arg));
             }
         }
-        if (filelist.size() == 0) {
+        if (tempfilelist.size() == 0) {
             System.err.println("There are no valid files to generate!");
             System.exit(0);
         }
@@ -200,8 +208,8 @@ public class CommandlineToolMain {
              * instead of the original one
              */
 
-            for (int i = 0; i < filelist.size(); i++) {
-                filelist.set(i, rewriteImports(filelist.get(i)));
+            for (int i = 0; i < tempfilelist.size(); i++) {
+                filelist.add(rewriteImports(tempfilelist.get(i)));
             }
 
             Injector injectorcore = new StandaloneSetup()
@@ -327,6 +335,8 @@ public class CommandlineToolMain {
                                     getImportPath(line),
                                     path.substring(0,
                                             path.lastIndexOf(FILESEPARATOR)));
+                            if (allstubs)
+                                filelist.add(fidlpath);
                             line = "import \"file:"
                                     + replaceAll(fidlpath, "\\", "/") + "\"";
 
@@ -347,6 +357,29 @@ public class CommandlineToolMain {
                     outstr.close();
                 } catch (Exception e) {
                     ;
+                }
+            }
+        } else if (allstubs) {
+            File file = new File(createAbsolutPath(path));
+            BufferedReader str = null;
+            try {
+                str = new BufferedReader(new FileReader(file));
+                String line = "";
+                while ((line = str.readLine()) != null) {
+                    if (line.contains("import")) {
+                        String importfile = line
+                                .substring(line.indexOf('"') + 1);
+                        importfile = importfile.substring(0,
+                                importfile.indexOf('"'));
+                        filelist.add(importfile);
+                    }
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    str.close();
+                } catch (Exception e) {
                 }
             }
         }
