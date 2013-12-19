@@ -4,7 +4,7 @@
              <extension
                 point="org.franca.core.dsl.francaValidator">
                   <validator
-                        class="org.genivi.commonapi.core.validator.ResourceValidator"
+                        class="org.genivi.commonapi.core.validator.ValidatorCore"
                         mode="FAST">
                   </validator>
                </extension>
