@@ -36,9 +36,9 @@ class VerificationMainLoop {
     VerificationMainLoop& operator=(VerificationMainLoop&&) = delete;
 
     explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context) :
-            context_(context), currentMinimalTimeoutInterval_(TIMEOUT_INFINITE), running_(false), breakLoop_(false), dispatchWatchesTooLong(false) {
+            context_(context), currentMinimalTimeoutInterval_(TIMEOUT_INFINITE), running_(false), breakLoop_(false) {
         wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
-        wakeFd_.events = POLLIN | POLLOUT;
+        wakeFd_.events = POLLIN;
 
         assert(wakeFd_.fd != -1);
         registerFileDescriptor(wakeFd_);
@@ -85,12 +85,11 @@ class VerificationMainLoop {
     void runVerification(const int64_t& timeoutInterval, bool dispatchTimeoutAndWatches = false, bool dispatchDispatchSources = false) {
         running_ = true;
         clock_t start = clock();
-        while(running_) {
-
+        while (running_) {
             doVerificationIteration(dispatchTimeoutAndWatches, dispatchDispatchSources);
-
-            if(timeoutInterval != TIMEOUT_INFINITE && clock()-start > timeoutInterval*CLOCKS_PER_SEC)
+            if (timeoutInterval != TIMEOUT_INFINITE && clock() - start > timeoutInterval * CLOCKS_PER_SEC) {
                 stop();
+            }
         }
     }
 
@@ -112,13 +111,31 @@ class VerificationMainLoop {
      * Dispatch will not be called if no sources, watches and timeouts
      * claim to be ready during the check()-phase.
      *
-     * @param timeout The maximum poll-timeout for this iteration.
+     * @param timeout: The maximum poll-timeout for this iteration.
      */
     void doSingleIteration(const int64_t& timeout = TIMEOUT_INFINITE) {
         prepare(timeout);
         poll();
         if(check()) {
             dispatch();
+        }
+    }
+
+    void doVerificationIteration(bool dispatchTimeoutAndWatches, bool dispatchDispatchSources) {
+        prepare(TIMEOUT_INFINITE);
+        poll();
+        if (dispatchTimeoutAndWatches || dispatchDispatchSources) {
+            if (check()) {
+                if (dispatchTimeoutAndWatches) {
+                    dispatchTimeouts();
+                    dispatchWatches();
+                }
+                if (dispatchDispatchSources)
+                    dispatchSources();
+            }
+            timeoutsToDispatch_.clear();
+            sourcesToDispatch_.clear();
+            watchesToDispatch_.clear();
         }
     }
 
@@ -224,11 +241,9 @@ class VerificationMainLoop {
         watchesToDispatch_.clear();
     }
 
-    bool dispatchWatchesTooLong;
-
     void wakeup() {
-        uint32_t wake = 1;
-        ::write(wakeFd_.fd, &wake, sizeof(uint32_t));
+        uint64_t wake = 1;
+        ::write(wakeFd_.fd, &wake, sizeof(uint64_t));
     }
 
     void dispatchTimeouts()
@@ -258,25 +273,6 @@ class VerificationMainLoop {
             while (std::get<1>(*dispatchSourceIterator)->dispatch())
                 ;
 
-        }
-    }
-
-    void doVerificationIteration(bool dispatchTimeoutAndWatches, bool dispatchDispatchSources)
-                                 {
-        prepare(TIMEOUT_INFINITE);
-        poll();
-        if (dispatchTimeoutAndWatches || dispatchDispatchSources) {
-            if (check()) {
-                if (dispatchTimeoutAndWatches) {
-                    dispatchTimeouts();
-                    dispatchWatches();
-                }
-                if (dispatchDispatchSources)
-                    dispatchSources();
-            }
-            timeoutsToDispatch_.clear();
-            sourcesToDispatch_.clear();
-            watchesToDispatch_.clear();
         }
     }
 
@@ -345,8 +341,8 @@ class VerificationMainLoop {
     }
 
     void acknowledgeWakeup() {
-        uint32_t buffer;
-        while (::read(wakeFd_.fd, &buffer, sizeof(uint32_t)) == sizeof(buffer));
+        uint64_t buffer;
+        while (::read(wakeFd_.fd, &buffer, sizeof(uint64_t)) == sizeof(buffer));
     }
 
     std::shared_ptr<MainLoopContext> context_;
