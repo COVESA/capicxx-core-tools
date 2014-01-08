@@ -450,7 +450,7 @@ class FrancaGeneratorExtensions {
             case FBasicTypeId::DOUBLE: "double"
             case FBasicTypeId::STRING: "std::string"
             case FBasicTypeId::BYTE_BUFFER: "CommonAPI::ByteBuffer"
-            default: throw new IllegalArgumentException("Unsupported basic type: " + fBasicTypeId.name)
+            default: throw new IllegalArgumentException("Unsupported basic type: " + fBasicTypeId.getName())
         }
     }
 

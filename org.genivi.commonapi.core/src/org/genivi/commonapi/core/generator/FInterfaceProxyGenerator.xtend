@@ -180,6 +180,12 @@ class FInterfaceProxyGenerator {
          private:
             std::shared_ptr<«fInterface.proxyBaseClassName»> delegate_;
         };
+        
+        #ifdef WIN32
+            typedef «fInterface.proxyClassName»<CommonAPI::WINDummyAttributeExtension<CommonAPI::WINDummyAttribute>> «fInterface.proxyClassName»Default;
+        #else
+            typedef «fInterface.proxyClassName»<> «fInterface.proxyClassName»Default;
+        #endif
 
         «IF fInterface.hasAttributes»
             namespace «fInterface.extensionsSubnamespace» {
@@ -196,9 +202,7 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
                 delegate_(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate))
-#if !defined(WIN32) || defined(ENABLE_ATTRIBUTE_EXTENSIONS)
                 , _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...
-#endif
         { }
         
         template <typename ... _AttributeExtensions>
