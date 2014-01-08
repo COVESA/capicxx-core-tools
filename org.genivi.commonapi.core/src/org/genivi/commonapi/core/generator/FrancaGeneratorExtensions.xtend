@@ -752,7 +752,7 @@ class FrancaGeneratorExtensions {
             case FBasicTypeId::DOUBLE: "double"
             case FBasicTypeId::STRING: "std::string"
             case FBasicTypeId::BYTE_BUFFER: "CommonAPI::ByteBuffer"
-            default: throw new IllegalArgumentException("Unsupported basic type: " + fBasicTypeId.name)
+            default: throw new IllegalArgumentException("Unsupported basic type: " + fBasicTypeId.getName)
         }
     }
 
@@ -943,7 +943,7 @@ class FrancaGeneratorExtensions {
         if (fTypeRef.derived != null)
             hasher.putFTypeObject(fTypeRef.derived)
         else
-            hasher.putString(fTypeRef.predefined.name, Charsets::UTF_8);
+            hasher.putString(fTypeRef.predefined.getName, Charsets::UTF_8);
     }
 
     def boolean hasDerivedFStructTypes(FStructType fStructType) {
