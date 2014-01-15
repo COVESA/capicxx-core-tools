@@ -23,7 +23,7 @@ class FTypeCycleDetector {
     new() {
     }
 
-    def dispatch hasCycle(FType type) {
+    def dispatch boolean hasCycle(FType type) {
         indices.clear()
         lowlink.clear()
         stack.clear()
@@ -32,7 +32,7 @@ class FTypeCycleDetector {
         return tarjan(type)
     }
 
-    def dispatch hasCycle(List<FType> types) {
+    def dispatch boolean hasCycle(List<FType> types) {
         indices.clear()
         lowlink.clear()
         stack.clear()
