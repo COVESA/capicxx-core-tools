@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/org.genivi.commonapi.core.feature_2.0.4.qualifier.jar" id="org.genivi.commonapi.core.feature" version="2.0.4.qualifier">
+   <feature url="features/org.genivi.commonapi.core.feature_2.0.9.qualifier.jar" id="org.genivi.commonapi.core.feature" version="2.0.9.qualifier">
       <category name="GENIVI CommonAPI"/>
    </feature>
    <category-def name="GENIVI CommonAPI" label="GENIVI CommonAPI Generators">

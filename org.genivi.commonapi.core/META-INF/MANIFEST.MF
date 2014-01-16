@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: GENIVI Common API Generator
 Bundle-Vendor: BMW AG
-Bundle-Version: 2.0.8.qualifier
+Bundle-Version: 2.0.9.qualifier
 Bundle-SymbolicName: org.genivi.commonapi.core;singleton:=true
 Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.core.resources;bundle-version="3.8.0",
