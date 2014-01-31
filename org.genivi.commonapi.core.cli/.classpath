@@ -4,9 +4,7 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="src" path="/org.genivi.commonapi.core"/>
 	<classpathentry kind="src" path="/org.genivi.commonapi.dbus"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.codegen.ecore_2.9.1.v20130902-0605.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.ecore_2.9.1.v20130827-0309.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.xtext_2.4.3.v201309030823.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.franca.core.dsl_0.8.10.201309262002.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/com.google.inject_3.0.0.v201203062045.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.common_2.9.1.v20130827-0309.jar"/>
@@ -15,6 +13,8 @@
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.ecore.xmi_2.9.1.v20130827-0309.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.apache.log4j_1.2.15.v201012070815.jar"/>
 	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.antlr.runtime_3.2.0.v201101311130.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.mwe2.language_2.4.1.v201309030840.jar"/>
+	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.codegen.ecore_2.9.1.v20131212-0558.jar"/>
+	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.mwe2.language_2.5.0.v201312110944.jar"/>
+	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.xtext_2.5.0.v201312110906.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -1022,7 +1022,7 @@ class FrancaGeneratorExtensions {
                 }
             }
         }
-        return "2.1.4"
+        return "2.1.5"
     }
 
     def generateCommonApiLicenseHeader(FModelElement model, IResource modelid) '''
