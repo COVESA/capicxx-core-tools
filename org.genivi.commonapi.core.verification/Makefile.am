@@ -21,12 +21,10 @@ generated = \
 TESTS = ${check_PROGRAMS}
 
 DynamicLoadingVerification_SOURCES = \
-        ${generated} \
         src/utils/VerificationTestStub.cpp \
         src/DynamicLoadingVerification.cpp
 
 MainLoopVerification_SOURCES = \
-        ${generated} \
         src/utils/VerificationTestStub.cpp \
         src/MainLoopVerification.cpp
 

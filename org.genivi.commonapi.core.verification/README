@@ -32,21 +32,18 @@ The current version can be taken from the git.
 
 The term "gluecode" refers to a binary that contains the binding specific generated code from the Franca files
 "test-derived-types.fidl", "test-interface-proxy.fidl" and "test-predefined-types.fidl" that are delivered in the
-src directory within that project.
+src directory within that project. The gluecode library needs to contain the generated proxy and stub files (Common-API as well as binding specific ones) from
+the three .fidl files mentioned above.
 
 There are some configure options that allow you to define the binding that should be tested:
 
---with-gluecode-path=... specifies the path to your gluecode containing the directories src-gen and .libs.
-In the src-gen directory there must be the generated proxy and stub files (Common-API as well as binding specific ones) from
-the three .fidl files mentioned above. This includes the subdirectory structure src-gen/commonapi/tests
+--with-gluecode=... specifies the path to your gluecode libraries, including name, excluding file ending; .a and .so files with
+the given name will be used.
+--with-binding-name=... specifies the "well-known" name for the binding to be tested. This is the name which may be used to
+dynamically load the binding.
+--with-binding=... specifies the path to the binding library, including name, excluding file ending; .a and .so files with
+the given name will be used.
 
-If you want the gluecode to be linked dynamically, use --with-gluecode-so-name=... to name the *.so file. The .so file must reside
-within .libs in the gluecode path.
-
-If you want the gluecode to be linked statically, use --gluecode-a-name=... to name the *.a file. The .a file must reside
-within .libs in the gluecode path. For statically linked gluecode you also have to specify your binding. To do that use either
---with-binding-so=... or --with-binding-a=..., depending on whether your binding should be linked dynamically (*.so) or 
-statically (*.a) respectively. Use the full path to your binding.
 If your binding needs additional libraries, use --binding-extra=... to specify them.
 
 GTest is needed to compile and run the test. Its confuguration script location must be available 
@@ -54,25 +51,16 @@ in the environment variable GTEST_CONFIG.
 
 == Usage
 
-1. Generate CommonAPI code for all .fidl files within /src using the code generator. After that you should find the generated files in /src-gen
+1. Generate CommonAPI code for alll .fidl files within /src using the code generator. After that you should find the generated files in /src-gen
 2. Run autoreconf -i
 3. Configure the project to find the gluecode (see also "Description")
 Ensure you have GTEST_CONFIG set to the correct location, e.g. GTEST_CONFIG=/home/user/work/gtest/scripts/gtest-config 
    Examples:
-   a) configure --with-gluecode-path=/home/user/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
-                --with-gluecode-so-name=libDBusGlue.so
-      Uses dynamically linked gluecode file "libDBusGlue.so"
-   b) configure --with-gluecode-path=/home/user/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
-                --with-gluecode-a-name=libDBusGlue.a \
-                --with-binding-so=/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.so
-      Uses statically linked gluecode file "libDBusGlue.a" and dynamically linked binding 
-      "/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.so"
-   c) configure --with-gluecode-path=/home/user/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification \
-                --with-gluecode-a-name=libDBusGlue.a \
-                --with-binding-a=/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a \
-                --with-binding-extra=/home/user/libdbus/dbus/.libs/libdbus-1.so
-      Uses statically linked gluecode file "libDBusGlue.a" and statically linked binding "/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus.a". The binding in this example needs an additional library "/home/user/libdbus/dbus/.libs/libdbus-1.so".
-      If you do not need that, you can omit the --with-binding-extra option 
-4. Run make check (Ensure that any glue .so which may be required can be found, for example by setting the LD_LIBRARY_PATH variable)
-5. Execute ./verification in order to run the test cases
+   configure --with-gluecode=/home/user/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification/.libs/libDBusGlue \
+             --with-binding-name=DBus \
+             --with-binding=/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus
+             --with-binding-extra=/home/user/dbus-1.4.16/dbus/.libs/libdbus-1.so   
+   If you do not need extra libraries, you can omit the --with-binding-extra option
+4. Run make check (Ensure that any additional .so which may be required can be found, for example by setting the LD_LIBRARY_PATH variable)
+5. Execute ./verification in order to run the test cases once again
    
