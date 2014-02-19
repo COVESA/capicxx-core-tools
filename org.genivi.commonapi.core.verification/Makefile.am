@@ -12,11 +12,13 @@ AM_CPPFLAGS = \
 
 check_PROGRAMS = \
         DynamicLoadingVerification \
-        MainLoopVerification
+        MainLoopVerification \
+        CommunicationVerification
 
 generated = \
         src-gen/commonapi/tests/DerivedTypeCollection.cpp \
-        src-gen/commonapi/tests/TestInterfaceStubDefault.cpp
+        src-gen/commonapi/tests/TestInterfaceStubDefault.cpp \
+        src-gen/commonapi/tests/CommunicationVerification.cpp
 
 TESTS = ${check_PROGRAMS}
 
@@ -28,6 +30,10 @@ MainLoopVerification_SOURCES = \
         src/utils/VerificationTestStub.cpp \
         src/MainLoopVerification.cpp
 
+CommunicationVerification_SOURCES = \
+        src/utils/VerificationTestStub.cpp \
+        src/CommunicationVerification.cpp
+
 DynamicLoadingVerification_CPPFLAGS = ${AM_CPPFLAGS}
 DynamicLoadingVerification_LDADD = ${COMMONAPI_LIBS} ${GTEST_LIBS}
 DynamicLoadingVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_SO}
@@ -35,3 +41,7 @@ DynamicLoadingVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_SO}
 MainLoopVerification_CPPFLAGS = ${AM_CPPFLAGS}
 MainLoopVerification_LDADD = ${COMMONAPI_LIBS} ${BINDING_A} ${GTEST_LIBS}
 MainLoopVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_A}
+
+CommunicationVerification_CPPFLAGS = ${AM_CPPFLAGS}
+CommunicationVerification_LDADD = ${COMMONAPI_LIBS} ${BINDING_A} ${GTEST_LIBS}
+CommunicationVerification_LDFLAGS = ${GLUE_LDFLAGS_FOR_A}
