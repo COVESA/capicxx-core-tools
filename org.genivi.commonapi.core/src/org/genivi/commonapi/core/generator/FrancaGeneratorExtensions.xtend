@@ -10,11 +10,15 @@ import com.google.common.base.Charsets
 import com.google.common.hash.Hasher
 import com.google.common.hash.Hashing
 import com.google.common.primitives.Ints
+import java.util.Collection
 import java.util.List
+import org.eclipse.core.resources.IResource
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
 import org.eclipse.core.runtime.preferences.DefaultScope
 import org.eclipse.core.runtime.preferences.InstanceScope
+import org.eclipse.emf.common.util.BasicEList
+import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
@@ -23,6 +27,7 @@ import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FEnumerationType
+import org.franca.core.franca.FField
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FMethod
@@ -33,20 +38,16 @@ import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
+import org.franca.core.franca.FTypedElement
 import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$DefaultEnumBackingType
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor$EnumBackingType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor.DefaultEnumBackingType
+import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor.EnumBackingType
+import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
+import org.osgi.framework.FrameworkUtil
 
 import static com.google.common.base.Preconditions.*
-import org.franca.core.franca.FTypedElement
-import java.util.Collection
-import org.genivi.commonapi.core.preferences.FPreferences
-import org.osgi.framework.FrameworkUtil
-import org.eclipse.core.resources.IResource
-import org.osgi.framework.Version
-import org.franca.core.franca.FField
 
 class FrancaGeneratorExtensions {
 
@@ -947,13 +948,13 @@ class FrancaGeneratorExtensions {
     }
 
     def boolean hasDerivedFStructTypes(FStructType fStructType) {
-        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists [
+        return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists [
             EObject instanceof FStructType && (EObject as FStructType).base == fStructType
         ]
     }
 
     def getDerivedFStructTypes(FStructType fStructType) {
-        return EcoreUtil$UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
+        return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
             filter[it instanceof FStructType].map[it as FStructType].filter[base == fStructType]
     }
 
@@ -1043,40 +1044,73 @@ class FrancaGeneratorExtensions {
         }
         return builder.toString()
     }
-    
+
     def stubManagedSetName(FInterface fInterface) {
         'registered' + fInterface.elementName + 'Instances'
     }
-    
+
     def stubManagedSetGetterName(FInterface fInterface) {
         'get' + fInterface.elementName + 'Instances'
     }
-    
+
     def stubRegisterManagedName(FInterface fInterface) {
         'registerManagedStub' + fInterface.elementName
     }
-    
+
     def stubRegisterManagedAutoName(FInterface fInterface) {
         'registerManagedStub' + fInterface.elementName + 'AutoInstance'
     }
-    
+
     def stubRegisterManagedMethod(FInterface fInterface) {
         'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '>, const std::string&)'
     }
-    
+
     def stubRegisterManagedMethodImpl(FInterface fInterface) {
         fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '> stub, const std::string& instance)'
     }    
-    
+
     def stubDeregisterManagedName(FInterface fInterface) {
         'deregisterManagedStub' + fInterface.elementName
     }
-    
+
     def proxyManagerGetterName(FInterface fInterface) {
         'getProxyManager' + fInterface.elementName
     }
-    
+
     def proxyManagerMemberName(FInterface fInterface) {
         'proxyManager' + fInterface.elementName + '_'
+    }
+
+    def EList<FMethod> getInheritedMethods(FInterface fInterface) {
+        if(fInterface.base == null) {
+            return new BasicEList()
+        }
+
+        val methods = fInterface.base.methods
+        methods.addAll(fInterface.base.inheritedMethods)
+
+        return methods
+    }
+
+    def EList<FAttribute> getInheritedAttributes(FInterface fInterface) {
+        if(fInterface.base == null) {
+            return new BasicEList()
+        }
+
+        val attributes = fInterface.base.attributes
+        attributes.addAll(fInterface.base.inheritedAttributes)
+
+        return attributes
+    }
+
+    def EList<FBroadcast> getInheritedBroadcasts(FInterface fInterface) {
+        if(fInterface.base == null) {
+            return new BasicEList()
+        }
+
+        val broadcasts = fInterface.base.broadcasts
+        broadcasts.addAll(fInterface.base.inheritedBroadcasts)
+
+        return broadcasts
     }
 }

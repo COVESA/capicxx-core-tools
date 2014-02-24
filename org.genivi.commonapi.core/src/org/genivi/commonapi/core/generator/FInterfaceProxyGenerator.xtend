@@ -262,6 +262,12 @@ class FInterfaceProxyGenerator {
             std::shared_ptr<«fInterface.proxyBaseClassName»> delegate_;
         };
 
+        #ifdef WIN32
+            typedef «fInterface.proxyClassName»<CommonAPI::WINDummyAttributeExtension<CommonAPI::WINDummyAttribute>> «fInterface.proxyDefaultClassName»;
+        #else
+            typedef «fInterface.proxyClassName»<> «fInterface.proxyDefaultClassName»;
+        #endif
+
         «IF fInterface.hasAttributes»
             namespace «fInterface.extensionsSubnamespace» {
                 «FOR attribute : fInterface.attributes»
@@ -375,6 +381,9 @@ class FInterfaceProxyGenerator {
 
             static_assert(std::is_base_of<typename CommonAPI::AttributeExtension<«fInterface.proxyBaseClassName»::«fAttribute.className»>, extension_type>::value,
                           "Not CommonAPI Attribute Extension!");
+        #ifdef WIN32
+            «fAttribute.extensionClassName»() {}
+        #endif
 
             «fAttribute.extensionClassName»(«fInterface.proxyBaseClassName»& proxy): attributeExtension_(proxy.get«fAttribute.className»()) {
             }
@@ -428,6 +437,10 @@ class FInterfaceProxyGenerator {
 
     def private getProxyClassName(FInterface fInterface) {
         fInterface.elementName + 'Proxy'
+    }
+
+    def private getProxyDefaultClassName(FInterface fInterface) {
+        fInterface.proxyClassName + 'Default'
     }
 
     def private getExtensionClassName(FAttribute fAttribute) {

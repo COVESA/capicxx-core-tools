@@ -62,7 +62,7 @@ class FInterfaceStubGenerator {
          * and attribute-changed-notifications of observable attributes as defined by this service.
          * An application developer should not need to bother with this class.
          */
-        class «fInterface.stubAdapterClassName»: virtual public CommonAPI::StubAdapter, public «fInterface.elementName» {
+        class «fInterface.stubAdapterClassName»: virtual public CommonAPI::StubAdapter, public «fInterface.elementName»«IF fInterface.base != null», public virtual «fInterface.base.stubAdapterClassName»«ENDIF» {
          public:
             «FOR attribute : fInterface.attributes»
                 «IF attribute.isObservable»
@@ -123,7 +123,7 @@ class FInterfaceStubGenerator {
          * This class and the one below are the ones an application developer needs to have
          * a look at if he wants to implement a service.
          */
-        class «fInterface.stubRemoteEventClassName» {
+        class «fInterface.stubRemoteEventClassName»«IF fInterface.base != null»: public virtual «fInterface.base.stubRemoteEventClassName»«ENDIF» {
          public:
             virtual ~«fInterface.stubRemoteEventClassName»() { }
 
@@ -145,7 +145,7 @@ class FInterfaceStubGenerator {
          * This class and the one above are the ones an application developer needs to have
          * a look at if he wants to implement a service.
          */
-        class «fInterface.stubClassName» : public virtual «fInterface.stubCommonAPIClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubClassName»«ENDIF» {
+        class «fInterface.stubClassName»: public virtual «fInterface.stubCommonAPIClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubClassName»«ENDIF» {
         public:
             virtual ~«fInterface.stubClassName»() { }
             virtual const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
@@ -190,6 +190,8 @@ class FInterfaceStubGenerator {
             using «fInterface.stubCommonAPIClassName»::initStubAdapter;
             typedef «fInterface.stubCommonAPIClassName»::StubAdapterType StubAdapterType;
             typedef «fInterface.stubCommonAPIClassName»::RemoteEventHandlerType RemoteEventHandlerType;
+            typedef «fInterface.stubRemoteEventClassName» RemoteEventType;
+            typedef «fInterface.elementName» StubInterface;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
@@ -276,8 +278,7 @@ class FInterfaceStubGenerator {
                     virtual void «attribute.stubRemoteEventClassChangedMethodName»();
                 «ENDIF»
             «ENDFOR»
-        private:
-            class RemoteEventHandler: public «fInterface.stubRemoteEventClassName» {
+            class RemoteEventHandler: public virtual «fInterface.stubRemoteEventClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubDefaultClassName»::RemoteEventHandler«ENDIF» {
              public:
                 RemoteEventHandler(«fInterface.stubDefaultClassName»* defaultStub);
 
@@ -294,8 +295,8 @@ class FInterfaceStubGenerator {
              private:
                 «fInterface.stubDefaultClassName»* defaultStub_;
             };
-
-            RemoteEventHandler remoteEventHandler_;
+        private:
+            «fInterface.stubDefaultClassName»::RemoteEventHandler remoteEventHandler_;
             «IF !fInterface.managedInterfaces.empty»
                 uint32_t autoInstanceCounter_;
             «ENDIF»
@@ -332,6 +333,7 @@ class FInterfaceStubGenerator {
         }
 
         «fInterface.stubRemoteEventClassName»* «fInterface.stubDefaultClassName»::initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»>& stubAdapter) {
+            «IF fInterface.base != null»«fInterface.base.stubDefaultClassName»::initStubAdapter(stubAdapter);«ENDIF»
             «fInterface.stubCommonAPIClassName»::stubAdapter_ = stubAdapter;
             return &remoteEventHandler_;
         }
@@ -447,6 +449,7 @@ class FInterfaceStubGenerator {
         «ENDFOR»
 
         «fInterface.stubDefaultClassName»::RemoteEventHandler::RemoteEventHandler(«fInterface.stubDefaultClassName»* defaultStub):
+                «IF fInterface.base != null»«fInterface.base.stubDefaultClassName»::RemoteEventHandler(defaultStub),«ENDIF»
                 defaultStub_(defaultStub) {
         }
 
