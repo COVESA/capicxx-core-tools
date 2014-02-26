@@ -321,10 +321,10 @@ class FInterfaceStubGenerator {
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         «fInterface.stubDefaultClassName»::«fInterface.stubDefaultClassName»():
+                remoteEventHandler_(this),
                 «IF !fInterface.managedInterfaces.empty»
                     autoInstanceCounter_(0),
                 «ENDIF»
-                remoteEventHandler_(this),
                 interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) {
         }
 
