@@ -1,20 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
-	<classpathentry kind="src" path="/org.genivi.commonapi.core"/>
-	<classpathentry kind="src" path="/org.genivi.commonapi.dbus"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.ecore_2.9.1.v20130827-0309.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.franca.core.dsl_0.8.10.201309262002.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/com.google.inject_3.0.0.v201203062045.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.common_2.9.1.v20130827-0309.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/javax.inject_1.0.0.v20091030.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.franca.deploymodel.dsl_0.8.10.201309262002.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.ecore.xmi_2.9.1.v20130827-0309.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.apache.log4j_1.2.15.v201012070815.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.antlr.runtime_3.2.0.v201101311130.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.codegen.ecore_2.9.1.v20131212-0558.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.emf.mwe2.language_2.5.0.v201312110944.jar"/>
-	<classpathentry kind="var" path="ECLIPSE_HOME/plugins/org.eclipse.xtext_2.5.0.v201312110906.jar"/>
-	<classpathentry kind="output" path="bin"/>
+    <classpathentry kind="con"
+        path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6" />
+    <classpathentry kind="con"
+        path="org.eclipse.pde.core.requiredPlugins" />
+    <classpathentry kind="src" path="src" />
+    <classpathentry kind="output" path="bin" />
 </classpath>

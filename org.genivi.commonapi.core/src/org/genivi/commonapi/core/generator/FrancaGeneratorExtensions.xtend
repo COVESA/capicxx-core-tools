@@ -999,31 +999,22 @@ class FrancaGeneratorExtensions {
 
     def getFrancaVersion() {
         val bundle = FrameworkUtil::getBundle(FrancaGeneratorExtensions)
-        if (bundle != null) {
-            val bundleContext = bundle.getBundleContext();
-            for (b : bundleContext.bundles) {
-                if (b.symbolicName.equals("org.franca.core")) {
-                    return b.version.toString
-                }
+        val bundleContext = bundle.getBundleContext();
+        for (b : bundleContext.bundles) {
+            if (b.symbolicName.equals("org.franca.core")) {
+                return b.version.toString
             }
         }
-        var version = FPreferences::instance.getPreference(null, PreferenceConstants::FRANCA_VERSION, "Error");
-        if (version==null)
-            return "0.8.10"
-        return version
     }
 
     def static getCoreVersion() {
         val bundle = FrameworkUtil::getBundle(FrancaGeneratorExtensions)
-        if (bundle != null) {
-            val bundleContext = bundle.getBundleContext();
-            for (b : bundleContext.bundles) {
-                if (b.symbolicName.equals("org.genivi.commonapi.core")) {
-                    return b.version.toString
-                }
+        val bundleContext = bundle.getBundleContext();
+        for (b : bundleContext.bundles) {
+            if (b.symbolicName.equals("org.genivi.commonapi.core")) {
+                return b.version.toString
             }
         }
-        return "2.1.5"
     }
 
     def generateCommonApiLicenseHeader(FModelElement model, IResource modelid) '''

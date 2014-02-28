@@ -22,8 +22,12 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.inject.Inject;
+
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
+import org.eclipse.xtext.generator.IFileSystemAccess;
 import org.eclipse.xtext.generator.JavaIoFileSystemAccess;
 import org.eclipse.xtext.resource.XtextResourceSet;
 import org.genivi.commonapi.core.generator.FrancaGenerator;
@@ -33,6 +37,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.dbus.generator.FrancaDBusGenerator;
 
 import com.google.inject.Injector;
+import com.google.inject.Provider;
 
 /**
  * This is a little Tool to generate C++ files from Franca files over the
@@ -42,53 +47,54 @@ import com.google.inject.Injector;
  * output-destination to the given path and finally with -pref and a path to a
  * Textile will set the comment in the head of each file to the text from the
  * file given after -pref
- *
+ * 
  * @author Patrick Sattler
  */
-public class CommandlineToolMain {
+public class CommandlineToolMain
+{
 
-    public static final String FILESEPARATOR = System
-            .getProperty("file.separator");
+    public static final String                      FILESEPARATOR    = System.getProperty("file.separator");
 
-    public static final String FILESEPARATORIMP = "/";
-    public static final String TEMP_PFAD = System.getProperty("user.dir")
-            + FILESEPARATOR + "temp/";
-    public static final String CORE_DEPL = TEMP_PFAD + FILESEPARATOR
-            + "org.genivi.commonapi.core" + FILESEPARATOR + "deployment"
-            + FILESEPARATOR + "CommonAPI_deployment.fdepl";
-    public static final String CORE_PFAD = TEMP_PFAD + FILESEPARATOR
-            + "org.genivi.commonapi.core" + FILESEPARATOR + "deployment";
-    public static final String DBUS_DEPL = TEMP_PFAD + FILESEPARATOR
-            + "org.genivi.commonapi.dbus" + FILESEPARATOR + "deployment"
-            + FILESEPARATOR + "CommonAPI-DBus_deployment.fdepl";
-    public static final String DBUS_PFAD = TEMP_PFAD + FILESEPARATOR
-            + "org.genivi.commonapi.dbus" + FILESEPARATOR + "deployment";
-    public static final String TEMP_FDEPL_PFAD = TEMP_PFAD + FILESEPARATOR
-            + "fdepl";
-    public static List<String> files = new ArrayList<String>();
+    public static final String                      FILESEPARATORIMP = "/";
+    public static final String                      TEMP_PFAD        = System.getProperty("user.dir") + FILESEPARATOR + "temp/";
+    public static final String                      CORE_DEPL        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core"
+                                                                             + FILESEPARATOR + "deployment" + FILESEPARATOR
+                                                                             + "CommonAPI_deployment.fdepl";
+    public static final String                      CORE_PFAD        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core"
+                                                                             + FILESEPARATOR + "deployment";
+    public static final String                      DBUS_DEPL        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.dbus"
+                                                                             + FILESEPARATOR + "deployment" + FILESEPARATOR
+                                                                             + "CommonAPI-DBus_deployment.fdepl";
+    public static final String                      DBUS_PFAD        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.dbus"
+                                                                             + FILESEPARATOR + "deployment";
+    public static final String                      TEMP_FDEPL_PFAD  = TEMP_PFAD + FILESEPARATOR + "fdepl";
+    public static List<String>                      files            = new ArrayList<String>();
     // All given files were saved in this list with an absolute path
-    private static List<String> filelist = new ArrayList<String>();
+    private static List<String>                     filelist         = new ArrayList<String>();
     // true if for all interfaces have to be generated the stubs
-    private static boolean allstubs = false;
+    private static boolean                          allstubs         = false;
 
-    public static void main(String[] args) {
+    @Inject
+    private static Provider<JavaIoFileSystemAccess> fileAccessProvider;
+
+    public static void generate(String[] args)
+    {
 
         // Initialization with all options
         File tempfolder = null;
         boolean dbus = false;
-        String dest = createAbsolutPath("." + FILESEPARATOR + "src-gen"
-                + FILESEPARATOR);
-        if (args.length < 1) {
-            System.err
-                    .println("Usage: [java -jar] generator.jar [options] file...\n"
-                            + "\n"
-                            + "Options:\n"
-                            + "  -dbus                    Additionally generate gluecode for the CommonAPI-D-Bus middleware binding\n"
-                            + "  -dest <path/to/folder>   Relative to current location, the generated files will be saved there\n"
-                            + "  -pref <path/to/file>     The text in this file which will be inserted as a comment in each generated file (for example your license)\n"
-                            + "  -version                 Used versions from the CommonAPI-Generator and Franca plugin\n"
-                            + "  -genallincl              Generates all included fidls too (all Proxys and Stubs will be generated)");
-            System.exit(-1);
+        String dest = createAbsolutPath("." + FILESEPARATOR + "src-gen" + FILESEPARATOR);
+        if (args.length < 1)
+        {
+            String errorMessage = "Usage: commonapi_generator [options] file...\n"
+                    + "\n"
+                    + "Options:\n"
+                    + "  -dbus                    Additionally generate gluecode for the CommonAPI-D-Bus middleware binding\n"
+                    + "  -dest <path/to/folder>   Relative to current location, the generated files will be saved there\n"
+                    + "  -pref <path/to/file>     The text in this file which will be inserted as a comment in each generated file (for example your license)\n"
+                    + "  -version                 Used versions from the CommonAPI-Generator and Franca plugin\n"
+                    + "  -genallincl              Generates all included fidls too (all Proxys and Stubs will be generated)\n";
+            throw new IllegalArgumentException(errorMessage);
         }
 
         List<String> tempfilelist = new ArrayList<String>();
@@ -101,74 +107,87 @@ public class CommandlineToolMain {
         String francaversion = getFrancaVersion();
         String coreversion = FrancaGeneratorExtensions.getCoreVersion();
         pref.setPreference(PreferenceConstants.FRANCA_VERSION, francaversion);
-        pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS,
-                Boolean.TRUE.toString());
-        for (int i = 0; i < args.length; i++) {
+        pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.TRUE.toString());
+        for (int i = 0; i < args.length; i++)
+        {
             String arg = args[i];
             if (arg.equals("-dbus"))
                 dbus = true;
-            else if (arg.equals("-dest")) {
-                if (i + 1 == args.length) {
-                    System.err
-                            .println("Please write a destination folder after -dest");
+            else if (arg.equals("-dest"))
+            {
+                if (i + 1 == args.length)
+                {
+                    System.err.println("Please write a destination folder after -dest");
                     System.exit(0);
                 }
                 File file = new File(args[i + 1]);
-                if (!file.exists() || !file.isDirectory()) {
-                    if (!file.mkdirs()) {
+                if (!file.exists() || !file.isDirectory())
+                {
+                    if (!file.mkdirs())
+                    {
                         System.err.println("Could not create dest path");
                         System.exit(0);
                     }
                 }
                 dest = createAbsolutPath(args[i + 1]);
                 i++;
-            } else if (arg.equals("-pref")) {
-                if (i + 1 == args.length) {
-                    System.err
-                            .println("Please write a path to an existing file after -pref");
+            }
+            else if (arg.equals("-pref"))
+            {
+                if (i + 1 == args.length)
+                {
+                    System.err.println("Please write a path to an existing file after -pref");
                     System.exit(0);
                 }
                 File file = new File(createAbsolutPath(args[i + 1]));
                 i++;
-                if (!file.exists() || file.isDirectory()) {
-                    System.err
-                            .println("Please write a path to an existing file after -pref");
+                if (!file.exists() || file.isDirectory())
+                {
+                    System.err.println("Please write a path to an existing file after -pref");
                     System.exit(0);
                 }
-                System.out.println("The following file was set as header:\n"
-                        + file.getAbsolutePath());
-                try {
-                    pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS,
-                            Boolean.toString(true));
+                System.out.println("The following file was set as header:\n" + file.getAbsolutePath());
+                try
+                {
+                    pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
                     pref.setPreferences(PreferenceConstants.P_LICENSE, file);
-                } catch (IOException e) {
+                }
+                catch (IOException e)
+                {
                     e.printStackTrace();
                 }
-            } else if (arg.equals("-version")) {
+            }
+            else if (arg.equals("-version"))
+            {
                 System.out.println("Franca Version: " + francaversion);
                 System.out.println("CommonAPI Version: " + coreversion);
                 System.exit(0);
-            } else if (arg.equals("-genallincl")) {
+            }
+            else if (arg.equals("-genallincl"))
+            {
                 allstubs = true;
-            } else {
+            }
+            else
+            {
                 File file = new File(createAbsolutPath(args[i]));
-                if (!file.exists() || file.isDirectory()) {
-                    System.err
-                            .println("The following path won't be generated because it doesn't exists:\n"
-                                    + args[i] + "\n");
-                } else
+                if (!file.exists() || file.isDirectory())
+                {
+                    System.err.println("The following path won't be generated because it doesn't exists:\n" + args[i] + "\n");
+                }
+                else
                     tempfilelist.add(createAbsolutPath(arg));
             }
         }
-        if (tempfilelist.size() == 0) {
+        if (tempfilelist.size() == 0)
+        {
             System.err.println("There are no valid files to generate!");
             System.exit(0);
         }
-        System.out.println("The following path was set as the Outputfolder: \n"
-                + dest);
+        System.out.println("The following path was set as the Outputfolder: \n" + dest);
         System.out.println("Using Franca Version " + francaversion);
         System.out.println("and CommonAPI Version " + coreversion);
-        try {
+        try
+        {
             /*
              * The FDeploy.xmi will be loaded from the jar in a temporary folder
              * because the Generator expects a hierarchical URI an with a
@@ -177,9 +196,9 @@ public class CommandlineToolMain {
             File xmifile = null;
             InputStream in = null;
             OutputStream out = null;
-            try {
-                in = CommandlineToolMain.class
-                        .getResourceAsStream("/org/franca/deploymodel/dsl/FDeploy.xmi");
+            try
+            {
+                in = CommandlineToolMain.class.getResourceAsStream("/org/franca/deploymodel/dsl/FDeploy.xmi");
                 xmifile = new File(TEMP_PFAD + FILESEPARATOR + "FDeploy.xmi");
                 tempfolder = new File(TEMP_PFAD);
                 tempfolder.mkdir();
@@ -188,16 +207,26 @@ public class CommandlineToolMain {
                 int l = 0;
                 while ((l = in.read()) != -1)
                     out.write(l);
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 e.printStackTrace();
-            } finally {
-                try {
+            }
+            finally
+            {
+                try
+                {
                     out.close();
-                } catch (Exception e) {
                 }
-                try {
+                catch (Exception e)
+                {
+                }
+                try
+                {
                     in.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                 }
             }
             /*
@@ -208,36 +237,29 @@ public class CommandlineToolMain {
              * instead of the original one
              */
 
-            for (int i = 0; i < tempfilelist.size(); i++) {
+            for (int i = 0; i < tempfilelist.size(); i++)
+            {
                 filelist.add(rewriteImports(tempfilelist.get(i)));
             }
 
-            Injector injectorcore = new StandaloneSetup()
-                    .createInjectorAndDoEMFRegistration();
-            Injector injectordepl = new DeployStandaloneSetup()
-                    .createInjectorAndDoEMFRegistration();
+            DBusCommandExecutableExtensionFactory dbusCommandFactory = new DBusCommandExecutableExtensionFactory();
+            Injector injectorDBus = dbusCommandFactory.getInjector();
+            CommandExecutableExtensionFactory commandFactory = new CommandExecutableExtensionFactory();
+            Injector injectorCore = commandFactory.getInjector();
             URI uri = null;
             // we initialize both generators with the Injectors
-            FrancaDBusGenerator dbusgenerator = injectorcore
-                    .getInstance(FrancaDBusGenerator.class);
-            FrancaGenerator generator = injectorcore
-                    .getInstance(FrancaGenerator.class);
-            // The resourceset comes from a Provider because we needed a special
-            // way to build it
-            XtextResourceSet rsset = injectorcore.getProvider(
-                    XtextResourceSet.class).get();
-            // Here the resourceset gets the bindings for the fileendings and
-            // the resourcefactory which has to create resources with this
-            // ending
-            rsset.getResourceFactoryRegistry()
-                    .getExtensionToFactoryMap()
-                    .put("fdepl",
-                            injectordepl
-                                    .getInstance(FrancaResourceFactory.class));
-            final JavaIoFileSystemAccess fsa = injectorcore
-                    .getInstance(JavaIoFileSystemAccess.class);
+            FrancaDBusGenerator dbusgenerator = injectorDBus.getInstance(FrancaDBusGenerator.class);
+            FrancaGenerator generator = injectorCore.getInstance(FrancaGenerator.class);
+
+            XtextResourceSet rsset = injectorCore.getProvider(XtextResourceSet.class).get();
+            fileAccessProvider = injectorCore.getProvider(JavaIoFileSystemAccess.class);
+
+            final JavaIoFileSystemAccess fsa = fileAccessProvider.get();
+
             fsa.setOutputPath(createAbsolutPath(dest));
-            for (String file : filelist) {
+            fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT).setCreateOutputDirectory(true);
+            for (String file : filelist)
+            {
                 uri = URI.createFileURI(file);
                 Resource rs = rsset.createResource(uri);
                 if (dbus)
@@ -249,7 +271,9 @@ public class CommandlineToolMain {
                     generator.doGenerate(rs, fsa);
             }
 
-        } finally {
+        }
+        finally
+        {
             deleteTempFiles(tempfolder);
         }
     }
@@ -257,12 +281,13 @@ public class CommandlineToolMain {
     /**
      * gets the last segment from a path which fileseperators are
      * System.getProperty("file.separator")
-     *
+     * 
      * @param pfad
      *            the path from were the filename is going to be extracted
      * @return the last segment of the path
      */
-    private static String getFileName(String pfad) {
+    private static String getFileName(String pfad)
+    {
         if (pfad.lastIndexOf(FILESEPARATOR) >= 0)
             return pfad.substring(pfad.lastIndexOf(FILESEPARATOR) + 1).trim();
         return pfad.trim();
@@ -272,15 +297,17 @@ public class CommandlineToolMain {
      * the file on the path will be loaded, if the file has imports then the
      * imports will be overwritten with the right path. if the imported files
      * are also *.fdepl then thex will be also loaded
-     *
+     * 
      * @param path
      *            the path to the file which has to be loaded and analyzed
      * @return the new path to the file
      */
-    private static String rewriteImports(String path) {
+    private static String rewriteImports(String path)
+    {
         files.add(path);
         String ret = path;
-        if (path.endsWith(".fdepl")) {
+        if (path.endsWith(".fdepl"))
+        {
             File filein = new File(createAbsolutPath(path));
             String uristr = "";
             File fileout = null;
@@ -291,12 +318,14 @@ public class CommandlineToolMain {
             folder.mkdirs();
             BufferedReader instr = null;
             BufferedWriter outstr = null;
-            try {
+            try
+            {
                 fileout.createNewFile();
                 instr = new BufferedReader(new FileReader(filein));
                 outstr = new BufferedWriter(new FileWriter(fileout));
                 String line = "";
-                while ((line = instr.readLine()) != null) {
+                while ((line = instr.readLine()) != null)
+                {
                     // if a line contains the string "import" it will be
                     // analyzed if there is something imported that i dont know
                     // how to handle it will be passed through
@@ -306,80 +335,99 @@ public class CommandlineToolMain {
 
                     // the imported files will only be handled if they weren't
                     // handled before
-                    if (line.trim().startsWith("import")) {
-                        if (line.contains("dbus/deployment/CommonAPI-DBus_deployment.fdepl")) {
-                            line = "import \"file:" + FILESEPARATORIMP
-                                    + replaceAll(DBUS_DEPL, "\\", "/") + "\"";
-                            if (!files.contains(DBUS_DEPL)) {
+                    if (line.trim().startsWith("import"))
+                    {
+                        if (line.contains("dbus/deployment/CommonAPI-DBus_deployment.fdepl"))
+                        {
+                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(DBUS_DEPL, "\\", "/") + "\"";
+                            if (!files.contains(DBUS_DEPL))
+                            {
                                 handleDeployment(false);
                             }
-                        } else if (line
-                                .contains("core/deployment/CommonAPI_deployment.fdepl")) {
-                            line = "import \"file:" + FILESEPARATORIMP
-                                    + replaceAll(CORE_DEPL, "\\", "/") + "\"";
-                            if (!files.contains(CORE_DEPL)) {
+                        }
+                        else if (line.contains("core/deployment/CommonAPI_deployment.fdepl"))
+                        {
+                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(CORE_DEPL, "\\", "/") + "\"";
+                            if (!files.contains(CORE_DEPL))
+                            {
                                 handleDeployment(true);
                             }
-                        } else if (line.contains(".fdepl")) {
+                        }
+                        else if (line.contains(".fdepl"))
+                        {
                             String cp = line;
-                            line = "import \"file:" + FILESEPARATORIMP
-                                    + replaceAll(TEMP_FDEPL_PFAD, "\\", "/")
-                                    + FILESEPARATORIMP + getImportsName(line)
-                                    + "\"";
-                            if (!files.contains(createAbsolutPath(
-                                    getImportPath(cp), path)))
-                                rewriteImports(createAbsolutPath(
-                                        getImportPath(cp), path));
-                        } else if (line.contains(".fidl")) {
-                            String fidlpath = createAbsolutPath(
-                                    getImportPath(line),
-                                    path.substring(0,
-                                            path.lastIndexOf(FILESEPARATOR)));
+                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(TEMP_FDEPL_PFAD, "\\", "/") + FILESEPARATORIMP
+                                    + getImportsName(line) + "\"";
+                            if (!files.contains(createAbsolutPath(getImportPath(cp), path)))
+                                rewriteImports(createAbsolutPath(getImportPath(cp), path));
+                        }
+                        else if (line.contains(".fidl"))
+                        {
+                            String fidlpath = createAbsolutPath(getImportPath(line), path.substring(0, path.lastIndexOf(FILESEPARATOR)));
                             if (allstubs)
                                 filelist.add(fidlpath);
-                            line = "import \"file:"
-                                    + replaceAll(fidlpath, "\\", "/") + "\"";
+                            line = "import \"file:" + replaceAll(fidlpath, "\\", "/") + "\"";
 
                         }
                     }
                     outstr.write(line + "\n");
                 }
 
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 e.printStackTrace();
-            } finally {
-                try {
+            }
+            finally
+            {
+                try
+                {
                     instr.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     ;
                 }
-                try {
+                try
+                {
                     outstr.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     ;
                 }
             }
-        } else if (allstubs) {
+        }
+        else if (allstubs)
+        {
             File file = new File(createAbsolutPath(path));
             BufferedReader str = null;
-            try {
+            try
+            {
                 str = new BufferedReader(new FileReader(file));
                 String line = "";
-                while ((line = str.readLine()) != null) {
-                    if (line.contains("import")) {
-                        String importfile = line
-                                .substring(line.indexOf('"') + 1);
-                        importfile = importfile.substring(0,
-                                importfile.indexOf('"'));
+                while ((line = str.readLine()) != null)
+                {
+                    if (line.contains("import"))
+                    {
+                        String importfile = line.substring(line.indexOf('"') + 1);
+                        importfile = importfile.substring(0, importfile.indexOf('"'));
                         filelist.add(importfile);
                     }
                 }
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 e.printStackTrace();
-            } finally {
-                try {
+            }
+            finally
+            {
+                try
+                {
                     str.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                 }
             }
         }
@@ -389,35 +437,38 @@ public class CommandlineToolMain {
     /**
      * Here we create an absolute path from a relativ path and a rootpath from
      * which the relative path begins
-     *
+     * 
      * @param path
      *            the relative path which begins on rootpath
      * @param rootpath
      *            an absolute path to a folder
      * @return the merded absolute path without points
      */
-    private static String createAbsolutPath(String path, String rootpath) {
-        if (System.getProperty("os.name").contains("Windows")) {
+    private static String createAbsolutPath(String path, String rootpath)
+    {
+        if (System.getProperty("os.name").contains("Windows"))
+        {
             if (path.startsWith(":", 1))
                 return path;
-        } else {
+        }
+        else
+        {
             if (path.startsWith(FILESEPARATOR))
                 return path;
         }
 
-        String ret = (rootpath.endsWith(FILESEPARATOR) ? rootpath
-                : (rootpath + FILESEPARATOR)) + path;
-        while (ret.contains(FILESEPARATOR + "." + FILESEPARATOR)
-                || ret.contains(FILESEPARATOR + ".." + FILESEPARATOR)) {
-            if (ret.contains(FILESEPARATOR + ".." + FILESEPARATOR)) {
-                String temp = ret.substring(0,
-                        ret.indexOf(FILESEPARATOR + ".."));
+        String ret = (rootpath.endsWith(FILESEPARATOR) ? rootpath : (rootpath + FILESEPARATOR)) + path;
+        while (ret.contains(FILESEPARATOR + "." + FILESEPARATOR) || ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
+        {
+            if (ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
+            {
+                String temp = ret.substring(0, ret.indexOf(FILESEPARATOR + ".."));
                 temp = temp.substring(0, temp.lastIndexOf(FILESEPARATOR));
-                ret = temp
-                        + ret.substring(ret.indexOf(FILESEPARATOR + "..") + 3);
-            } else {
-                ret = replaceAll(ret, FILESEPARATOR + "." + FILESEPARATOR,
-                        FILESEPARATOR);
+                ret = temp + ret.substring(ret.indexOf(FILESEPARATOR + "..") + 3);
+            }
+            else
+            {
+                ret = replaceAll(ret, FILESEPARATOR + "." + FILESEPARATOR, FILESEPARATOR);
             }
         }
         return ret;
@@ -425,12 +476,13 @@ public class CommandlineToolMain {
 
     /**
      * reads from a line with import "path/to/file" the path to file
-     *
+     * 
      * @param line
      *            the line with the import instruction
      * @return the path alone without import and ""
      */
-    private static String getImportPath(String line) {
+    private static String getImportPath(String line)
+    {
         line = line.substring(line.indexOf("import") + 8).trim();
         line = line.substring(0, line.length() - 1);
         return line;
@@ -439,24 +491,25 @@ public class CommandlineToolMain {
     /**
      * creates a absolute path from a relative path which starts on the current
      * user directory
-     *
+     * 
      * @param path
      *            the relative path which start on the current user-directory
      * @return the created absolute path
      */
-    public static String createAbsolutPath(String path) {
-        return createAbsolutPath(path, System.getProperty("user.dir")
-                + FILESEPARATOR);
+    public static String createAbsolutPath(String path)
+    {
+        return createAbsolutPath(path, System.getProperty("user.dir") + FILESEPARATOR);
     }
 
     /**
      * reads from a line with import "path/to/import/file" the filename
-     *
+     * 
      * @param line
      *            the line with the import instruction
      * @return The name of the imported file
      */
-    private static String getImportsName(String line) {
+    private static String getImportsName(String line)
+    {
         return getFileName(getImportPath(line));
     }
 
@@ -466,46 +519,58 @@ public class CommandlineToolMain {
      * of this they have to be loaded on a different way you can choose if you
      * would like only to load the core or also the dbus depl (because the dbus
      * deployment.fdepl imports the core deployment.fdepl)
-     *
+     * 
      * @param core
      *            if true only the core file will be loaded otherwise also the
      *            dbus deployment.fdepl will be loaded
      */
-    private static void handleDeployment(boolean core) {
+    private static void handleDeployment(boolean core)
+    {
         BufferedReader reader = null;
         BufferedWriter writer = null;
-        if (!core) {
+        if (!core)
+        {
             File file = new File(DBUS_DEPL);
             File folder = new File(DBUS_PFAD);
             folder.mkdirs();
-            try {
+            try
+            {
                 file.createNewFile();
-                reader = new BufferedReader(
-                        new InputStreamReader(
-                                CommandlineToolMain.class
-                                        .getResourceAsStream("/CommonAPI-DBus_deployment.fdepl")));
+                reader = new BufferedReader(new InputStreamReader(
+                        CommandlineToolMain.class.getResourceAsStream("/CommonAPI-DBus_deployment.fdepl")));
                 writer = new BufferedWriter(new FileWriter(file));
                 String line = "";
-                while ((line = reader.readLine()) != null) {
-                    if (line.contains("import")) {
-                        line = "import \"file:" + FILESEPARATORIMP
-                                + replaceAll(CORE_DEPL, "\\", "/") + "\"";
+                while ((line = reader.readLine()) != null)
+                {
+                    if (line.contains("import"))
+                    {
+                        line = "import \"file:" + FILESEPARATORIMP + replaceAll(CORE_DEPL, "\\", "/") + "\"";
                     }
 
                     writer.write(line + "\n");
                 }
                 files.add(DBUS_DEPL);
-            } catch (IOException e) {
+            }
+            catch (IOException e)
+            {
                 e.printStackTrace();
-            } finally {
-                try {
+            }
+            finally
+            {
+                try
+                {
                     reader.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     ;
                 }
-                try {
+                try
+                {
                     writer.close();
-                } catch (Exception e) {
+                }
+                catch (Exception e)
+                {
                     ;
                 }
             }
@@ -514,27 +579,36 @@ public class CommandlineToolMain {
         File file = new File(CORE_DEPL);
         File folder = new File(CORE_PFAD);
         folder.mkdirs();
-        try {
+        try
+        {
             file.createNewFile();
-            reader = new BufferedReader(
-                    new InputStreamReader(CommandlineToolMain.class
-                            .getResourceAsStream("/CommonAPI_deployment.fdepl")));
+            reader = new BufferedReader(new InputStreamReader(CommandlineToolMain.class.getResourceAsStream("/CommonAPI_deployment.fdepl")));
             writer = new BufferedWriter(new FileWriter(file));
             int i = 0;
             while ((i = reader.read()) != -1)
                 writer.write(i);
             files.add(CORE_DEPL);
-        } catch (IOException e) {
+        }
+        catch (IOException e)
+        {
             e.printStackTrace();
-        } finally {
-            try {
+        }
+        finally
+        {
+            try
+            {
                 reader.close();
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 ;
             }
-            try {
+            try
+            {
                 writer.close();
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 ;
             }
         }
@@ -543,7 +617,7 @@ public class CommandlineToolMain {
     /**
      * a relaceAll Method which doesn't interprets the toreplace String as a
      * regex and so you can also replace \ and such special things
-     *
+     * 
      * @param text
      *            the text who has to be modified
      * @param toreplace
@@ -553,10 +627,11 @@ public class CommandlineToolMain {
      * @return the modified text with all toreplace parts replaced with
      *         replacement
      */
-    public static String replaceAll(String text, String toreplace,
-            String replacement) {
+    public static String replaceAll(String text, String toreplace, String replacement)
+    {
         String ret = "";
-        while (text.contains(toreplace)) {
+        while (text.contains(toreplace))
+        {
             ret += text.substring(0, text.indexOf(toreplace)) + replacement;
             text = text.substring(text.indexOf(toreplace) + toreplace.length());
         }
@@ -567,13 +642,16 @@ public class CommandlineToolMain {
     /**
      * removes recursively all files on the path and his folders and at the end
      * himself
-     *
+     * 
      * @param path
      *            the path to the folder which has to be deleted
      */
-    public static void deleteTempFiles(File path) {
-        if (path != null && path.isDirectory()) {
-            for (File file : path.listFiles()) {
+    public static void deleteTempFiles(File path)
+    {
+        if (path != null && path.isDirectory())
+        {
+            for (File file : path.listFiles())
+            {
                 if (file.isDirectory())
                     deleteTempFiles(file);
                 file.delete();
@@ -583,28 +661,9 @@ public class CommandlineToolMain {
             path.delete();
     }
 
-    public static String getFrancaVersion() {
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(
-                    new InputStreamReader(
-                            CommandlineToolMain.class
-                                    .getResourceAsStream("/META-INF/maven/org.franca/org.franca.core/pom.properties")));
-            String line = "";
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("version"))
-                    return line.substring(line.indexOf("version") + 8);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                reader.close();
-            } catch (Exception e) {
-            }
-        }
-
-        return null;
+    public static String getFrancaVersion()
+    {
+        return Platform.getBundle("org.franca.core").getVersion().toString();
     }
 
 }

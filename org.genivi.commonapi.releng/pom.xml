@@ -1,0 +1,26 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>commonapi</groupId>
+    <artifactId>org.genivi.commonapi.releng</artifactId>
+    <packaging>pom</packaging>
+    <modules>
+        <module>../org.genivi.commonapi.core</module>
+        <module>../org.genivi.commonapi.core.feature</module>
+        <module>../org.genivi.commonapi.core.ui</module>
+        <module>../org.genivi.commonapi.core.validator</module>
+        <module>../org.genivi.commonapi.core.validator.feature</module>
+        <module>../org.genivi.commonapi.updatesite</module>
+        <module>../org.genivi.commonapi.target</module>
+        <module>../org.genivi.commonapi.cli.product</module>
+        <module>../org.genivi.commonapi.core.cli</module>
+        <module>../org.genivi.commonapi.core.cli.feature</module>
+        <!--<module>../org.genivi.commonapi.core.verification</module> -->
+    </modules>
+    <parent>
+        <groupId>commonapi</groupId>
+        <artifactId>org.genivi.commonapi.parent.releng</artifactId>
+        <version>2.1.5-SNAPSHOT</version>
+        <relativePath>../org.genivi.commonapi.parent.releng</relativePath>
+    </parent>
+</project>

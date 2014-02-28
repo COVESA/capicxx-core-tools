@@ -64,31 +64,42 @@ by selecting the "CommonAPI->Generate Common API Code" option.
 
 These are Eclipse Plug-In projects which require Xtext2 and Franca as dependencies within Eclipse. 
 
-To build first import the three projects
+An automated build process via Maven for the update-site and the command line interface are provided.
+As a first step to build the update-site, make sure that everything is configured correctly, i.e. the dependencies between CommonAPI-D-Bus and CommonAPI
+itself are set correctly.
+If you don't want to build the CommonAPI-D-Bus-Tools components, you have to adjust the update-site category.xml and the "modules" section in the pom.xml
+of the org.genivi.commonapi.parent.releng accordingly. 
+
+To build change into the org.genivi.commonapi.parent.releng directory and run 
+
+----
+mvn tycho-versions:set-version -DnewVersion=<version-you-want-to-set>-SNAPSHOT
+----
+
+e.g. mvn tycho-versions:set-version -DnewVersion=2.1.4-SNAPSHOT. If the version is already set correctly you can skip this step.
+
+Next, to build the updatesite, adjust your category.xml in the org.genivi.commonapi.updatesite project to the new version and run
+
+----
+mvn clean verify
+----
+
+in the org.genivi.commonapi.parent.releng directory. Now every project will be built and the update site will be created in org.genivi.commonapi.updatesite/target/repository/
+If no configuration files are changed, the features
+
 ----
 org.genivi.commonapi.core
-org.genivi.commonapi.core.ui
-org.genivi.commonapi.core.feature
+org.genivi.commonapi.validator
+org.genivi.commonapi.dbus
 ----
 
-in to Eclipse. Then simply build the workspace. Then right-click on the .feature project and select "Run as Eclipse Application" to launch 
-the built projects.
+will be included in the updatesite.
 
-The projects
-----
-org.genivi.commonapi.core.ui.validator
-org.genivi.commonapi.core.ui.validator.feature
-----
-which can be built in the same way provide a validator which automatically checks franca files for issues which would cause problems in 
-C++ generation or compilation.
+The command line interface will be built for different platforms, with zip-files as generated output. These zip-files can be found in org.genivi.commonapi.cli.product/target/products/
 
-The project 
+A osgi based application will be contained in the zip-files. This application should be called as:
 ----
-org.genivi.commonapi.core.cli
-----
-which should be exported as a runnable JAR provides a command line version of the generators. This should be called as:
-----
-java -jar generator.jar [options] file [file...]
+commonapi_generator [options] file [file...]
                             Valid Options are:
                             -dbus -> to generate files with the FrancaDBUSGenerator
                             -dest path/to/output/folder -> the generated files will be saved at this Location

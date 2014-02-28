@@ -22,5 +22,5 @@ Import-Package: javax.inject,
  org.franca.core.dsl.validation,
  org.franca.core.franca,
  org.franca.core.utils
-Export-Package: org.genivi.commonapi.core.ui,
- org.genivi.commonapi.core.ui.handler
+Export-Package: org.genivi.commonapi.core.ui,org.genivi.commonapi.core
+ .ui.handler
