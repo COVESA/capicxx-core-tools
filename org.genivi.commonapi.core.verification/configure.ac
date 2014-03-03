@@ -9,6 +9,8 @@ AC_CONFIG_FILES([
         Makefile
         DynamicLoadingVerification.conf
         src/DynamicLoadingVerification.cpp
+        CommunicationVerification.conf
+        src/CommunicationVerification.cpp
         ])
 
 AC_CANONICAL_SYSTEM

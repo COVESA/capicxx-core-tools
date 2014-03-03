@@ -1,0 +1,114 @@
+/* Copyright (C) 2013 BMW Group
+ * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+#include <functional>
+#include <fstream>
+#include <gtest/gtest.h>
+#include "CommonAPI/CommonAPI.h"
+#include "utils/VerificationMainLoop.h"
+#include "commonapi/tests/TestInterfaceProxy.h"
+#include "utils/VerificationTestStub.h"
+
+const std::string testAddress = "local:my.test:commonapi.address";
+
+const std::string configString =
+        "{binding:@BINDING_NAME@}\n"
+        "libpath=@BINDING_SO@\n"
+        "alias=TestAlias\n"
+        "genpath=@GLUECODE_SO@\n"
+        "default"
+;
+
+const std::string COMMONAPI_CONFIG_SUFFIX = ".conf";
+
+
+
+class Environment: public ::testing::Environment {
+public:
+    virtual ~Environment() {
+    }
+
+    virtual void SetUp() {
+        configFileName_ = CommonAPI::getCurrentBinaryFileFQN();
+        configFileName_ += COMMONAPI_CONFIG_SUFFIX;
+        std::ofstream configFile(configFileName_);
+        ASSERT_TRUE(configFile.is_open());
+        configFile << configString;
+        configFile.close();
+    }
+
+    virtual void TearDown() {
+        std::remove(configFileName_.c_str());
+    }
+
+    std::string configFileName_;
+};
+
+
+
+
+class CommunicationTest: public ::testing::Test {
+
+protected:
+    void SetUp() {
+        runtime_ = CommonAPI::Runtime::load();
+        ASSERT_TRUE((bool)runtime_);
+
+        proxyFactory_ = runtime_->createFactory();
+        ASSERT_TRUE((bool)proxyFactory_);
+        stubFactory_ = runtime_->createFactory();
+        ASSERT_TRUE((bool)stubFactory_);
+
+        servicePublisher_ = runtime_->getServicePublisher();
+        ASSERT_TRUE((bool)servicePublisher_);
+    }
+
+    void TearDown() {
+        usleep(30000);
+    }
+
+    std::string configFileName_;
+    std::shared_ptr<CommonAPI::Runtime> runtime_;
+    std::shared_ptr<CommonAPI::Factory> proxyFactory_;
+    std::shared_ptr<CommonAPI::Factory> stubFactory_;
+    std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher_;
+};
+
+
+TEST_F(CommunicationTest, RemoteMethodCallSucceeds) {
+    auto defaultTestProxy = proxyFactory_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress);
+    ASSERT_TRUE((bool)defaultTestProxy);
+
+    auto stub = std::make_shared<commonapi::tests::TestInterfaceStubDefault>();
+
+    bool serviceRegistered = servicePublisher_->registerService(stub, testAddress, stubFactory_);
+    for(unsigned int i = 0; !serviceRegistered && i < 100; ++i) {
+        serviceRegistered = servicePublisher_->registerService(stub, testAddress, stubFactory_);
+        usleep(10000);
+    }
+    ASSERT_TRUE(serviceRegistered);
+
+    for(unsigned int i = 0; !defaultTestProxy->isAvailable() && i < 100; ++i) {
+        usleep(10000);
+    }
+    ASSERT_TRUE(defaultTestProxy->isAvailable());
+
+    uint32_t v1 = 5;
+    std::string v2 = "Ciao ;)";
+    CommonAPI::CallStatus stat;
+    defaultTestProxy->testVoidPredefinedTypeMethod(v1, v2, stat);
+
+    EXPECT_EQ(stat, CommonAPI::CallStatus::SUCCESS);
+
+    servicePublisher_->unregisterService(testAddress);
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    ::testing::AddGlobalTestEnvironment(new Environment());
+    return RUN_ALL_TESTS();
+}
