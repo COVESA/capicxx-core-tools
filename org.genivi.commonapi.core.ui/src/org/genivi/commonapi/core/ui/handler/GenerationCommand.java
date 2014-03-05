@@ -261,9 +261,11 @@ public class GenerationCommand extends AbstractHandler {
             IProject project) {
         IPreferenceStore store = CommonApiUiPlugin.getDefault()
                 .getPreferenceStore();
-        String outputDir = store.getString(PreferenceConstants.P_OUTPUT);
-        if (FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT, null) != null)
-            outputDir = FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT, null);
+        String outputDir = store.getString(PreferenceConstants.P_OUTPUT_PROXIES);
+        if (FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT_PROXIES, null) != null)
+        {
+            outputDir = FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT_PROXIES, null);
+        }
         final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
 
         fsa.setOutputPath(outputDir);

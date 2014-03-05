@@ -11,11 +11,18 @@ import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
 import javax.inject.Inject
+import org.eclipse.core.resources.IResource
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
+import org.eclipse.core.runtime.QualifiedName
+import org.eclipse.core.runtime.preferences.DefaultScope
+import org.eclipse.core.runtime.preferences.IEclipsePreferences
+import org.eclipse.core.runtime.preferences.InstanceScope
 import org.eclipse.emf.ecore.resource.Resource
+import org.eclipse.xtext.builder.EclipseResourceFileSystemAccess2
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.eclipse.xtext.generator.IGenerator
+import org.eclipse.xtext.generator.JavaIoFileSystemAccess
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
@@ -33,20 +40,14 @@ import org.franca.deploymodel.dsl.FDeployPersistenceManager
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessorWrapper
-
-import static com.google.common.base.Preconditions.*
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
-import org.eclipse.core.runtime.preferences.InstanceScope
-import org.eclipse.core.runtime.preferences.DefaultScope
-import org.eclipse.core.runtime.QualifiedName
-import org.eclipse.xtext.builder.EclipseResourceFileSystemAccess2
-import org.eclipse.core.resources.IResource
-import org.eclipse.xtext.generator.JavaIoFileSystemAccess
 import org.osgi.framework.FrameworkUtil
-import org.eclipse.core.runtime.preferences.IEclipsePreferences
 
-class FrancaGenerator implements IGenerator {
+import static com.google.common.base.Preconditions.*
+
+class FrancaGenerator implements IGenerator
+{
     @Inject private extension FTypeCollectionGenerator
     @Inject private extension FInterfaceGenerator
     @Inject private extension FInterfaceProxyGenerator
@@ -56,17 +57,20 @@ class FrancaGenerator implements IGenerator {
     @Inject private MyFrancaPersistenceManager francaPersistenceManager
     @Inject private FDeployPersistenceManager fDeployPersistenceManager
 
-
-    override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
+    override doGenerate(Resource input, IFileSystemAccess fileSystemAccess)
+    {
         var FModel fModel
         var List<FDInterface> deployedInterfaces
         var IResource res = null
 
-        if (input.URI.fileExtension.equals(francaPersistenceManager.fileExtension)) {
+        if(input.URI.fileExtension.equals(francaPersistenceManager.fileExtension))
+        {
             fModel = francaPersistenceManager.loadModel(input.filePath)
             deployedInterfaces = new LinkedList<FDInterface>()
 
-        } else if (input.URI.fileExtension.equals("fdepl"/* fDeployPersistenceManager.fileExtension */)) {
+        }
+        else if(input.URI.fileExtension.equals("fdepl"/* fDeployPersistenceManager.fileExtension */))
+        {
             var fDeployedModel = fDeployPersistenceManager.loadModel(input.URI, input.URI);
             val fModelExtender = new FDModelExtender(fDeployedModel);
 
@@ -74,58 +78,77 @@ class FrancaGenerator implements IGenerator {
             fModel = fModelExtender.getFDInterfaces().get(0).target.model
             deployedInterfaces = fModelExtender.getFDInterfaces()
 
-        } else {
+        }
+        else
+        {
             checkArgument(false, "Unknown input: " + input)
         }
 
-        try {
+        try
+        {
             var pathfile = input.URI.toPlatformString(false);
-            if (pathfile == null) {
+            if(pathfile == null)
+            {
                 pathfile = FPreferences::instance.getModelPath(fModel)
             }
-            if (pathfile.startsWith("platform:/")) {
+            if(pathfile.startsWith("platform:/"))
+            {
                 pathfile = pathfile.substring(pathfile.indexOf("platform") + 10)
                 pathfile = pathfile.substring(pathfile.indexOf(System.getProperty("file.separator")))
             }
 
             res = ResourcesPlugin.workspace.root.findMember(pathfile)
             FPreferences::instance.addPreferences(res)
-            if (FPreferences::instance.useModelSpecific(res)) {
-                var output = res.getPersistentProperty(new QualifiedName(PreferenceConstants::PROJECT_PAGEID, PreferenceConstants::P_OUTPUT))
-                if (output != null && output.length != 0) {
-                    if (fileSystemAccess instanceof EclipseResourceFileSystemAccess2) {
+            if(FPreferences::instance.useModelSpecific(res))
+            {
+                var output = res.getPersistentProperty(
+                    new QualifiedName(PreferenceConstants::PROJECT_PAGEID, PreferenceConstants::P_OUTPUT_PROXIES))
+                if(output != null && output.length != 0)
+                {
+                    if(fileSystemAccess instanceof EclipseResourceFileSystemAccess2)
+                    {
                         (fileSystemAccess as EclipseResourceFileSystemAccess2).setOutputPath(output)
-                    } else if (fileSystemAccess instanceof JavaIoFileSystemAccess) {
+                    }
+                    else if(fileSystemAccess instanceof JavaIoFileSystemAccess)
+                    {
                         (fileSystemAccess as JavaIoFileSystemAccess).setOutputPath(output)
                     }
                 }
             }
             doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess, res)
-        } catch (IllegalStateException e) {
+        }
+        catch(IllegalStateException e)
+        {
             //happens only when the cli calls the francagenerator
         }
         doGenerateComponents(fModel, deployedInterfaces, fileSystemAccess, res)
 
-        if (res != null) {
-            var defaultValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT, PreferenceConstants::DEFAULT_OUTPUT);
-            defaultValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT, defaultValue)
-            defaultValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_OUTPUT, defaultValue)
+        if(res != null)
+        {
+            var defaultValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT_PROXIES,
+                PreferenceConstants::DEFAULT_OUTPUT);
+            defaultValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT_PROXIES,
+                defaultValue)
+            defaultValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_OUTPUT_PROXIES, defaultValue)
 
-            if (fileSystemAccess instanceof EclipseResourceFileSystemAccess2) {
+            if(fileSystemAccess instanceof EclipseResourceFileSystemAccess2)
+            {
                 (fileSystemAccess as EclipseResourceFileSystemAccess2).setOutputPath(defaultValue)
-            } else if (fileSystemAccess instanceof JavaIoFileSystemAccess) {
+            }
+            else if(fileSystemAccess instanceof JavaIoFileSystemAccess)
+            {
                 (fileSystemAccess as JavaIoFileSystemAccess).setOutputPath(defaultValue)
             }
         }
     }
 
-    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess fileSystemAccess, IResource res) {
+    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces, IFileSystemAccess fileSystemAccess, IResource res)
+    {
 
         val allReferencedFTypes = fModel.allReferencedFTypes
         val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[
             eContainer as FTypeCollection]
-        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[
-            eContainer as FInterface]
+        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[eContainer as FInterface]
 
         val generateTypeCollections = fModel.typeCollections.toSet
         generateTypeCollections.addAll(allFTypeTypeCollections)
@@ -142,10 +165,13 @@ class FrancaGenerator implements IGenerator {
         generateInterfaces.forEach [
             val currentInterface = it
             var DeploymentInterfacePropertyAccessor deploymentAccessor
-            if (deployedInterfaces.exists[it.target == currentInterface]) {
+            if(deployedInterfaces.exists[it.target == currentInterface])
+            {
                 deploymentAccessor = new DeploymentInterfacePropertyAccessor(
                     new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
-            } else {
+            }
+            else
+            {
                 deploymentAccessor = defaultDeploymentAccessor
             }
             generate(it, fileSystemAccess, defaultDeploymentAccessor, res)
@@ -154,18 +180,20 @@ class FrancaGenerator implements IGenerator {
         fModel.interfaces.forEach [
             val currentInterface = it
             var DeploymentInterfacePropertyAccessor deploymentAccessor
-            if (deployedInterfaces.exists[it.target == currentInterface]) {
+            if(deployedInterfaces.exists[it.target == currentInterface])
+            {
                 deploymentAccessor = new DeploymentInterfacePropertyAccessor(
                     new FDeployedInterface(deployedInterfaces.filter[it.target == currentInterface].last))
-            } else {
+            }
+            else
+            {
                 deploymentAccessor = defaultDeploymentAccessor
             }
-
             val booleanTrue = Boolean.toString(true)
             var IEclipsePreferences node
-
             var String finalValue = booleanTrue
-            if (FrameworkUtil::getBundle(this.getClass()) != null) {
+            if(FrameworkUtil::getBundle(this.getClass()) != null)
+            {
                 node = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
                 finalValue = node.get(PreferenceConstants::P_GENERATEPROXY, booleanTrue)
 
@@ -173,36 +201,42 @@ class FrancaGenerator implements IGenerator {
                 finalValue = node.get(PreferenceConstants::P_GENERATEPROXY, finalValue)
             }
             finalValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_GENERATEPROXY, finalValue)
-            if (finalValue.equals(booleanTrue)) {
+            if(finalValue.equals(booleanTrue))
+            {
+                fileSystemAccess.setFileAccessOutputPathForPreference(PreferenceConstants.P_OUTPUT_PROXIES, res)
                 it.generateProxy(fileSystemAccess, deploymentAccessor, res)
             }
-
             finalValue = booleanTrue
-            if (FrameworkUtil::getBundle(this.getClass()) != null) {
+            if(FrameworkUtil::getBundle(this.getClass()) != null)
+            {
                 node = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
                 finalValue = node.get(PreferenceConstants::P_GENERATESTUB, booleanTrue)
                 node = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE)
                 finalValue = node.get(PreferenceConstants::P_GENERATESTUB, finalValue)
             }
-
             finalValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_GENERATESTUB, finalValue)
-            if (finalValue.equals(booleanTrue)) {
+            if(finalValue.equals(booleanTrue))
+            {
+                fileSystemAccess.setFileAccessOutputPathForPreference(PreferenceConstants.P_OUTPUT_STUBS, res)
                 it.generateStub(fileSystemAccess, res)
             }
         ]
-        
+
         return;
     }
 
     private var String filePrefix = "file://"
 
-    def getFilePathUrl(Resource resource) {
+    def getFilePathUrl(Resource resource)
+    {
         val filePath = resource.filePath
         return filePrefix + filePath
     }
 
-    def private getFilePath(Resource resource) {
-        if (resource.URI.file) {
+    def private getFilePath(Resource resource)
+    {
+        if(resource.URI.file)
+        {
             return resource.URI.toFileString
         }
 
@@ -212,21 +246,25 @@ class FrancaGenerator implements IGenerator {
         return file.location.toString
     }
 
-    def private getAllReferencedFInterfaces(FModel fModel) {
+    def private getAllReferencedFInterfaces(FModel fModel)
+    {
         val referencedFInterfaces = fModel.interfaces.toSet
         fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
         fModel.interfaces.forEach[managedInterfaces.forEach[addFInterfaceTree(referencedFInterfaces)]]
         return referencedFInterfaces
     }
 
-    def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences) {
-        if (!fInterfaceReferences.contains(fInterface)) {
+    def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences)
+    {
+        if(!fInterfaceReferences.contains(fInterface))
+        {
             fInterfaceReferences.add(fInterface)
             fInterface.base?.addFInterfaceTree(fInterfaceReferences)
         }
     }
 
-    def private getAllReferencedFTypes(FModel fModel) {
+    def private getAllReferencedFTypes(FModel fModel)
+    {
         val referencedFTypes = new HashSet<FType>
 
         fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]
@@ -246,53 +284,78 @@ class FrancaGenerator implements IGenerator {
         return referencedFTypes
     }
 
-    def private void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences) {
+    def private void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences)
+    {
         fTypeRef.derived?.addFTypeDerivedTree(fTypeReferences)
     }
 
-    def private dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fTypeDef)) {
+    def private dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fTypeDef))
+        {
             fTypeReferences.add(fTypeDef)
             fTypeDef.actualType.addDerivedFTypeTree(fTypeReferences)
         }
     }
 
-    def private dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fArrayType)) {
+    def private dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fArrayType))
+        {
             fTypeReferences.add(fArrayType)
             fArrayType.elementType.addDerivedFTypeTree(fTypeReferences)
         }
     }
 
-    def private dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fMapType)) {
+    def private dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fMapType))
+        {
             fTypeReferences.add(fMapType)
             fMapType.keyType.addDerivedFTypeTree(fTypeReferences)
             fMapType.valueType.addDerivedFTypeTree(fTypeReferences)
         }
     }
 
-    def private dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fStructType)) {
+    def private dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fStructType))
+        {
             fTypeReferences.add(fStructType)
             fStructType.base?.addFTypeDerivedTree(fTypeReferences)
             fStructType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
         }
     }
 
-    def private dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fEnumerationType)) {
+    def private dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fEnumerationType))
+        {
             fTypeReferences.add(fEnumerationType)
             fEnumerationType.base?.addFTypeDerivedTree(fTypeReferences)
         }
     }
 
-    def private dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences) {
-        if (!fTypeReferences.contains(fUnionType)) {
+    def private dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fUnionType))
+        {
             fTypeReferences.add(fUnionType)
             fUnionType.base?.addFTypeDerivedTree(fTypeReferences)
             fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
         }
     }
 
+    def void setFileAccessOutputPathForPreference(IFileSystemAccess access, String preference, IResource res)
+    {
+        switch (access)
+        {
+            EclipseResourceFileSystemAccess2:
+                access.setOutputPath(
+                    FPreferences::instance.getPreference(res, preference, PreferenceConstants::DEFAULT_OUTPUT))
+            JavaIoFileSystemAccess:
+                access.setOutputPath(
+                    FPreferences::instance.getPreference(res, preference, PreferenceConstants::DEFAULT_OUTPUT))
+        }
+    }
 }
