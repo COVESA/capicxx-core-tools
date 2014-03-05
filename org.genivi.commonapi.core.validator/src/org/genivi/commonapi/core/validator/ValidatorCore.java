@@ -37,11 +37,16 @@ import org.franca.core.franca.FField;
 import org.franca.core.franca.FInterface;
 import org.franca.core.franca.FMethod;
 import org.franca.core.franca.FModel;
+import org.franca.core.franca.FModelElement;
 import org.franca.core.franca.FStructType;
 import org.franca.core.franca.FType;
 import org.franca.core.franca.FTypeCollection;
 import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
+import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
+import org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage;
+import org.osgi.framework.BundleReference;
+import org.osgi.framework.Version;
 
 public class ValidatorCore implements IFrancaExternalValidator {
 
@@ -53,6 +58,9 @@ public class ValidatorCore implements IFrancaExternalValidator {
     @Override
     public void validateModel(FModel model,
             ValidationMessageAcceptor messageAcceptor) {
+        if (!isValidatorEnabled()) {
+            return;
+        }
         resourceSet = new ResourceSetImpl();
         Resource res = model.eResource();
         final Path platformPath = new Path(res.getURI().toPlatformString(true));
@@ -289,14 +297,16 @@ public class ValidatorCore implements IFrancaExternalValidator {
             ValidationMessageAcceptor messageAcceptor,
             List<String> interfaceTypecollectionNames,
             FTypeCollection fTypeCollection) {
-        validateName(fTypeCollection.getName(), messageAcceptor,
+        validateName(messageAcceptor,
                 fTypeCollection);
-        if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
-                .lastIndexOf(fTypeCollection.getName())) {
-            acceptError("Name " + fTypeCollection.getName()
-                    + " isn't unique in this file!", fTypeCollection,
-                    FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
-                    messageAcceptor);
+        if (!isFrancaVersionGreaterThan(0, 8, 9)) {
+            if (interfaceTypecollectionNames.indexOf(fTypeCollection.getName()) != interfaceTypecollectionNames
+                    .lastIndexOf(fTypeCollection.getName())) {
+                acceptError("Name " + fTypeCollection.getName()
+                        + " isn't unique in this file!", fTypeCollection,
+                        FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
+                        messageAcceptor);
+            }
         }
     }
 
@@ -337,17 +347,17 @@ public class ValidatorCore implements IFrancaExternalValidator {
             ValidationMessageAcceptor messageAcceptor,
             FTypeCollection fTypeCollection) {
         for (FType fType : fTypeCollection.getTypes()) {
-            validateName(fType.getName(), messageAcceptor, fType);
+            validateName(messageAcceptor, fType);
             if (fType instanceof FStructType) {
                 for (FField fField : ((FStructType) fType).getElements()) {
-                    validateName(fField.getName(), messageAcceptor, fField);
+                    validateName(messageAcceptor, fField);
                 }
             }
 
             if (fType instanceof FEnumerationType) {
                 for (FEnumerator fEnumerator : ((FEnumerationType) fType)
                         .getEnumerators()) {
-                    validateName(fEnumerator.getName(), messageAcceptor,
+                    validateName(messageAcceptor,
                             fEnumerator);
                 }
             }
@@ -362,33 +372,67 @@ public class ValidatorCore implements IFrancaExternalValidator {
                     -1, messageAcceptor);
 
         for (FAttribute att : fInterface.getAttributes()) {
-            validateName(att.getName(), messageAcceptor, att);
+            validateName(messageAcceptor, att);
         }
         for (FBroadcast fBroadcast : fInterface.getBroadcasts()) {
-            validateName(fBroadcast.getName(), messageAcceptor, fBroadcast);
+            validateName(messageAcceptor, fBroadcast);
             for (FArgument out : fBroadcast.getOutArgs()) {
-                validateName(out.getName(), messageAcceptor, out);
+                validateName(messageAcceptor, out);
             }
         }
         for (FMethod fMethod : fInterface.getMethods()) {
-            validateName(fMethod.getName(), messageAcceptor, fMethod);
+            validateName(messageAcceptor, fMethod);
             for (FArgument out : fMethod.getOutArgs()) {
-                validateName(out.getName(), messageAcceptor, out);
+                validateName(messageAcceptor, out);
             }
             for (FArgument in : fMethod.getInArgs()) {
-                validateName(in.getName(), messageAcceptor, in);
+                validateName(messageAcceptor, in);
             }
         }
     }
 
-    private void validateName(String name,
-            ValidationMessageAcceptor messageAcceptor, EObject eObject) {
+    private void validateName(ValidationMessageAcceptor messageAcceptor,
+            EObject eObject) {
+        String name = ((FModelElement) eObject).getName();
         if (cppKeywords.keyWords.contains(name)) {
-            acceptError("Name " + name + " is a keyword in c++", eObject,
+            acceptError("Name " + name
+                    + " is a keyword in c++", eObject,
                     FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
                     messageAcceptor);
             return;
         }
+    }
+
+    private boolean isFrancaVersionGreaterThan(int major, int minor, int micro) {
+        Version francaVersion = ((BundleReference) FArgument.class
+                .getClassLoader()).getBundle().getVersion();
+        if (francaVersion.getMajor() > major) {
+            return true;
+        }
+        if (francaVersion.getMajor() < major){
+            return false;
+        }
+        if (francaVersion.getMinor() > minor) {
+            return true;
+        }
+        if (francaVersion.getMinor() < minor){
+            return false;
+        }
+        if (francaVersion.getMicro() > micro) {
+            return true;
+        }
+        if (francaVersion.getMicro() < micro) {
+            return false;
+        }
+        return false;
+    }
+
+    public boolean isValidatorEnabled() {
+        boolean enabled = CommonApiUiPlugin
+                .getDefault()
+                .getPreferenceStore()
+                .getBoolean(ValidatorCorePreferencesPage.ENABLED_CORE_VALIDATOR);
+        return enabled;
     }
 
     private void acceptError(String message, EObject object,

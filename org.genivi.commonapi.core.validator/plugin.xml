@@ -3,9 +3,18 @@
 <plugin>
              <extension
                 point="org.franca.core.dsl.francaValidator">
-                  <validator
-                        class="org.genivi.commonapi.core.validator.ValidatorCore"
-                        mode="FAST">
-                  </validator>
+                <validator
+                      class="org.genivi.commonapi.core.validator.ValidatorCore"
+                      mode="FAST"
+                      name="ValidatorCore">
+                </validator>
                </extension>
+             <extension
+                   point="org.eclipse.ui.preferencePages">
+                <page
+                      class="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
+                      id="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
+                      name="Validator Core">
+                </page>
+             </extension>
 </plugin>
