@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?pde version="3.8"?><target name="Common API" sequenceNumber="17">
+<locations>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.platform.sdk" version="4.3.1.M20130911-1000"/>
+<repository location="http://download.eclipse.org/eclipse/updates/4.3/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.xtext.sdk.feature.group" version="2.4.3.v201309030823"/>
+<unit id="org.eclipse.cdt.sdk.feature.group" version="8.2.1.201309180223"/>
+<repository location="http://download.eclipse.org/releases/kepler"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="model.emf.dbusxml.feature.feature.group" version="0.7.8.201401151351"/>
+<repository location="http://dbus-emf-model.eclipselabs.org.codespot.com/git/update_site/releases/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.franca.dbus.feature.sdk.feature.group" version="0.8.10.201309262002"/>
+<unit id="org.franca.feature.sdk.feature.group" version="0.8.10.201309262002"/>
+<unit id="org.franca.feature.feature.group" version="0.8.10.201309262002"/>
+<repository location="http://franca.eclipselabs.org.codespot.com/git/update_site/releases/"/>
+</location>
+</locations>
+</target>

@@ -1,0 +1,78 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>commonapi</groupId>
+    <artifactId>org.genivi.commonapi.cli.product</artifactId>
+    <packaging>eclipse-repository</packaging>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-p2-director-plugin</artifactId>
+                <version>${tycho-version}</version>
+                <executions>
+                    <execution>
+                        <!-- install the product using the p2 director -->
+                        <id>materialize-products</id>
+                        <goals>
+                            <goal>materialize-products</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <id>run-ant-rename</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86_64/commonapi_generator.exe" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86_64/eclipsec.exe"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86_64/commonapi_generator.exe" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86_64/eclipsec.exe" />
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>create-zip-files</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <target>
+                                <zip excludesfile="zip.excludes"
+                                    destfile="${project.build.directory}/products/commonapi_generator-win32.win32.x86_64.zip"
+                                    basedir="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86_64" />
+                                <zip excludesfile="zip.excludes"
+                                    destfile="${project.build.directory}/products/commonapi_generator-win32.win32.x86.zip"
+                                    basedir="${project.build.directory}/products/org.genivi.commonapi.cli.product/win32/win32/x86" />
+                                <zip excludesfile="zip.excludes"
+                                    destfile="${project.build.directory}/products/commonapi_generator-linux.gtk.x86.zip"
+                                    basedir="${project.build.directory}/products/org.genivi.commonapi.cli.product/linux/gtk/x86" />
+                                <zip excludesfile="zip.excludes"
+                                    destfile="${project.build.directory}/products/commonapi_generator-linux.gtk.x86_64.zip"
+                                    basedir="${project.build.directory}/products/org.genivi.commonapi.cli.product/linux/gtk/x86_64" />
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <parent>
+        <groupId>commonapi</groupId>
+        <artifactId>org.genivi.commonapi.releng</artifactId>
+        <version>2.1.5-SNAPSHOT</version>
+        <relativePath>../org.genivi.commonapi.releng</relativePath>
+    </parent>
+</project>
