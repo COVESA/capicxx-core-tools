@@ -142,19 +142,7 @@
 
    <features>
       <feature id="org.genivi.commonapi.core.cli.feature"/>
-      <feature id="org.franca.feature"/>
-      <feature id="org.eclipse.equinox.p2.core.feature"/>
-      <feature id="org.genivi.commonapi.core.feature"/>
-      <feature id="org.eclipse.platform"/>
       <feature id="org.eclipse.rcp"/>
-      <feature id="org.genivi.commonapi.dbus.feature"/>
-      <feature id="org.eclipse.help"/>
-      <feature id="org.eclipse.emf.ecore"/>
-      <feature id="org.eclipse.e4.rcp"/>
-      <feature id="org.eclipse.emf.common"/>
-      <feature id="org.eclipse.equinox.p2.rcp.feature"/>
-      <feature id="org.eclipse.equinox.p2.user.ui"/>
-      <feature id="org.eclipse.equinox.p2.extras.feature"/>
    </features>
 
    <configurations>

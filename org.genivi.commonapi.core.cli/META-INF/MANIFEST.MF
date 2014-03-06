@@ -14,8 +14,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.genivi.commonapi.core,
  org.genivi.commonapi.dbus,
  org.eclipse.xtext.ui.ecore,
- org.genivi.commonapi.core.ui,
- org.eclipse.xtext.ui;bundle-version="2.4.3",
+ org.eclipse.xtext.ui,
  org.eclipse.xtext.builder
 Bundle-ActivationPolicy: lazy
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
