@@ -1,0 +1,100 @@
+Example 6: Unions
+~~~~~~~~~~~~~~~~~
+
+Until now, some simple and complex data types in the examples already occurred. This example intends to describe the use of unions closer. Consider the following Franca IDL example:
+
+[source,java]
+----
+package commonapi.examples
+
+interface E06Unions {
+	version { major 1 minor 0 }
+
+	attribute CommonTypes.SettingsUnion u
+}
+
+typeCollection CommonTypes {
+
+	typedef MyTypedef is Int32
+
+	enumeration MyEnum {
+		DEFAULT
+		ON
+		OFF
+	}
+
+	union SettingsUnion {
+		MyTypedef id
+		MyEnum status
+		UInt8 channel
+		String name
+	}
+}
+----
+
+We first want to leave the question aside whether this example makes sense from an application point of view or not; it is just an example for demonstration purposes. Union is a sort of polymorphic type; with unions we can transmit data of different types in one attribute. D-Bus knows a similar data type which is called variant. Variants are used in the D-Bus binding for the implementation of unions. The interesting point is here not the definition of the union, but the realization in CommonAPI. I just want to point out here that it can lead to problems with the compiler or generally to problems with your toolchain if you define unions with an significant number of members (eg. >10), because each of these members appears in the generated C++ code as template argument in the template declaration.
+
+The implementation of the set function for the attribute u in the stub implementation could be as follows:
+
+[source,{cppstr}]
+----
+void E06UnionsStubImpl::setMyValue(int n) {
+
+	if ( n >= 0 && n < 4 ) {
+
+		CommonTypes::MyTypedef t0 = -5;
+		CommonTypes::MyEnum t1 = CommonTypes::MyEnum::OFF;
+		uint8_t t2 = 42;
+		std::string t3 = "abc";
+
+		if ( n == 0 ) {
+
+			CommonTypes::SettingsUnion v(t0);
+			setUAttribute(v);
+		} else if ( n == 1 ) {
+
+			CommonTypes::SettingsUnion v(t1);
+			setUAttribute(v);
+		} else if ( n == 2 ) {
+
+			CommonTypes::SettingsUnion v(t2);
+			setUAttribute(v);
+		} else if ( n == 3 ) {
+
+			CommonTypes::SettingsUnion v(t3);
+			setUAttribute(v);
+		}
+	}
+}
+----
+Depending on a condition (here the value of n) the attribute u is filled with data of different types. The code on client side is:
+
+[source,{cppstr}]
+----
+myProxy->getUAttribute().getChangedEvent().
+		subscribe([&](const CommonTypes::SettingsUnion& v) {
+
+	if ( v.isType<CommonTypes::MyTypedef>() ) {
+
+		std::cout << "Received MyTypedef with value " <<
+			v.get<CommonTypes::MyTypedef>() << std::endl;
+
+	} else if ( v.isType<CommonTypes::MyEnum>() ) {
+
+		std::cout << "Received MyEnum with value " <<
+			(int) (v.get<CommonTypes::MyEnum>()) << std::endl;
+
+	} else if ( v.isType<uint8_t>() ) {
+
+		std::cout << "Received uint8_t with value " <<
+			(int) (v.get<uint8_t>()) << std::endl;
+
+	} else if ( v.isType<std::string>() ) {
+
+		std::cout << "Received string with value " <<
+			v.get<std::string>() << std::endl;
+	}
+});
+----
+
+The example shows, how it is possible to detect the type and the value of the received attribute.

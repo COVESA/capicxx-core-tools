@@ -5,6 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/**
+* @file Main Loop Integration
+*/
+
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.h"
 #include "utils/VerificationMainLoop.h"
@@ -97,6 +101,15 @@ public:
     }
 };
 
+/**
+* @test Verifies Transport Reading When Dispatching Watches.
+* 	- get proxy with available flag = true
+* 	- generate big test data
+* 	- send asynchronous test message
+* 	- dispatch dispatchSource: the message must not be arrived
+* 	- dispatch watches (reads transport).
+* 	- dispatch dispatchSources again: now the message must be arrived.
+*/
 TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
     ASSERT_TRUE((bool) proxy);
@@ -159,6 +172,13 @@ TEST_F(MainLoopTest, VerifyTransportReadingWhenDispatchingWatches) {
     EXPECT_EQ(stub_->getCalledTestDerivedTypeMethod(), 1);
 }
 
+/**
+* @test Verifies Synchronous Call Message Handling Order.
+* 	- get proxy with available flag = true
+* 	- subscribe for broadcast event
+* 	- generate 5 test broadcasts
+* 	- 5 broadcasts should arrive in the right order
+*/
 TEST_F(MainLoopTest, VerifySyncCallMessageHandlingOrder) {
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
     ASSERT_TRUE((bool) proxy);
@@ -196,6 +216,13 @@ TEST_F(MainLoopTest, VerifySyncCallMessageHandlingOrder) {
     ASSERT_EQ(lastBroadcastNumber, 5);
 }
 
+/**
+* @test Synchronous Calls Do Not Deadlock.
+* 	- get proxy with available flag = true
+* 	- call synchronous test method in syncCallThread
+* 	- 5 broadcasts should arrive in the right order
+* 	- run the mainloop again in order to give the syncCallThread a chance to return
+*/
 TEST_F(MainLoopTest, SyncCallsDoNotDeadlock) {
     auto proxy = mainloopFactoryProxy_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress8);
     ASSERT_TRUE((bool) proxy);
@@ -218,7 +245,6 @@ TEST_F(MainLoopTest, SyncCallsDoNotDeadlock) {
     std::thread syncCallThread = std::thread(
                     [&]() {proxy->testPredefinedTypeMethod(inInt, inStr, callStatus, outInt, outStr);}
                     );
-
     sleep(10);
 
     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
@@ -252,7 +278,8 @@ public:
 
     void setAddresses(const std::string own, const std::string other, const std::string thirdParty) {
         ownAddress_ = own;
-        otherAddress_ = other;
+
+        otherAddress_  = other;
         thirdPartyAddress_ = thirdParty;
     }
 
@@ -315,7 +342,6 @@ protected:
                                         &MainLoopThreadContext::setupMainLoopContext,
                                         &threadCtx2_,
                                         std::move(promiseContext2)));
-
         mainLoopThread1_.detach();
         mainLoopThread2_.detach();
 
@@ -331,10 +357,8 @@ protected:
         std::future<bool> futureFactory1 = promiseFactory1.get_future();
         std::future<bool> futureFactory2 = promiseFactory2.get_future();
 
-        mainLoopThread1_ = std::thread(
-                        std::bind(&MainLoopThreadContext::setupFactory, &threadCtx1_, std::move(promiseFactory1)));
-        mainLoopThread2_ = std::thread(
-                        std::bind(&MainLoopThreadContext::setupFactory, &threadCtx2_, std::move(promiseFactory2)));
+        mainLoopThread1_ = std::thread(std::bind(&MainLoopThreadContext::setupFactory, &threadCtx1_, std::move(promiseFactory1)));
+        mainLoopThread2_ = std::thread(std::bind(&MainLoopThreadContext::setupFactory, &threadCtx2_, std::move(promiseFactory2)));
 
         mainLoopThread1_.detach();
         mainLoopThread2_.detach();
@@ -355,8 +379,8 @@ protected:
         threadCtx1_.createProxyAndStub();
         threadCtx2_.createProxyAndStub();
 
-        mainLoopThread1_ = std::thread([&]() {threadCtx1_.mainLoop_->run();});
-        mainLoopThread2_ = std::thread([&]() {threadCtx2_.mainLoop_->run();});
+        mainLoopThread1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
+        mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
         usleep(200000);
 
@@ -378,10 +402,10 @@ protected:
         threadCtx1_.mainLoop_->stop();
         threadCtx2_.mainLoop_->stop();
 
-        if (mainLoopThread1_.joinable()) {
+        if(mainLoopThread1_.joinable()) {
             mainLoopThread1_.join();
         }
-        if (mainLoopThread2_.joinable()) {
+        if(mainLoopThread2_.joinable()) {
             mainLoopThread2_.join();
         }
     }
@@ -390,6 +414,13 @@ protected:
     std::thread mainLoopThread1_, mainLoopThread2_;
 };
 
+/**
+* @test Proxy Receives Answer Only If Stub MainLoop Runs.
+* 	- start proxy in thread 1 and call testPredefinedTypeMethod
+* 	- proxy should not receive answer, if the stub mainloop does not run
+* 	- run mainloop of stub
+* 	- now the stub mainloop also runs, so the proxy should receive the answer
+*/
 TEST_F(MainLoopIndependenceTest, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     CommonAPI::CallStatus callStatus;
 
@@ -398,17 +429,17 @@ TEST_F(MainLoopIndependenceTest, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     inInt = 1;
     outInt = 0;
 
-    std::thread mainLoopRunnerProxy([&]() {threadCtx1_.mainLoop_->runVerification(5, true, true);});
+    std::thread mainLoopRunnerProxy([&]() { threadCtx1_.mainLoop_->runVerification(5, true, true); });
     mainLoopRunnerProxy.detach();
 
-    mainLoopThread1_ = std::thread([&]() {threadCtx1_.proxy_->testPredefinedTypeMethod(inInt, inStr, callStatus, outInt, outStr);});
+    mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxy_->testPredefinedTypeMethod(inInt, inStr, callStatus, outInt, outStr); });
     mainLoopThread1_.detach();
 
     sleep(1);
     // proxy should not receive answer, if the stub mainloop does not run
     ASSERT_EQ(0, outInt);
 
-    mainLoopThread2_ = std::thread([&]() {threadCtx2_.mainLoop_->run();});
+    mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
     mainLoopThread2_.detach();
 
     sleep(1);
@@ -417,13 +448,16 @@ TEST_F(MainLoopIndependenceTest, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     ASSERT_EQ(1, outInt);
 }
 
+/**
+* @test Proxy Receives Just His Own Answers.
+* 	- start 2 proxies in own threads
+* 	- call test method in each proxy
+* 	- now each proxy should have received the answer to his own request
+*/
 TEST_F(MainLoopIndependenceTest, ProxyReceivesJustHisOwnAnswers) {
     std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
     auto runtime = CommonAPI::Runtime::load();
-    ASSERT_TRUE(runtime->getServicePublisher()->registerService(
-                                    stubThirdParty,
-                                    testAddress6,
-                                    runtime->createFactory()));
+    ASSERT_TRUE(runtime->getServicePublisher()->registerService(stubThirdParty, testAddress6, runtime->createFactory()));
 
     CommonAPI::CallStatus callStatusProxy1, callStatusProxy2;
 
@@ -433,17 +467,18 @@ TEST_F(MainLoopIndependenceTest, ProxyReceivesJustHisOwnAnswers) {
     inIntProxy2 = 2;
     outIntProxy1 = outIntProxy2 = 0;
 
-    std::thread mainLoopRunnerProxy1([&]() {threadCtx1_.mainLoop_->run();});
-    std::thread mainLoopRunnerProxy2([&]() {threadCtx2_.mainLoop_->run();});
+    std::thread mainLoopRunnerProxy1([&]() { threadCtx1_.mainLoop_->run(); });
+    std::thread mainLoopRunnerProxy2([&]() { threadCtx2_.mainLoop_->run(); });
     mainLoopRunnerProxy1.detach();
     mainLoopRunnerProxy2.detach();
 
-    while (!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
+    while(!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
         usleep(5000);
     }
 
-    mainLoopThread1_ = std::thread([&]() {threadCtx1_.proxyThirdParty_->testPredefinedTypeMethod(inIntProxy1, inStrProxy1, callStatusProxy1, outIntProxy1, outStrProxy1);});
-    mainLoopThread2_ = std::thread([&]() {threadCtx2_.proxyThirdParty_->testPredefinedTypeMethod(inIntProxy2, inStrProxy2, callStatusProxy2, outIntProxy2, outStrProxy2);});
+
+    mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxyThirdParty_->testPredefinedTypeMethod(inIntProxy1, inStrProxy1, callStatusProxy1, outIntProxy1, outStrProxy1); });
+    mainLoopThread2_ = std::thread([&]() {  threadCtx2_.proxyThirdParty_->testPredefinedTypeMethod(inIntProxy2, inStrProxy2, callStatusProxy2, outIntProxy2, outStrProxy2); });
     mainLoopThread1_.detach();
     mainLoopThread2_.detach();
 

@@ -1,0 +1,21 @@
+*.o
+/.deps
+/.libs
+/.settings
+/autom4te.cache
+/build-aux
+/.cproject
+/.project
+/.autotools
+/aclocal.m4
+/config.log
+/config.status
+/configure
+/DynamicLoadingVerification.conf
+/CommunicationVerification.conf
+/libtool
+/Makefile
+/Makefile.in
+/Build (GNU)
+/src/DynamicLoadingVerification.cpp
+/src/CommunicationVerification.cpp
