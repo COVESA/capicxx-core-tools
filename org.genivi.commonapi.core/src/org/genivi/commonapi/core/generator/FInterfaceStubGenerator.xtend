@@ -350,7 +350,7 @@ class FInterfaceStubGenerator {
             void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«attribute.getTypeName(fInterface.model)» value) {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
                 «IF attribute.isObservable»
-                    if (valueChanged) {
+                    if (valueChanged && stubAdapter_ != NULL) {
                         stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
                     }
                 «ENDIF»
