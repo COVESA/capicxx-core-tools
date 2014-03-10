@@ -20,7 +20,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 
@@ -72,7 +74,7 @@ public class CommandlineToolMain
     public static final String                      TEMP_FDEPL_PFAD  = TEMP_PFAD + FILESEPARATOR + "fdepl";
     public static List<String>                      files            = new ArrayList<String>();
     // All given files were saved in this list with an absolute path
-    private static List<String>                     filelist         = new ArrayList<String>();
+    private static Set<String>                     filelist         = new LinkedHashSet<String>();
     // true if for all interfaces have to be generated the stubs
     private static boolean                          allstubs         = false;
 
@@ -271,12 +273,16 @@ public class CommandlineToolMain
                 uri = URI.createFileURI(file);
                 Resource rs = rsset.createResource(uri);
                 if (dbus)
+                {
                     // Attention!!! some Methods from the generator are
                     // deprecated because of this it could be in the near future
                     // that URI's will be used
                     dbusgenerator.doGenerate(rs, fsa);
+                }
                 else
+                {
                     generator.doGenerate(rs, fsa);
+                }
             }
 
         }
@@ -313,6 +319,7 @@ public class CommandlineToolMain
     private static String rewriteImports(String path)
     {
         files.add(path);
+        String rootpath = path.substring(0, path.lastIndexOf(FILESEPARATOR));
         String ret = path;
         if (path.endsWith(".fdepl"))
         {
@@ -420,7 +427,7 @@ public class CommandlineToolMain
                     {
                         String importfile = line.substring(line.indexOf('"') + 1);
                         importfile = importfile.substring(0, importfile.indexOf('"'));
-                        filelist.add(importfile);
+                        filelist.add(createAbsolutPath(importfile,rootpath));
                     }
                 }
             }
