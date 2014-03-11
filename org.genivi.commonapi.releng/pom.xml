@@ -15,7 +15,6 @@
         <module>../org.genivi.commonapi.cli.product</module>
         <module>../org.genivi.commonapi.core.cli</module>
         <module>../org.genivi.commonapi.core.cli.feature</module>
-        <!--<module>../org.genivi.commonapi.core.verification</module> -->
     </modules>
     <parent>
         <groupId>commonapi</groupId>
