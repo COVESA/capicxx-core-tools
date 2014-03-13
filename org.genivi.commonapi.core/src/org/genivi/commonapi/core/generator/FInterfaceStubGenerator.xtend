@@ -351,7 +351,7 @@ class FInterfaceStubGenerator {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(value));
                 «IF attribute.isObservable»
                     if (valueChanged && stubAdapter_ != NULL) {
-                        stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                        «IF fInterface.base != null»CommonAPI::Stub<«fInterface.stubAdapterClassName», «fInterface.stubRemoteEventClassName»>::«ENDIF»stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
                     }
                 «ENDIF»
             }
