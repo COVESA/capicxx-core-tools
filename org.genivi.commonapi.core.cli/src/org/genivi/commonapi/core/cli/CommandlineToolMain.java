@@ -25,6 +25,8 @@ import java.util.List;
 import javax.inject.Inject;
 
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.xtext.generator.IFileSystemAccess;
@@ -256,6 +258,12 @@ public class CommandlineToolMain
 
             final JavaIoFileSystemAccess fsa = fileAccessProvider.get();
 
+            DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES, dest);
+            DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_STUBS, dest);
+            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_OUTPUT_PROXIES, dest);
+            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_OUTPUT_STUBS, dest);
+            pref.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, dest);
+            pref.setPreference(PreferenceConstants.P_OUTPUT_STUBS, dest);
             fsa.setOutputPath(createAbsolutPath(dest));
             fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT).setCreateOutputDirectory(true);
             for (String file : filelist)

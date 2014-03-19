@@ -125,20 +125,7 @@ class FrancaGenerator implements IGenerator
 
         if(res != null)
         {
-            var defaultValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT_PROXIES,
-                PreferenceConstants::DEFAULT_OUTPUT);
-            defaultValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_OUTPUT_PROXIES,
-                defaultValue)
-            defaultValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_OUTPUT_PROXIES, defaultValue)
-
-            if(fileSystemAccess instanceof EclipseResourceFileSystemAccess2)
-            {
-                (fileSystemAccess as EclipseResourceFileSystemAccess2).setOutputPath(defaultValue)
-            }
-            else if(fileSystemAccess instanceof JavaIoFileSystemAccess)
-            {
-                (fileSystemAccess as JavaIoFileSystemAccess).setOutputPath(defaultValue)
-            }
+            fileSystemAccess.setFileAccessOutputPathForPreference(PreferenceConstants::P_OUTPUT_PROXIES, res)
         }
     }
 
@@ -348,14 +335,17 @@ class FrancaGenerator implements IGenerator
 
     def void setFileAccessOutputPathForPreference(IFileSystemAccess access, String preference, IResource res)
     {
+        var defaultValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(preference,
+            PreferenceConstants::DEFAULT_OUTPUT);
+        defaultValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(preference, defaultValue)
+        defaultValue = FPreferences::instance.getPreference(res, preference, defaultValue)
+
         switch (access)
         {
             EclipseResourceFileSystemAccess2:
-                access.setOutputPath(
-                    FPreferences::instance.getPreference(res, preference, PreferenceConstants::DEFAULT_OUTPUT))
+                access.setOutputPath(defaultValue)
             JavaIoFileSystemAccess:
-                access.setOutputPath(
-                    FPreferences::instance.getPreference(res, preference, PreferenceConstants::DEFAULT_OUTPUT))
+                access.setOutputPath(defaultValue)
         }
     }
 }
