@@ -10,6 +10,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <forceContextQualifier>v${maven.build.timestamp}</forceContextQualifier>
         <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
+        <xtend-version>2.4.3</xtend-version>
     </properties>
     <repositories>
         <repository>
@@ -109,6 +110,21 @@
                 <groupId>org.eclipse.tycho</groupId>
                 <artifactId>tycho-versions-plugin</artifactId>
                 <version>${tycho-version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.eclipse.xtend</groupId>
+                <artifactId>xtend-maven-plugin</artifactId>
+                <version>${xtend-version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${basedir}/xtend-gen</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
