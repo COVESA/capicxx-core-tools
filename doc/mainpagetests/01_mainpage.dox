@@ -1,0 +1,27 @@
+/**
+ * Copyright (C) 2013 BMW AG
+ * *
+ * This file is part of GENIVI project IPC CommonAPI C++.
+ *
+ * Contributions are licensed to the GENIVI Alliance under one or more
+ * Contribution License Agreements.
+ *
+ * \author Juergen Gehring (juergen.gehring@bmw.de)
+ * \author Manfred Bathelt (manfred.bathelt@bmw.de)
+ *
+ */
+
+/*!
+\mainpage
+
+\par This document
+This document provides a list of tests which are implemented in the project +org.genivi.commonapi.core.verification+ which is part of CommonAPI-Tools. These tests are middleware independent and can be used to verify the correct implementation of middleware specific bindings.
+
+\par About IPC CommonAPI C++
+IPC CommonAPI C++ is a C++ based abstraction API for communication stacks, which enables applications to
+use different communication middleware - so called language bindings - as backend without any changes to the application code.
+
+\par More information
+can be found at the <a href="http://projects.genivi.org/commonapi/">project homepage</a> \n
+Please see the <a href="http://projects.genivi.org/commonapi/download">project download section</a> for available language bindings.
+*/

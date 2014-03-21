@@ -26,8 +26,22 @@ AC_ARG_WITH([binding-name], [Well known name of the binding that is to be tested
     AC_MSG_RESULT(${BINDING_NAME})
 ],[
     AC_MSG_RESULT(no)
-    AC_MSG_ERROR([A binding that shall be verified needs to be specified! Use '--with-binding=' to do so.])
+    AC_MSG_ERROR([A binding that shall be verified ne   eds to be specified! Use '--with-binding=' to do so.])
 ])
+
+AC_MSG_RESULT([
+        $PACKAGE_NAME v$VERSION
+
+        COMMONAPI_CFLAGS:  ${COMMONAPI_CFLAGS}
+        COMMONAPI_LIBS:    ${COMMONAPI_LIBS}
+
+        BINDING_FQN:       ${BINDING_FQN}
+        BINDING_SO:        ${BINDING_SO}
+
+        BINDING_A:         ${BINDING_A}
+        BINDING_EXTRA:     ${BINDING_EXTRA}
+])
+
 
 
 # Path to binding libraries
@@ -69,7 +83,6 @@ AC_ARG_WITH([binding-extra], [full path to additional library required by static
 
 AM_CONDITIONAL(STATICALLY_LINKED_BINDING, [test -f "${GTEST_CONFIG}" && ${TESTS_CAN_BE_EXECUTED}])
 AM_CONDITIONAL(DYNAMICALLY_LINKED_BINDING, [test -f "${GTEST_CONFIG}" && ${TESTS_CAN_BE_EXECUTED}])
-
 
 #Libraries containing binding specific gluecode
 AC_ARG_WITH([gluecode], [full path to gluecode libraries, including name, excluding file ending. The .a and .so files with the given name will be used if present and when needed.], [
@@ -153,6 +166,7 @@ AC_MSG_RESULT([
 
         BINDING_FQN:       ${BINDING_FQN}
         BINDING_SO:        ${BINDING_SO}
+
         BINDING_A:         ${BINDING_A}
         BINDING_EXTRA:     ${BINDING_EXTRA}
 
@@ -172,3 +186,4 @@ AC_MSG_RESULT([
 ])
 
 AC_OUTPUT
+

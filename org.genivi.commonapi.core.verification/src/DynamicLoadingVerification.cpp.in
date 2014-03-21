@@ -5,6 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/**
+* @file Dynamic Loading
+*/
+
 #include <functional>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -24,8 +28,6 @@ const std::string configString =
 ;
 
 const std::string COMMONAPI_CONFIG_SUFFIX = ".conf";
-
-
 
 class Environment: public ::testing::Environment {
 public:
@@ -48,9 +50,6 @@ public:
     std::string configFileName_;
 };
 
-
-
-
 class DynamicLoadingTest: public ::testing::Test {
 
 protected:
@@ -63,22 +62,42 @@ protected:
     std::string configFileName_;
 };
 
-
+/**
+* @test Loads Default Runtime.
+* 	- Calls CommonAPI::Runtime::load().
+* 	- Success if return value is true.
+*/
 TEST_F(DynamicLoadingTest, LoadsDefaultRuntime) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load();
     ASSERT_TRUE((bool)runtime);
 }
 
+/**
+* @test Loads Runtime By Binding Name.
+* 	- Calls CommonAPI::Runtime::load("@BINDING_NAME@").
+* 	- Success if return value is true.
+*/
 TEST_F(DynamicLoadingTest, LoadsRuntimeByBindingName) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("@BINDING_NAME@");
     ASSERT_TRUE((bool)runtime);
 }
 
+/**
+* @test Loads Runtime By Alias.
+* 	- Calls CommonAPI::Runtime::load("TestAlias").
+* 	- Success if return value is true.
+*/
 TEST_F(DynamicLoadingTest, LoadsRuntimeByAlias) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
     ASSERT_TRUE((bool)runtime);
 }
 
+/**
+* @test Loads Runtime and creates facory.
+* 	- Calls CommonAPI::Runtime::load("TestAlias") and checks if return value is true.
+* 	- Calls runtime->createFactory().
+* 	- Success if return value is true.
+*/
 TEST_F(DynamicLoadingTest, LoadedRuntimeCanCreateFactory) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
     ASSERT_TRUE((bool)runtime);
@@ -87,6 +106,16 @@ TEST_F(DynamicLoadingTest, LoadedRuntimeCanCreateFactory) {
     ASSERT_TRUE((bool)factory);
 }
 
+/**
+* @test Loads Runtime, creates facory and checks if proxies and stubs can be built.
+* 	- Calls CommonAPI::Runtime::load("TestAlias") and checks if return value is true.
+* 	- Calls runtime->createFactory() for proxy and checks if return value is true.
+* 	- Calls runtime->createFactory() for stub and checks if return value is true.
+* 	- Checks if test proxy with test address can be created.
+* 	- Calls runtime->getServicePublisher() checks if return value is true.
+* 	- Checks if test stub with test address can be created.
+* 	- Unregisters the test service.
+*/
 TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubs) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
     ASSERT_TRUE((bool)runtime);
@@ -110,6 +139,17 @@ TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubs) {
     sleep(2);
 }
 
+/**
+* @test Loads Runtime, creates facory, if proxies and stubs can be built and checks if they can communicate.
+* 	- Calls CommonAPI::Runtime::load("TestAlias") and checks if return value is true.
+* 	- Calls runtime->createFactory() for proxy and checks if return value is true.
+* 	- Calls runtime->createFactory() for stub and checks if return value is true.
+* 	- Checks if test proxy with test address can be created.
+* 	- Calls runtime->getServicePublisher() checks if return value is true.
+* 	- Checks if test stub with test address can be created.
+* 	- Checks isAvailable flag of proxy.
+* 	- Unregisters the test service.
+*/
 TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubsThatCommunicate) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load("TestAlias");
     ASSERT_TRUE((bool)runtime);
@@ -138,7 +178,6 @@ TEST_F(DynamicLoadingTest, LoadedRuntimeCanBuildProxiesAndStubsThatCommunicate) 
         if(proxy->isAvailable()) {
             break;
         }
-
         usleep(50);
     }
 
