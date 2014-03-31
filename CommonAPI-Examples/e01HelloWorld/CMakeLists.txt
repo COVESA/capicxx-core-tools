@@ -15,7 +15,7 @@ else()
 endif()
 project(${PRJ_NAME})
 set(CMAKE_VERBOSE_MAKEFILE on)
-set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
+set(CMAKE_CXX_FLAGS "-Wall -std=c++0x -O0")
 set(CMAKE_BUILD_TYPE Debug)
 
 # DBus Path
