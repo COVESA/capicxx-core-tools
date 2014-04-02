@@ -5,6 +5,10 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/**
+* @file Communication
+*/
+
 #include <functional>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -78,7 +82,14 @@ protected:
     std::shared_ptr<CommonAPI::ServicePublisher> servicePublisher_;
 };
 
-
+/**
+* @test Builds proxy, registers service, checks if proxy is available, calls test method, checks call status, unregisters service.
+* 	- Calls proxyFactory_->buildProxy(...) and checks if return value is true.
+* 	- Calls servicePublisher_->registerService(...) and checks if return value is true (max. 100 tries every 10 ms).
+* 	- Checks if proxy is available (max. 100 tries every 10 ms).
+* 	- Calls test method and checks if returned call status is CommonAPI::CallStatus::SUCCESS.
+* 	- Unregisters the test service.
+*/
 TEST_F(CommunicationTest, RemoteMethodCallSucceeds) {
     auto defaultTestProxy = proxyFactory_->buildProxy<commonapi::tests::TestInterfaceProxy>(testAddress);
     ASSERT_TRUE((bool)defaultTestProxy);
