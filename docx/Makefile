@@ -1,17 +1,19 @@
 # Creating CommonAPI documentation
-docgendir=../doc-gen
-iconsdir=../../images/icons
-imagedir=../../images
-datestring=$(shell date "+%m-%d-%y")
+docgendir=../doc
+htmldocgendir=$(docgendir)/html
+pdfdocgendir=$(docgendir)/pdf
+iconsdir=../images/icons
+imagedir=../images
+datestring=$(shell date "+%d.\ %b\ %Y")
 verification_project_path=../org.genivi.commonapi.core.verification
-commonapi_version=2.1.5
+commonapi_version=$(PROJECT_VERSION)
 
 all: doc
 
 doc: spec_html spec_pdf tut_html tut_pdf test_html test_pdf
 
 spec_html: docgendir
-	mkdir -p $(docgendir)/spec/html
+	mkdir -p $(htmldocgendir)
 	asciidoc \
 		-a revdate=$(datestring) \
 		-a icons \
@@ -20,11 +22,11 @@ spec_html: docgendir
 		-a version=$(commonapi_version) \
 		-a cppstr=cpp \
 		-a tabsize=4 \
-		-o $(docgendir)/spec/html/CommonAPISpecification.html \
+		-o $(htmldocgendir)/CommonAPISpecification.html \
 		CommonAPISpecification
 
 spec_pdf: docgendir
-	mkdir -p $(docgendir)/spec/pdf
+	mkdir -p $(pdfdocgendir)
 	a2x \
 		-a revdate=$(datestring) \
 		-a icons \
@@ -35,11 +37,11 @@ spec_pdf: docgendir
 		-f pdf \
 		--dblatex-opts "-P latex.output.revhistory=0" \
 		--icons \
-		-D $(docgendir)/spec/pdf \
+		-D $(pdfdocgendir) \
 		CommonAPISpecification
 
 tut_html: docgendir
-	mkdir -p $(docgendir)/tutorial/html
+	mkdir -p $(htmldocgendir)
 	asciidoc -a revdate=$(datestring) \
 				-a icons \
 				-a iconsdir=$(iconsdir) \
@@ -48,11 +50,11 @@ tut_html: docgendir
 				-a cppstr=cpp \
 				-a tabsize=4 \
 				-b html \
-				-o $(docgendir)/tutorial/html/Tutorial.html \
+				-o $(htmldocgendir)/Tutorial.html \
 				Tutorial
 
 tut_pdf: docgendir
-	mkdir -p $(docgendir)/tutorial/pdf
+	mkdir -p $(pdfdocgendir)
 	a2x \
 		-a revdate=$(datestring) \
 		-a icons \
@@ -63,25 +65,27 @@ tut_pdf: docgendir
 		-f pdf \
 		--dblatex-opts "-P latex.output.revhistory=0 -P imagedata.default.scale=maxwidth=10cm,maxheight=8cm" \
 		--icons \
-		-D $(docgendir)/tutorial/pdf \
+		-D $(pdfdocgendir) \
 		Tutorial
 
 test_html: docgendir
-	mkdir -p $(docgendir)/tests
-	OUTPUT_DIRECTORY=$(docgendir)/tests \
+	mkdir -p $(htmldocgendir)/tests
+	OUTPUT_DIRECTORY=$(htmldocgendir)/tests \
 	PROJECT_NAME=CommonAPITests \
-	SRC_DIR='$(verification_project_path)/src ../doc/mainpagetests' \
+	SRC_DIR='$(verification_project_path)/src ../docx/mainpagetests' \
 	doxygen $(verification_project_path)/doxygen-test.cfg
 
 test_pdf: test_html
-	cd $(docgendir)/tests/latex; make > /dev/null
-	mkdir -p $(docgendir)/tests/pdf
-	cp $(docgendir)/tests/latex/refman.pdf $(docgendir)/tests/pdf/CommonAPITests.pdf
-	rm -rf $(docgendir)/tests/latex
+	mkdir -p $(pdfdocgendir)/tests
+	cd $(htmldocgendir)/tests/latex; make > /dev/null
+	cd $(htmldocgendir)/tests
+	cp $(htmldocgendir)/tests/latex/refman.pdf $(pdfdocgendir)/tests/CommonAPITests.pdf
+	rm -rf $(htmldocgendir)/tests/latex
 
 docgendir:
 	mkdir -p $(docgendir)
 	cp -rf images $(docgendir)/images
+	cp index.html $(docgendir)
 
 clean:
 	rm -rf $(docgendir)
