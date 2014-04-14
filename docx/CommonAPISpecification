@@ -1,38 +1,53 @@
-CommonAPI C++ Specification
-===========================
 :website: http://projects.genivi.org/commonapi/
 :version:
-:date:
 :toc:
-:revdate:
 :imagedir:
 :cppstr: c++
 
-This is the specification for *CommonAPI {version}* Revision Date {revdate}.
+CommonAPI C++ Specification          
+===========================
+
+This is the specification for *Common API {version}* released at {revdate}.
 
 .Copyright and License
 *******************************************************************************
 Copyright (C) 2013, GENIVI Alliance, Inc.
 Copyright (C) 2013, BMW AG
 
-This file is part of the GENIVI Project IPC Common API C++.
+This file is part of the GENIVI IPC Common API C++i project.
 
 Contributions are licensed to the GENIVI Alliance under one or more
 Contribution License Agreements or MPL 2.0.
 *******************************************************************************
 
-CommonAPI is a C++ standard API framework for Interprocess Communication (IPC). A specific IPC framework is not included but it can be used with any kind of IPC mechanism if a middleware specific CommonAPI binding is provided.
+IPC Common API is a C++ abstraction framework for *Interprocess Communication* (IPC).
+It is supposed to be neutral to IPC implementations and therefore can be used with any
+kind of IPC mechanism if a middleware specific _IPC Common API binding_ is provided.
 
-Common API allows that applications (i.e., clients and servers using C++) developed against Common API can be linked against different Common API IPC backends without any changes to the application code. Thus, components which have been developed for a system which uses IPC X can be deployed for a system which uses IPC Y easily, just by generating some glue code and rebuilt. The actual interface definitions will be created using http://code.google.com/a/eclipselabs.org/p/franca/[Franca IDL], which is the Common IDL solution favored by http://www.genivi.org/[GENIVI].
+IPC Common API allows applications (i.e., clients and servers using C++) developed
+against IPC Common API to be linked with different IPC Common API _backends_ without
+any changes to the application code.
+Thus, components which have been developed for a system which uses specific IPC X could
+be deployed for another system which uses IPC Y easily - just by exchanging the
+IPC Common API backend without recompiling the application code.
+The actual interface definitions will be created using
+http://code.google.com/a/eclipselabs.org/p/franca/[Franca IDL], which is the
+Common IDL solution favored by http://www.genivi.org/[GENIVI].
 
-Common API will not be restricted to GENIVI members (cf. new GENIVI open source policy). It is available as open source code and some code generation tooling (see http://projects.genivi.org/).
+IPC Common API is not restricted to GENIVI members
+(see https://www.genivi.org/sites/default/files/genivi_public_newsletter_October_2013_liquid.html#LIC[public GENIVI licensing policy]).
+It is available as open source code, which is split into runtime code for the target
+system and code generation tooling (see http://projects.genivi.org/) to be used on
+development systems.
 
 .This document
 ********************************************************************************
-This document originates from a page in the GENIVI Wiki which was the result of some work of the System Infrastructure Expert Group
-for the IPC subdomain.
+This document originates from the GENIVI Wiki and was the result of
+some work of the IPC subdomain as part of the GENIVI System Infrastructure Expert Group.
 
-If you're new to CommonAPI please read the introduction of this document and the CommonAPI Tutorial which can be found in the http://git.projects.genivi.org/?p=ipc/common-api-tools.git;a=summary[CommonAPI-Tools repository].
+If you're new to IPC Common API please read the introduction of this document and
+the IPC Common API Tutorial available at the
+http://git.projects.genivi.org/?p=ipc/common-api-tools.git;a=summary[CommonAPI-Tools repository].
 ********************************************************************************
 
 General Design
