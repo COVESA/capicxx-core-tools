@@ -19,14 +19,15 @@ set(CMAKE_CXX_FLAGS "-Wall -std=c++0x")
 set(CMAKE_BUILD_TYPE Debug)
 
 # DBus Path
-if (DBUS_PATH_LOCAL)
-  message(STATUS "DBUS_PATH_LOCAL = " ${DBUS_PATH_LOCAL})
+if (DBUS_LIB_PATH)
+  message(STATUS "DBUS_LIB_PATH = " ${DBUS_LIB_PATH})
 else()
-  message(FATAL_ERROR "Please specify the path to your patched DBus library using -D DBUS_PATH_LOCAL=yourPath")
+  message(FATAL_ERROR "Please specify the path to your patched DBus library using -D DBUS_LIB_PATH=yourPath")
 endif()
 
 # CommonAPI
 include(FindPkgConfig)
+pkg_check_modules (DBUS "dbus-1 >= 1.4")
 pkg_check_modules (COMMONAPI "CommonAPI >= 2.1")
 pkg_check_modules (COMMONAPI_DBUS "CommonAPI-DBus >= 2.1")
 
@@ -45,18 +46,18 @@ set(PRJ_CLIENT_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_CLIENT}.cpp ${PRJ_PROXY_GEN_SRCS}
 set(PRJ_SERVICE_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_SERVICE}.cpp ${PRJ_STUB_GEN_SRCS} ${PRJ_STUB_IMPL_SRCS})
 
 # Paths
-message(STATUS "DBUS_PATH_LOCAL = " ${DBUS_PATH_LOCAL})
 message(STATUS "COMMONAPI_INCLUDEDIR = " ${COMMONAPI_INCLUDEDIR})
 message(STATUS "COMMONAPI_DBUS_INCLUDEDIR = " ${COMMONAPI_DBUS_INCLUDEDIR})
 
 include_directories(
     src-gen
-    ${DBUS_PATH_LOCAL}
+    ${DBUS_INCLUDE_DIRS}
     ${COMMONAPI_INCLUDEDIR}
     ${COMMONAPI_DBUS_INCLUDEDIR}
 )
 
 link_directories(
+    ${DBUS_LIB_PATH}
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
 )

@@ -11,6 +11,7 @@ interface E06Unions {
 	version { major 1 minor 0 }
 
 	attribute CommonTypes.SettingsUnion u
+	attribute CommonTypes.SettingsStruct x
 }
 
 typeCollection CommonTypes {
@@ -29,4 +30,23 @@ typeCollection CommonTypes {
 		UInt8 channel
 		String name
 	}
+	
+	struct SettingsStruct polymorphic {
+    }
+    
+    struct SettingsStructMyTypedef extends SettingsStruct {
+    	MyTypedef id 
+    }
+    
+    struct SettingsStructMyEnum extends SettingsStruct {
+    	MyEnum status 
+    }
+    
+    struct SettingsStructUInt8 extends SettingsStruct {
+    	UInt8 channel 
+    }
+    
+    struct SettingsStructString extends SettingsStruct {
+    	String name 
+    }
 }

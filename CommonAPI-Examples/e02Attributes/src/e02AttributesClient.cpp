@@ -10,6 +10,8 @@
 #include <CommonAPI/CommonAPI.h>
 #include <commonapi/examples/E02AttributesProxy.h>
 
+#include "AttributeCacheExtension.hpp"
+
 using namespace commonapi::examples;
 
 void recv_cb(const CommonAPI::CallStatus& callStatus, const int32_t& val) {
@@ -26,7 +28,10 @@ int main() {
 
     std::shared_ptr < CommonAPI::Factory > factory = runtime->createFactory();
     const std::string& serviceAddress = "local:commonapi.examples.Attributes:commonapi.examples.Attributes";
-    std::shared_ptr < E02AttributesProxyDefault > myProxy = factory->buildProxy < E02AttributesProxy > (serviceAddress);
+    //std::shared_ptr < E02AttributesProxyDefault > myProxy = factory->buildProxy < E02AttributesProxy > (serviceAddress);
+    std::shared_ptr<CommonAPI::DefaultAttributeProxyFactoryHelper<E02AttributesProxy, AttributeCacheExtension>::class_t> myProxy =
+    		factory->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttributeCacheExtension>(serviceAddress);
+
 
     while (!myProxy->isAvailable()) {
         usleep(10);
@@ -74,6 +79,11 @@ int main() {
     }
 
     while (true) {
-        usleep(10);
+
+    	int32_t valueCached = 0;
+    	bool r;
+    	r = myProxy->getXAttributeExtension().getCachedValue(valueCached);
+    	std::cout << "Got cached attribute value[" << (int)r << "]: " << valueCached << std::endl;
+		usleep(1000000);
     }
 }

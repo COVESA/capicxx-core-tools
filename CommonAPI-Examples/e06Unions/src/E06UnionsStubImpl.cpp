@@ -28,15 +28,19 @@ void E06UnionsStubImpl::setMyValue(int n) {
         if (n == 0) {
             CommonTypes::SettingsUnion v(t0);
             setUAttribute(v);
+		    setXAttribute(std::make_shared<CommonTypes::SettingsStructMyTypedef>(t0));
         } else if (n == 1) {
             CommonTypes::SettingsUnion v(t1);
             setUAttribute(v);
+		    setXAttribute(std::make_shared<CommonTypes::SettingsStructMyEnum>(t1));
         } else if (n == 2) {
             CommonTypes::SettingsUnion v(t2);
             setUAttribute(v);
+		    setXAttribute(std::make_shared<CommonTypes::SettingsStructUInt8>(t2));
         } else if (n == 3) {
             CommonTypes::SettingsUnion v(t3);
             setUAttribute(v);
+		    setXAttribute(std::make_shared<CommonTypes::SettingsStructString>(t3));
         }
 
     } else {
