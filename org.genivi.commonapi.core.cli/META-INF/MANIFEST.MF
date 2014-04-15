@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: commonapi generator Console Interface
 Bundle-SymbolicName: org.genivi.commonapi.core.cli;singleton:=true
-Bundle-Version: 2.1.5.qualifier
+Bundle-Version: 2.1.6.qualifier
 Bundle-Activator: org.genivi.commonapi.core.cli.Activator
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.emf.common,
