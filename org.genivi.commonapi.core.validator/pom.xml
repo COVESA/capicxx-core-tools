@@ -7,7 +7,7 @@
     <parent>
         <groupId>commonapi</groupId>
         <artifactId>org.genivi.commonapi.releng</artifactId>
-        <version>2.1.5-SNAPSHOT</version>
+        <version>2.1.6-SNAPSHOT</version>
         <relativePath>../org.genivi.commonapi.releng</relativePath>
     </parent>
 </project>
