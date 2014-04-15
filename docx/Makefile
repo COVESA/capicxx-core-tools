@@ -10,7 +10,15 @@ commonapi_version=$(PROJECT_VERSION)
 
 all: doc
 
-doc: spec_html spec_pdf tut_html tut_pdf test_html test_pdf
+doc: readme_html spec_html spec_pdf tut_html tut_pdf test_html test_pdf
+
+readme_html: docgendir
+	mkdir -p $(htmldocgendir)
+	asciidoc \
+		-a version=$(commonapi_version) \
+		-a tabsize=4 \
+		-o $(htmldocgendir)/readme.html \
+		../README
 
 spec_html: docgendir
 	mkdir -p $(htmldocgendir)

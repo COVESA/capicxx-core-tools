@@ -4,17 +4,17 @@
 :imagedir:
 :cppstr: c++
 
-CommonAPI C++ Specification          
+CommonAPI C++ Specification
 ===========================
 
 This is the specification for *Common API {version}* released at {revdate}.
 
 .Copyright and License
 *******************************************************************************
-Copyright (C) 2013, GENIVI Alliance, Inc.
-Copyright (C) 2013, BMW AG
+Copyright (C) 2014, BMW AG
+Copyright (C) 2014, GENIVI Alliance, Inc.
 
-This file is part of the GENIVI IPC Common API C++i project.
+This file is part of the GENIVI IPC Common API C++ project.
 
 Contributions are licensed to the GENIVI Alliance under one or more
 Contribution License Agreements or MPL 2.0.

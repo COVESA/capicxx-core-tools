@@ -1,7 +1,7 @@
 Example 6: Unions
 ~~~~~~~~~~~~~~~~~
 
-Until now, some simple and complex data types in the examples already occurred. This example intends to describe the use of unions closer. Consider the following Franca IDL example:
+Until now, some simple and complex data types in the examples already occurred. This example intends to describe the use of unions closer and to compare it with the usage of polymorphic structs. Consider the following Franca IDL example:
 
 [source,java]
 ----
@@ -11,6 +11,7 @@ interface E06Unions {
 	version { major 1 minor 0 }
 
 	attribute CommonTypes.SettingsUnion u
+	attribute CommonTypes.SettingsStruct x
 }
 
 typeCollection CommonTypes {
@@ -29,10 +30,31 @@ typeCollection CommonTypes {
 		UInt8 channel
 		String name
 	}
+	
+	struct SettingsStruct polymorphic {
+    }
+    
+    struct SettingsStructMyTypedef extends SettingsStruct {
+    	MyTypedef id 
+    }
+    
+    struct SettingsStructMyEnum extends SettingsStruct {
+    	MyEnum status 
+    }
+    
+    struct SettingsStructUInt8 extends SettingsStruct {
+    	UInt8 channel 
+    }
+    
+    struct SettingsStructString extends SettingsStruct {
+    	String name 
+    }
 }
 ----
 
-We first want to leave the question aside whether this example makes sense from an application point of view or not; it is just an example for demonstration purposes. Union is a sort of polymorphic type; with unions we can transmit data of different types in one attribute. D-Bus knows a similar data type which is called variant. Variants are used in the D-Bus binding for the implementation of unions. The interesting point is here not the definition of the union, but the realization in CommonAPI. I just want to point out here that it can lead to problems with the compiler or generally to problems with your toolchain if you define unions with an significant number of members (eg. >10), because each of these members appears in the generated C++ code as template argument in the template declaration.
+We first want to leave the question aside whether this example makes sense from an application point of view or not; it is just an example for demonstration purposes. With unions we can transmit data of different types in one attribute. These different types are enumerated in one structure with the keyword *union*. D-Bus knows a similar data type which is called variant. Variants are used in the D-Bus binding for the implementation of unions. The interesting point is here not the definition of the union, but the realization in CommonAPI. I just want to point out here that it can lead to problems with the compiler or generally to problems with your toolchain if you define unions with an significant number of members (eg. >10), because each of these members appears in the generated C++ code as template argument in the template declaration.
+
+On the other hand we see the definition of a +polymorphic struct+ which can lead to a similar but not the same behavior. The difference is that the types of the +polymorphic struct+ definitions are extensions of a base type (here +SettingsStruct+), that means that they are inherited from this base type. The base type might contain some base elements which are then be inherited by the children. Another difference is, that the C++ API allows real polymorphic behavior. With Unions that is not possible, since there is no base type as we will see below. 
 
 The implementation of the set function for the attribute u in the stub implementation could be as follows:
 
@@ -48,53 +70,211 @@ void E06UnionsStubImpl::setMyValue(int n) {
 		std::string t3 = "abc";
 
 		if ( n == 0 ) {
-
 			CommonTypes::SettingsUnion v(t0);
 			setUAttribute(v);
+			setXAttribute(std::make_shared<CommonTypes::SettingsStructMyTypedef>(t0));
 		} else if ( n == 1 ) {
-
 			CommonTypes::SettingsUnion v(t1);
 			setUAttribute(v);
+			setXAttribute(std::make_shared<CommonTypes::SettingsStructMyEnum>(t1));
 		} else if ( n == 2 ) {
-
 			CommonTypes::SettingsUnion v(t2);
 			setUAttribute(v);
+			setXAttribute(std::make_shared<CommonTypes::SettingsStructUInt8>(t2));
 		} else if ( n == 3 ) {
-
 			CommonTypes::SettingsUnion v(t3);
 			setUAttribute(v);
+			setXAttribute(std::make_shared<CommonTypes::SettingsStructString>(t3));
 		}
 	}
 }
 ----
-Depending on a condition (here the value of n) the attribute u is filled with data of different types. The code on client side is:
+
+Depending on a condition (here the value of n) the attributes u and x are filled with data of different types. Please note that the argument of +setUAttribute+ has the type +CommonAPI::Variant<MyTypedef, MyEnum, uint8_t, std::string>+, whereas the argument of +setXAttribute+ is a pointer to the base type +SettingsStruct+.
+
+The standard implementation on client side to get the value of the attribute uses the API call +isType+ in case of the union attribute. First we have to subscribe; in the callback function it is possible to get the value of our attribute by checking the type which leads to an if / then / else cascade:
 
 [source,{cppstr}]
 ----
-myProxy->getUAttribute().getChangedEvent().
-		subscribe([&](const CommonTypes::SettingsUnion& v) {
+#include <iostream>
+
+#include <CommonAPI/CommonAPI.h>
+#include <commonapi/examples/E06UnionsProxy.h>
+#include <commonapi/examples/CommonTypes.h>
+
+using namespace commonapi::examples;
+
+void evalA (const CommonTypes::SettingsUnion& v) {
 
 	if ( v.isType<CommonTypes::MyTypedef>() ) {
-
-		std::cout << "Received MyTypedef with value " <<
-			v.get<CommonTypes::MyTypedef>() << std::endl;
-
+		std::cout << "Received (A) MyTypedef with value " <<
+			v.get<CommonTypes::MyTypedef>() << " at index " <<
+			(int)v.getValueType() << std::endl;
 	} else if ( v.isType<CommonTypes::MyEnum>() ) {
-
-		std::cout << "Received MyEnum with value " <<
-			(int) (v.get<CommonTypes::MyEnum>()) << std::endl;
-
+		std::cout << "Received (A) MyEnum with value " <<
+			(int) (v.get<CommonTypes::MyEnum>()) << " at index " <<
+			(int)v.getValueType() << std::endl;
 	} else if ( v.isType<uint8_t>() ) {
-
-		std::cout << "Received uint8_t with value " <<
-			(int) (v.get<uint8_t>()) << std::endl;
-
+		std::cout << "Received (A) uint8_t with value " <<
+			(int) (v.get<uint8_t>()) << " at index " <<
+			(int)v.getValueType() << std::endl;
 	} else if ( v.isType<std::string>() ) {
-
-		std::cout << "Received string with value " <<
-			v.get<std::string>() << std::endl;
+		std::cout << "Received (A) string " << v.get<std::string>() <<
+			" at index " << (int)v.getValueType() << std::endl;
+	} else {
+		std::cout << "Received (A) change message with unknown type." << std::endl;
 	}
-});
+}
+
+void recv_msg(const CommonTypes::SettingsUnion& v) {
+	evalA(v);
+}
+
+int main() {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::load();
+    std::shared_ptr<CommonAPI::Factory> factory = runtime->createFactory();
+    const std::string& serviceAddress =
+    	"local:commonapi.examples.Unions:commonapi.examples.Unions";
+    std::shared_ptr<E06UnionsProxyDefault> myProxy =
+    	factory->buildProxy<E06UnionsProxy> (serviceAddress);
+    while (!myProxy->isAvailable()) { usleep(10); }
+
+	std::function<void (CommonTypes::SettingsUnion)> f = recv_msg;
+	myProxy->getUAttribute().getChangedEvent().subscribe(f);
+
+    while (true) { usleep(10); }
+    return 0;
+}
 ----
 
-The example shows, how it is possible to detect the type and the value of the received attribute.
+The example shows, how it is possible to detect the type and the value of the received attribute. However, the if / then / else cascade is not the only, perhaps not the best way to get the value of the union on client side footnote:[These two very good alternative implementations come from Martin Häfner from Harman. Thank you!]. One alternative implementation is based on an +typeIdOf+ function, which is at the moment not part of CommonAPI but can be additionally implemented (see +typeUtils.hpp+ of this example):
+
+[source,{cppstr}]
+----
+#include <type_traits>
+
+template <typename SearchT, typename... T>
+struct typeIdOf;
+
+template <typename SearchT, typename T>
+struct typeIdOf<SearchT, T> {
+
+	static const int value = std::is_same<SearchT, T>::value ? 1 : -1;
+};
+
+template <typename SearchT, typename T1, typename... T>
+struct typeIdOf<SearchT, T1, T...> {
+	static const int value = std::is_same<SearchT, T1>::value ? 
+		sizeof...(T)+1 : typeIdOf<SearchT, T...>::value;
+};
+----
+
+The evaluation method (corresponding to +evalA+ above) looks like:
+
+[source,{cppstr}]
+----
+template <typename T1, typename... T>
+void evalB (const CommonAPI::Variant<T1, T...>& v) {
+
+	switch (v.getValueType()) {
+
+	case typeIdOf<CommonTypes::MyTypedef, T1, T...>::value:
+		std::cout << "Received (B) MyTypedef with value " <<
+			(int)(v.template get<CommonTypes::MyTypedef>()) << std::endl;
+		break;
+	case typeIdOf<CommonTypes::MyEnum, T1, T...>::value:
+		std::cout << "Received (B) MyEnum with value " <<
+			(int)(v.template get<CommonTypes::MyEnum>()) << std::endl;
+		break;
+	case typeIdOf<uint8_t, T1, T...>::value:
+		std::cout << "Received (B) uint8_t with value " <<
+			(int)(v.template get<uint8_t>()) << std::endl;
+		break;
+	case typeIdOf<std::string, T1, T...>::value:
+		std::cout << "Received (B) string " <<
+			v.template get<std::string>() << std::endl;
+		break;
+	default:
+		std::cout << "Received (B) change message with unknown type." << std::endl;
+		break;
+	}
+}
+----
+
+One advantage here is that instead of the if / then / else statement a switch / case statement can be used. 
+
+The second alternative implementation uses the function overloading. The overloaded functions are defined within a structure (+MyVisitor+ in the example) that is used as a visitor in the evaluation function:
+
+[source,{cppstr}]
+----
+struct MyVisitor {
+
+	explicit inline MyVisitor() {}
+
+	template<typename... T>
+	inline void eval(const CommonAPI::Variant<T...>& v) {
+		CommonAPI::ApplyVoidVisitor<MyVisitor,
+				CommonAPI::Variant<T...>, T...>::visit(*this, v);
+	}
+
+	void operator()(CommonTypes::MyTypedef val) {
+		std::cout << "Received (C) MyTypedef with value " << (int)val << std::endl;
+	}
+
+	void operator()(CommonTypes::MyEnum val) {
+		std::cout << "Received (C) MyEnum with value " << (int)val << std::endl;
+	}
+
+	void operator()(uint8_t val) {
+		std::cout << "Received (C) uint8_t with value " << (int)val << std::endl;
+	}
+
+	void operator()(std::string val) {
+		std::cout << "Received (C) string " << val << std::endl;
+	}
+
+	template<typename T>
+	void operator()(const T&) {
+		std::cout << "Received (C) change message with unknown type." << std::endl;
+	}
+
+	void operator()() {
+		std::cout << "NOOP." << std::endl;
+	}
+};
+
+void evalC(const CommonTypes::SettingsUnion& v) {
+	MyVisitor visitor;
+	visitor.eval(v);
+}
+----
+
+Finally, it should given here for comparison the implementation on the client side for the +polymorphic struct+. The subscription for a message receive function is identical to the previous implementation; the message receive function now looks as follows:
+
+[source,{cppstr}]
+----
+void recv_msg(std::shared_ptr<CommonTypes::SettingsStruct> x) {
+
+	if ( std::shared_ptr<CommonTypes::SettingsStructMyTypedef> sp =
+		std::dynamic_pointer_cast<CommonTypes::SettingsStructMyTypedef>(x) ) {
+		std::cout << "Received (D) MyTypedef with value " <<
+			(int)sp->id << std::endl;
+	} else if ( std::shared_ptr<CommonTypes::SettingsStructMyEnum> sp =
+		std::dynamic_pointer_cast<CommonTypes::SettingsStructMyEnum>(x) ) {
+		std::cout << "Received (D) MyEnum with value " <<
+			(int)sp->status << std::endl;
+	} else if ( std::shared_ptr<CommonTypes::SettingsStructUInt8> sp =
+		std::dynamic_pointer_cast<CommonTypes::SettingsStructUInt8>(x) ) {
+		std::cout << "Received (D) uint8_t with value " <<
+			(int)sp->channel << std::endl;
+	} else if ( std::shared_ptr<CommonTypes::SettingsStructString> sp =
+		std::dynamic_pointer_cast<CommonTypes::SettingsStructString>(x) ) {
+		std::cout << "Received (D) string " << sp->name << std::endl;
+	} else {
+		std::cout << "Received (D) change message with unknown type." << std::endl;
+	}
+}
+----
+
+The result you get now by dynamic cast of the base type.
+

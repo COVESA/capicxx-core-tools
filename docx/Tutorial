@@ -31,7 +31,7 @@ CommonAPI is a GENIVI project. Source code and latest news can be found at http:
 
 For documentation please visit the GENIVI document page http://docs.projects.genivi.org/.
 
-CommonAPI currently consists of four subprojects:
+CommonAPI currently consists of four sub-projects:
 
 [width="80%",cols="3,10"]
 |=========================================================
@@ -56,7 +56,7 @@ Before we proceed you should clarifiy whether you are a user, in the sense that 
 
 Requirements
 ~~~~~~~~~~~~
-- Code generator and Franca tooling are based on Eclipse. Please make sure that you have an appropriate Eclipse version installed (see the compatibility table at the beginning of the document or the README file).
+- Code generator and Franca tooling are based on Eclipse. Please make sure that you have an appropriate Eclipse version installed.
 - Make sure all requirements to build the CommonAPI Runtime are installed and in the correct version. CommonAPI was developed using gcc 4.6 and gcc 4.7, but is feature compatible to gcc 4.5 and compiler compatible to gcc 4.4.
 
 Set up your environment as CommonAPI user
@@ -122,7 +122,7 @@ Download, patch and install version 1.4.16 of libdbus (*WARNING*: _Not_ followin
 $ wget http://dbus.freedesktop.org/releases/dbus/dbus-1.4.16.tar.gz
 $ tar -xzf dbus-1.4.16.tar.gz
 $ cd dbus-1.4.16
-$ patch -p1 < </your/download/path>/common-api-dbus-runtime/dbus-DBusMessage-add-support-for-custom-marshaling.patch
+$ patch -p1 < </your/commonapi/path>/common-api-dbus-runtime/dbus-DBusMessage-add-support-for-custom-marshaling.patch
 $ ./configure --prefix=/usr/local
 $ make -C dbus
 $ sudo make -C dbus install
@@ -586,7 +586,7 @@ As described in the CommonAPI specification there is a general scheme to include
 - Generate the proxy for your interface with the API method +buildProxyWithDefaultAttributeExtension+ if you want a common extension. For the specific extension call build proxy with the attribute extension as template parameter.
 - Now you can call the implemented functions of your extension via a +getNameAttributeExtension()+ call (where +Name+ is the name of your attribute).
 
-Example of an extension class for caching attributes (file +AttributeCacheExtension.hpp+):
+Example of an extension class for caching attributes (file +AttributeCacheExtension.hpp+, see example e02Attributes):
 [source,{cppstr}]
 ----
 #include <CommonAPI/CommonAPI.h>

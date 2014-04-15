@@ -63,20 +63,41 @@ If the implementation of the stub has to change the value of the attribute +x+, 
 
 In the example the service increments a counter every 2 seconds and publishes the counter value via the interface attribute +x+.
 
-Now see the implementation of the client. The simplest case is to get the current value of +x+. The following extract is part of the main function:
+Now see the implementation of the client. The simplest case is to get the current value of +x+. The following extract shows one part of the main function:
 
 [source,{cppstr}]
 ----
-CommonAPI::CallStatus callStatus;
-int32_t value = 0;
+#include <iostream>
 
-// Get actual attribute value from service
-myProxy->getXAttribute().getValue(callStatus, value);
-if (callStatus != CommonAPI::CallStatus::SUCCESS) {
-	std::cerr << "Remote call A failed!\n";
-	return -1;
+#include <CommonAPI/CommonAPI.h>
+#include <commonapi/examples/E02AttributesProxy.h>
+
+using namespace commonapi::examples;
+
+int main() {
+
+	std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::load();
+
+	std::shared_ptr < CommonAPI::Factory > factory = runtime->createFactory();
+	const std::string& serviceAddress = 
+		"local:commonapi.examples.Attributes:commonapi.examples.Attributes";
+	std::shared_ptr < E02AttributesProxyDefault > myProxy =
+		factory->buildProxy < E02AttributesProxy > (serviceAddress);
+
+    while (!myProxy->isAvailable()) { usleep(10); }
+
+	CommonAPI::CallStatus callStatus;
+	int32_t value = 0;
+
+	// Get actual attribute value from service
+	myProxy->getXAttribute().getValue(callStatus, value);
+	if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+		std::cerr << "Remote call A failed!\n";
+		return -1;
+	}
+	std::cout << "Got attribute value: " << value << std::endl;
+
 }
-std::cout << "Got attribute value: " << value << std::endl;
 ----
 
 The +getXAttribute+ method will deliver the type +XAttribute+ which has to be used for the access to +x+. Every access returns a flag named callStatus (please see the CommonAPI specification). Subscription requires in general the definition of a callback function which is called in case of an attribute change. The subscribe method of CommonAPI requires a function object; for a compact notation this function object can be defined as lambda function:
@@ -107,7 +128,7 @@ myProxy->getXAttribute().getChangedEvent().subscribe(
 	std::bind(recv_msg, std::placeholders::_1));
 ----
 
-Asynchronous setting of attributes via setValueAsync works analog as shown in the follwoing code extract where the more complex attribute _a1_ is set from the client:
+Asynchronous setting of attributes via setValueAsync works analog as shown in the following code extract where the more complex attribute _a1_ is set from the client:
 
 [source,{cppstr}]
 ----
@@ -130,4 +151,20 @@ std::function<void (const CommonAPI::CallStatus&, CommonTypes::a1Struct)> fcb_s 
 
 myProxy->getA1Attribute().setValueAsync(valueStruct, fcb_s);
 ----
+
+As described above, in the chapter "Attribute Extensions" of this tutorial, it is possible to extend the standard CommonAPI for attributes by defining Attribute Extensions. In this example you have to:
+
+* include the template definition of the extension (AttributeCacheExtension.hpp)
+* to call a different factory method for creating the proxy (e.g. buildProxyWithDefaultAttributeExtension)
+* and then it is possible to call the new defined methods, e.g.
+
+[source,{cppstr}]
+----
+int32_t valueCached = 0;
+bool r;
+r = myProxy->getXAttributeExtension().getCachedValue(valueCached);
+std::cout << "Got cached attribute value[" << (int)r << "]: " << valueCached << std::endl;
+----
+
+See the source code of the example for a deeper insight.
 
