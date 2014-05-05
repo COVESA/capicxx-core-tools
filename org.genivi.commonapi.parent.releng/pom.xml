@@ -12,6 +12,13 @@
         <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
         <xtend-version>2.4.3</xtend-version>
     </properties>
+    <dependencies>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>15.0</version>
+        </dependency>
+    </dependencies>
     <repositories>
         <repository>
             <id>dbus-emf</id>
@@ -32,6 +39,11 @@
             <id>Franca</id>
             <layout>p2</layout>
             <url>http://franca.eclipselabs.org.codespot.com/git/update_site/releases/</url>
+        </repository>
+        <repository>
+            <id>Orbit</id>
+            <layout>p2</layout>
+            <url>http://download.eclipse.org/tools/orbit/downloads/drops/S20140428023358/repository/</url>
         </repository>
     </repositories>
     <build>

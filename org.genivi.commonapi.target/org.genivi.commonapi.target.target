@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<?pde version="3.8"?><target name="Common API" sequenceNumber="17">
+<?pde version="3.8"?><target name="Common API" sequenceNumber="19">
 <locations>
 <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="org.eclipse.platform.sdk" version="4.3.1.M20130911-1000"/>
@@ -19,6 +19,10 @@
 <unit id="org.franca.feature.sdk.feature.group" version="0.8.10.201309262002"/>
 <unit id="org.franca.feature.feature.group" version="0.8.10.201309262002"/>
 <repository location="http://franca.eclipselabs.org.codespot.com/git/update_site/releases/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="com.google.guava" version="15.0.0.v201403281430"/>
+<repository location="http://download.eclipse.org/tools/orbit/downloads/drops/S20140428023358/repository/"/>
 </location>
 </locations>
 </target>
