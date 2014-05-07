@@ -58,11 +58,11 @@ Build Instructions
 
 These are Eclipse Plug-In projects which require Xtext2 and Franca as dependencies within Eclipse. 
 
-An automated build process via Maven for the update-site and the command line interface are provided.
+An automated build process via Maven for the update-site and the command line interface is provided.
 
-As a first step to build the update-site, make sure that everything is configured correctly, i.e. the dependencies between CommonAPI-D-Bus and CommonAPI itself are set correctly. If you don't want to build the CommonAPI-D-Bus-Tools components, you have to adjust the update-site category.xml and the "modules" section in the pom.xml of the org.genivi.commonapi.parent.releng accordingly. 
+As a first step to build the update-site and the commandline generator, make sure that everything is configured correctly, i.e. the dependencies between CommonAPI-D-Bus and CommonAPI itself are set correctly (see the dependencies tab in the MANIFEST.MF file of org.genivi.commonapi.dbus and accordingly in org.genivi.commonapi.dbus.ui). If you don't want to build the CommonAPI-D-Bus-Tools components, you have to adjust the update-site category.xml and the "modules" section in the pom.xml of the org.genivi.commonapi.parent.releng accordingly. 
 
-To build change into the org.genivi.commonapi.parent.releng directory and run:
+To build, change into the org.genivi.commonapi.parent.releng directory and run:
 
 ----
 mvn tycho-versions:set-version -DnewVersion=<version-you-want-to-set>-SNAPSHOT
@@ -70,7 +70,7 @@ mvn tycho-versions:set-version -DnewVersion=<version-you-want-to-set>-SNAPSHOT
 
 e.g. mvn tycho-versions:set-version -DnewVersion=2.1.4-SNAPSHOT. If the version is already set correctly you can skip this step.
 
-Next, to build the updatesite, adjust your category.xml in the org.genivi.commonapi.updatesite project to the new version and run
+Next, to build the updatesite and the commandline generator, adjust your category.xml in the org.genivi.commonapi.updatesite project to the new version and run
 
 ----
 mvn clean verify
@@ -84,13 +84,14 @@ If no configuration files are changed, the features
 org.genivi.commonapi.core
 org.genivi.commonapi.validator
 org.genivi.commonapi.dbus
+org.genivi.commonapi.dbus.validator
 ----
 
 will be included in the updatesite.
 
 The command line interface will be built for different platforms, with zip-files as generated output. These zip-files can be found in org.genivi.commonapi.cli.product/target/products/.
 
-A osgi based application will be contained in the zip-files. This application should be called as:
+An osgi based application will be contained in the zip-files. This application should be called as:
 
 ----
 commonapi_generator [options] file [file...]
