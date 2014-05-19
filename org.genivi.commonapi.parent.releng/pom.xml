@@ -12,18 +12,29 @@
         <maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>
         <xtend-version>2.4.3</xtend-version>
     </properties>
-    <dependencies>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>15.0</version>
-        </dependency>
-    </dependencies>
+    
+     <pluginRepositories>    
+        <pluginRepository>
+            <id>sonatype</id>
+            <url>http://repository.sonatype.org/content/groups/sonatype-public-grid/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </pluginRepository>
+<!--        <pluginRepository>
+            <id>xtend</id>
+            <url>http://build.eclipse.org/common/xtend/maven/</url>
+        </pluginRepository> -->
+    </pluginRepositories>  
+    
     <repositories>
         <repository>
             <id>dbus-emf</id>
             <layout>p2</layout>
-            <url>http://dbus-emf-model.eclipselabs.org.codespot.com/git/update_site/releases/</url>
+            <url>http://dbus-emf-model.eclipselabs.org.codespot.com/git/update_site/releases/0.7.8</url>
         </repository>
         <repository>
             <id>eclipse-updates</id>
@@ -38,12 +49,12 @@
         <repository>
             <id>Franca</id>
             <layout>p2</layout>
-            <url>http://franca.eclipselabs.org.codespot.com/git/update_site/releases/</url>
+            <url>http://franca.eclipselabs.org.codespot.com/git/update_site/releases/0.8.10</url>
         </repository>
         <repository>
-            <id>Orbit</id>
+            <id>xtext</id>
             <layout>p2</layout>
-            <url>http://download.eclipse.org/tools/orbit/downloads/drops/S20140428023358/repository/</url>
+            <url>http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/</url>
         </repository>
     </repositories>
     <build>
@@ -126,7 +137,7 @@
             <plugin>
                 <groupId>org.eclipse.xtend</groupId>
                 <artifactId>xtend-maven-plugin</artifactId>
-                <version>${xtend-version}</version>
+                <version>${xtend-version}</version> 
                 <executions>
                     <execution>
                         <goals>

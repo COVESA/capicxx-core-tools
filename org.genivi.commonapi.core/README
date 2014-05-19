@@ -1,0 +1,4 @@
+To write source code for the CommonAPI-Tools and to compile them, please download
+guava-14.0.1.jar from
+http://search.maven.org/remotecontent?filepath=com/google/guava/guava/14.0.1/guava-14.0.1.jar
+and put it into a folder called "lib" in the project root directory.
