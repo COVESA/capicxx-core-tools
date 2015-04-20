@@ -230,7 +230,15 @@ class FTypeGenerator {
                 «element.getTypeName(fStructType)» «element.elementName»;
             «ENDFOR»
 
-            «fStructType.elementName»() = default;
+            «fStructType.elementName»() {
+            «IF fStructType.allElements.size > 0»
+            «FOR element : fStructType.elements»
+                «IF element.type.predefined.equals(FBasicTypeId.BOOLEAN)»
+                	«element.name» = false;
+                «ENDIF»
+            «ENDFOR»
+            «ENDIF»
+            }
             «IF fStructType.allElements.size > 0»
                 «fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»);
             «ENDIF»
