@@ -26,12 +26,16 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
      */
     public void initializeDefaultPreferences() {
         IPreferenceStore store = CommonApiUiPlugin.getDefault().getPreferenceStore();
-        store.setDefault(PreferenceConstants.USEPROJECTSETTINGS, true);
         store.setDefault(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
         store.setDefault(PreferenceConstants.P_OUTPUT_PROXIES, PreferenceConstants.DEFAULT_OUTPUT);
         store.setDefault(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
+        store.setDefault(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
+        store.setDefault(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
         store.setDefault(PreferenceConstants.P_GENERATEPROXY, true);
         store.setDefault(PreferenceConstants.P_GENERATESTUB, true);
+        store.setDefault(PreferenceConstants.P_GENERATESKELETON, false);
+        store.setDefault(PreferenceConstants.P_SKELETONPOSTFIX, PreferenceConstants.DEFAULT_SKELETONPOSTFIX);
+        store.setDefault(PreferenceConstants.P_USEPROJECTSETTINGS, false);
     }
 
 }

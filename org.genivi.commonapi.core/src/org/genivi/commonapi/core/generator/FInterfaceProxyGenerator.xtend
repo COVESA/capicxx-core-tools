@@ -7,34 +7,34 @@
 package org.genivi.commonapi.core.generator
 
 import java.util.ArrayList
+import java.util.HashSet
 import javax.inject.Inject
+import org.eclipse.core.resources.IResource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-
-import java.util.HashSet
-import org.eclipse.core.resources.IResource
+import org.genivi.commonapi.core.deployment.PropertyAccessor
+import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) {
-        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, fInterface.generateProxyBaseHeader(deploymentAccessor, modelid))
-        fileSystemAccess.generateFile(fInterface.proxyHeaderPath, fInterface.generateProxyHeader(modelid))
+    def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
+        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyBaseHeader(deploymentAccessor, modelid))
+        fileSystemAccess.generateFile(fInterface.proxyHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyHeader(modelid))
     }
 
-    def private generateProxyBaseHeader(FInterface fInterface, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) '''
+    def private generateProxyBaseHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
-        #ifndef «fInterface.defineName»_PROXY_BASE_H_
-        #define «fInterface.defineName»_PROXY_BASE_H_
+        #ifndef «fInterface.defineName»_PROXY_BASE_HPP_
+        #define «fInterface.defineName»_PROXY_BASE_HPP_
 
-        #include "«fInterface.headerFile»"
+        #include <«fInterface.headerPath»>
         «IF fInterface.base != null»
-            #include "«fInterface.base.proxyBaseHeaderFile»"
+            #include <«fInterface.base.proxyBaseHeaderPath»>
         «ENDIF»
 
         «val generatedHeaders = new HashSet<String>»
@@ -54,18 +54,18 @@ class FInterfaceProxyGenerator {
         «ENDFOR»
 
         «IF !fInterface.managedInterfaces.empty»
-            #include <CommonAPI/ProxyManager.h>
+            #include <CommonAPI/ProxyManager.hpp>
         «ENDIF»
         «IF fInterface.hasAttributes»
-            #include <CommonAPI/Attribute.h>
+            #include <CommonAPI/Attribute.hpp>
         «ENDIF»
         «IF fInterface.hasBroadcasts»
-            #include <CommonAPI/Event.h>
+            #include <CommonAPI/Event.hpp>
             «IF fInterface.hasSelectiveBroadcasts»
-                #include <CommonAPI/SelectiveEvent.h>
+                #include <CommonAPI/SelectiveEvent.hpp>
             «ENDIF»
         «ENDIF»
-        #include <CommonAPI/Proxy.h>
+        #include <CommonAPI/Proxy.hpp>
         «IF !fInterface.methods.empty»
             #include <functional>
             #include <future>
@@ -73,18 +73,22 @@ class FInterfaceProxyGenerator {
 
         #undef COMMONAPI_INTERNAL_COMPILATION
 
+        «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
-        class «fInterface.proxyBaseClassName»: virtual public «IF fInterface.base != null»«fInterface.base.proxyBaseClassName»«ELSE»CommonAPI::Proxy«ENDIF» {
-         public:
+        class «fInterface.proxyBaseClassName»
+            : virtual public «IF fInterface.base != null»«fInterface.base.getTypeCollectionName(fInterface)»ProxyBase«ELSE»CommonAPI::Proxy«ENDIF» {
+        public:
             «FOR attribute : fInterface.attributes»
-                typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface.model)»> «attribute.className»;
+                typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface, true)»> «attribute.className»;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «IF broadcast.isSelective»
-                    typedef CommonAPI::SelectiveEvent<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
+                    typedef CommonAPI::SelectiveEvent<«broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»> «broadcast.className»;
                 «ELSE»
-                    typedef CommonAPI::Event<«broadcast.outArgs.map[getTypeName(fInterface.model)].join(', ')»> «broadcast.className»;
+                    typedef CommonAPI::Event<
+                        «broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»
+                    > «broadcast.className»;
                 «ENDIF»
             «ENDFOR»
 
@@ -107,9 +111,9 @@ class FInterfaceProxyGenerator {
                      * @invariant Fire And Forget
                      */
                 «ENDIF»
-                virtual «method.generateDefinition» = 0;
+                virtual «method.generateDefinition(true)» = 0;
                 «IF !method.isFireAndForget»
-                    virtual «method.generateAsyncDefinition» = 0;
+                    virtual «method.generateAsyncDefinition(true)» = 0;
                 «ENDIF»
             «ENDFOR»
             «FOR managed : fInterface.managedInterfaces»
@@ -118,20 +122,21 @@ class FInterfaceProxyGenerator {
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
-
-        #endif // «fInterface.defineName»_PROXY_BASE_H_
+        «fInterface.generateVersionNamespaceEnd»
+        
+        #endif // «fInterface.defineName»_PROXY_BASE_HPP_
     '''
 
     def private generateProxyHeader(FInterface fInterface, IResource modelid) '''
         «generateCommonApiLicenseHeader(fInterface, modelid)»
         «FTypeGenerator::generateComments(fInterface, false)»
-        #ifndef «fInterface.defineName»_PROXY_H_
-        #define «fInterface.defineName»_PROXY_H_
+        #ifndef «fInterface.defineName»_PROXY_HPP_
+        #define «fInterface.defineName»_PROXY_HPP_
 
-        #include "«fInterface.proxyBaseHeaderFile»"
+        #include <«fInterface.proxyBaseHeaderPath»>
 
         «IF fInterface.base != null»
-            #include "«fInterface.base.proxyHeaderFile»"
+            #include "«fInterface.base.proxyHeaderPath»"
         «ENDIF»
 
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
@@ -139,20 +144,21 @@ class FInterfaceProxyGenerator {
         #endif
 
         «IF fInterface.hasAttributes»
-            #include <CommonAPI/AttributeExtension.h>
-            #include <CommonAPI/Factory.h>
+            #include <CommonAPI/AttributeExtension.hpp>
+            #include <CommonAPI/Factory.hpp>
         «ENDIF»
 
         #undef COMMONAPI_INTERNAL_COMPILATION
 
+        «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         template <typename ... _AttributeExtensions>
-        class «fInterface.proxyClassName»: virtual public «fInterface.elementName», virtual public «fInterface.proxyBaseClassName»
-        «IF fInterface.base != null»
-            , virtual public «fInterface.base.proxyClassName»<_AttributeExtensions...>
-        «ENDIF»
-        , public _AttributeExtensions... {
+        class «fInterface.proxyClassName»
+            : virtual public «fInterface.elementName», 
+              virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base != null»
+              virtual public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
+              public _AttributeExtensions... {
         public:
             «fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate);
             ~«fInterface.proxyClassName»();
@@ -196,7 +202,7 @@ class FInterfaceProxyGenerator {
                  * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
                  * will be set.
                  */
-                virtual «method.generateDefinition»;
+                virtual «method.generateDefinition(true)»;
                 «IF !method.isFireAndForget»
                     /**
                      * Calls «method.elementName» with asynchronous semantics.
@@ -208,7 +214,7 @@ class FInterfaceProxyGenerator {
                      * The std::future returned by this method will be fulfilled at arrival of the reply.
                      * It will provide the same value for CallStatus as will be handed to the callback.
                      */
-                    virtual «method.generateAsyncDefinition»;
+                    virtual «method.generateAsyncDefinition(true)»;
                 «ENDIF»
             «ENDFOR»
 
@@ -219,22 +225,7 @@ class FInterfaceProxyGenerator {
             /**
              * Returns the CommonAPI address of the remote partner this proxy communicates with.
              */
-            virtual std::string getAddress() const;
-
-            /**
-             * Returns the domain of the remote partner this proxy communicates with.
-             */
-            virtual const std::string& getDomain() const;
-
-            /** 
-             * Returns the service ID of the remote partner this proxy communicates with.
-             */
-            virtual const std::string& getServiceId() const;
-
-            /**
-             * Returns the instance ID of the remote partner this proxy communicates with.
-             */
-            virtual const std::string& getInstanceId() const;
+            virtual const CommonAPI::Address &getAddress() const;
 
             /**
              * Returns true if the remote partner for this proxy is currently known to be available.
@@ -262,11 +253,7 @@ class FInterfaceProxyGenerator {
             std::shared_ptr<«fInterface.proxyBaseClassName»> delegate_;
         };
 
-        #ifdef WIN32
-            typedef «fInterface.proxyClassName»<CommonAPI::WINDummyAttributeExtension<CommonAPI::WINDummyAttribute>> «fInterface.proxyDefaultClassName»;
-        #else
-            typedef «fInterface.proxyClassName»<> «fInterface.proxyDefaultClassName»;
-        #endif
+        typedef «fInterface.proxyClassName»<> «fInterface.proxyDefaultClassName»;
 
         «IF fInterface.hasAttributes»
             namespace «fInterface.extensionsSubnamespace» {
@@ -296,36 +283,21 @@ class FInterfaceProxyGenerator {
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
             template <typename ... _AttributeExtensions>
-            «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
+            «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
                 delegate_->«method.elementName»(«method.generateSyncVariableList»);
             }
             «IF !method.isFireAndForget»
 
                 template <typename ... _AttributeExtensions>
-                «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>')» {
+                «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
                     return delegate_->«method.elementName»Async(«method.generateASyncVariableList»);
                 }
             «ENDIF»
         «ENDFOR»
 
         template <typename ... _AttributeExtensions>
-        std::string «fInterface.proxyClassName»<_AttributeExtensions...>::getAddress() const {
+        const CommonAPI::Address &«fInterface.proxyClassName»<_AttributeExtensions...>::getAddress() const {
             return delegate_->getAddress();
-        }
-
-        template <typename ... _AttributeExtensions>
-        const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getDomain() const {
-            return delegate_->getDomain();
-        }
-
-        template <typename ... _AttributeExtensions>
-        const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getServiceId() const {
-            return delegate_->getServiceId();
-        }
-
-        template <typename ... _AttributeExtensions>
-        const std::string& «fInterface.proxyClassName»<_AttributeExtensions...>::getInstanceId() const {
-            return delegate_->getInstanceId();
         }
 
         template <typename ... _AttributeExtensions>
@@ -356,20 +328,21 @@ class FInterfaceProxyGenerator {
         «ENDFOR»
 
         «fInterface.model.generateNamespaceEndDeclaration»
+        «fInterface.generateVersionNamespaceEnd»
 
         «IF fInterface.hasAttributes»
         namespace CommonAPI {
         template<template<typename > class _AttributeExtension>
-        struct DefaultAttributeProxyFactoryHelper<«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»,
+        struct DefaultAttributeProxyHelper<«fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»,
             _AttributeExtension> {
-            typedef typename «fInterface.model.generateCppNamespace»«fInterface.proxyClassName»<
-                    «fInterface.attributes.map[fInterface.model.generateCppNamespace + fInterface.extensionsSubnamespace + '::' + extensionClassName + "<_AttributeExtension>"].join(", \n")»
+            typedef typename «fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»<
+                    «fInterface.attributes.map[fInterface.versionPrefix + fInterface.model.generateCppNamespace + fInterface.extensionsSubnamespace + '::' + extensionClassName + "<_AttributeExtension>"].join(", \n")»
             > class_t;
         };
         }
         «ENDIF»
 
-        #endif // «fInterface.defineName»_PROXY_H_
+        #endif // «fInterface.defineName»_PROXY_HPP_
     '''
 
     def private generateExtension(FAttribute fAttribute, FInterface fInterface) '''
@@ -448,21 +421,21 @@ class FInterfaceProxyGenerator {
     }
 
     def private generateSyncVariableList(FMethod fMethod) {
-        val syncVariableList = new ArrayList(fMethod.inArgs.map[elementName])
+        val syncVariableList = new ArrayList(fMethod.inArgs.map['_' + elementName])
 
-        syncVariableList.add('callStatus')
+        syncVariableList.add('_status')
 
         if (fMethod.hasError)
-            syncVariableList.add('methodError')
+            syncVariableList.add('_error')
 
-        syncVariableList.addAll(fMethod.outArgs.map[elementName])
-
-        return syncVariableList.join(', ')
+        syncVariableList.addAll(fMethod.outArgs.map['_' + elementName])
+        
+        return syncVariableList.join(', ') + ", _info"
     }
 
     def private generateASyncVariableList(FMethod fMethod) {
-        var asyncVariableList = new ArrayList(fMethod.inArgs.map[elementName])
-        asyncVariableList.add('callback')
-        return asyncVariableList.join(', ')
+        var asyncVariableList = new ArrayList(fMethod.inArgs.map['_' + elementName])
+        asyncVariableList.add('_callback')
+        return asyncVariableList.join(', ') + ", _info"
     }
 }

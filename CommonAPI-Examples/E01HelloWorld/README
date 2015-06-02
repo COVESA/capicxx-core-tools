@@ -1,0 +1,150 @@
+=== Example 01: Hello World
+
+This example contains step-by-step instructions how to create the code for the +Hello World+ introductory example of CommonAPI C++. Even this is a CommonAPI tutorial with no references to any special bindings, we give here some hints concerning existing bindings. For a deeper insight please refer to the binding specific tutorials. We assume that you use the Eclipse tool chain and that everything is properly installed as described in the Integration Guide of this tutorial.
+
+The first step in developing a CommonAPI application likely will be the definition of the RMI interface the client will use to communicate with the server. In the context of CommonAPI, the definition of this interface always happens via the Franca IDL, regardless of which communication mechanism you intend to use in the end.
+
+For this tutorial, create an arbitrarily named file ending in _.fidl_ in your Eclipse project (in this case _E01HelloWorld.fidl_). It is not relevant where in your project you have placed this file, as the code generated from this file will always be put in the automatically created src-gen folder at the top level of the project hierarchy.
+
+Open your newly created _E01HelloWorld.fidl_-file, and type the following lines:
+
+[source,java]
+----
+package commonapi.examples
+
+interface E01HelloWorld {
+	version { major 0 minor 1 }
+
+	method sayHello {
+		in {
+			String name
+		}
+		out {
+			String message
+		}
+	}
+}
+----
+
+Now, save the _.fidl_ file and right click it. As you have installed the CommonAPI code generator and further generators for the bindings, you will see a menu item saying _Common API_, with sub menu items for generating the Common API level code only (_Generate C\++ Code_) and for generating the required glue code (e.g. for D-Bus you find _Generate D-Bus C++ Code_).
+
+Now start the code generators. You will find the generated code in the sub-directory +src-gen+. 
+
+All files that have a the name of your binding (e.g. _DBus_) in their name are glue code required by the binding and are not relevant while developing your application, they only need to be compiled with your application.
+
+All other files that have a _Proxy_ in their name are relevant for you if you develop a client, all other files that have a _Stub_ in their name are relevant for you if you develop a service. A proxy is a class that provides method calls that will result in remote method invocations on the service, plus registration methods for events that can be broadcasted by the service.
+
+A stub is the part of the service that will be called when a remote method invocation from a client arrives. It also contains methods to fire events (broadcasts) to several or all clients. The stub comes in two flavors: one default stub that contains empty implementations of all methods, thereby allowing you to implement only the ones you are interested in, and a Stub skeleton where you have to implement everything yourself before you can use it. A service will have to implement a subclass of either of the two in order to make itself available to the outside world (or just use the default stub if your service should not be able to do anything except firing events).
+
+In this tutorial, we will create both a client and a service in order to be able to see some communication going on.
+
+Start by implementing the client by creating a new +.cpp+ source file in your project (e.g. _e01HelloWorldClient.cpp_). Make sure you have a main method in order to start the client application.
+
+Here, you will need two includes in order to access the Common API client functionality:
+
+[source,{cppstr}]
+----
+#include <iostream>
+#include <string>
+#include <unistd.h>
+
+#include <CommonAPI/CommonAPI.hpp>
+#include <v0_1/commonapi/examples/E01HelloWorldProxy.hpp>
+----
+
+Please note that you always have to include +CommonAPI.hpp+ for accessing the runtime part of CommonAPI and the generated proxy. If your defined interface has a version number then you will find the version in the namespace of your interface class and in the directory structure.     
+
+One of the first things each and every CommonAPI application will do is to get a pointer to the runtime object:
+
+[source,{cppstr}]
+----
+std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
+----
+
+Please ignore for this introduction the +CommonAPI::Runtime::setProperty+ calls (refer to the Integration Guide of this tutorial). 
+
+In order to be able to communicate with a specific service, we need a proxy:
+
+[source,{cppstr}]
+----
+std::string domain = "local";
+std::string instance = "commonapi.examples.HelloWorld";
+std::string connection = "client-sample";
+
+std::shared_ptr<E01HelloWorldProxyDefault> myProxy = runtime->buildProxy<E01HelloWorldProxy>(domain, instance, connection);
+----
+
+The domain and the instance name determine explicitly together with the generated proxy class as template parameter which stub will be addressed by this proxy. The _connection_ is an optional argument. This argument allows to group several proxies in a so-called connection. Internally a connection corresponds to one receiver thread if there is no mainloop integration.
+
+With the instantiation of the proxy, the client is set up and ready to use. In this example we wait for the service to be available, then we start issuing calls:
+
+[source,{cppstr}]
+----
+while (!myProxy->isAvailable())
+    usleep(10);
+
+
+const std::string name = "World";
+CommonAPI::CallStatus callStatus;
+std::string returnMessage;
+
+while (true) {
+    myProxy->sayHello(name, callStatus, returnMessage);
+	if (callStatus != CommonAPI::CallStatus::SUCCESS) {
+	    std::cerr << "Remote call failed!\n";
+		return -1;
+	}
+	std::cout << "Got message: '" << returnMessage << "'\n";
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+}
+----
+
+The implementation of the service works about the same way as implementing the client. The includes that are required are the following:
+
+[source,{cppstr}]
+----
+#include <iostream>
+#include <thread>
+
+#include <CommonAPI/CommonAPI.hpp>
+#include "E01HelloWorldStubImpl.hpp"
+----
+
+In the main function of the service one of the first things to do is to get the runtime object. After that we have to instantiate our stub implementation (here +E01HelloWorldStubImpl+) and then to register it:
+
+[source,{cppstr}]
+----
+std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+
+std::string domain = "local";
+std::string instance = "commonapi.examples.HelloWorld";
+std::string connection = "service-sample";
+
+std::shared_ptr<E01HelloWorldStubImpl> myService = std::make_shared<E01HelloWorldStubImpl>();
+runtime->registerService(domain, instance, myService, connection);
+
+while (true) {
+    std::cout << "Waiting for calls... (Abort with CTRL+C)" << std::endl;
+    std::this_thread::sleep_for(std::chrono::seconds(60));
+}
+----
+
+The implementation of the generated stub method +sayHello+ looks like:
+
+[source,{cppstr}]
+----
+void E01HelloWorldStubImpl::sayHello(const std::shared_ptr<CommonAPI::ClientId> _client,
+		std::string _name,
+		sayHelloReply_t _reply) {
+
+	std::stringstream messageStream;
+
+    messageStream << "Hello " << _name << "!";
+    std::cout << "sayHello('" << _name << "'): '" << messageStream.str() << "'\n";
+
+    _reply(messageStream.str());
+};
+----
+
+Build the two applications using your favourite build system (e.g. see the CMake files in the example folder). If all worked well, you should see communication ongoing (e.g. via dbus-monitor), and you should get output from your client.
+

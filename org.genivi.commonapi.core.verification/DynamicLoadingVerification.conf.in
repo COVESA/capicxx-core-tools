@@ -1,5 +1,0 @@
-{binding:@BINDING_NAME@}
-libpath=@BINDING_SO@
-alias=TestAlias
-genpath=@GLUECODE_SO@
-default

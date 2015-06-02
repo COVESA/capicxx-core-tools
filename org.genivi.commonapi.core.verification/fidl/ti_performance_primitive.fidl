@@ -1,0 +1,19 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.performance.primitive
+
+interface TestInterface {
+	version { major 1 minor 0 }
+
+	method testMethod {
+	    in {
+	        TestArray x
+	    }
+	    out {
+	        TestArray y
+	    }
+	}
+	
+	array TestArray of UInt8
+}

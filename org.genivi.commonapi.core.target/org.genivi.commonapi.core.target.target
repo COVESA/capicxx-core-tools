@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?pde version="3.8"?><target name="CommonAPI Luna SR1" sequenceNumber="32">
+<locations>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.franca.ui.sdk.feature.group" version="0.9.1.201412191134"/>
+<unit id="org.franca.core.sdk.feature.group" version="0.9.1.201412191134"/>
+<repository location="http://franca.eclipselabs.org.codespot.com/git/update_site/releases"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.platform.sdk" version="4.4.1.M20140925-0400"/>
+<unit id="org.eclipse.equinox.sdk.feature.group" version="3.10.0.v20140909-1633"/>
+<unit id="org.eclipse.e4.rcp.R441patch.feature.group" version="1.0.0"/>
+<unit id="org.eclipse.equinox.core.sdk.R441patch.feature.group" version="1.0.0"/>
+<unit id="org.eclipse.equinox.core.feature.R441patch.feature.group" version="1.0.0"/>
+<unit id="org.eclipse.equinox.server.core.R441patch.feature.group" version="1.0.0"/>
+<repository location="http://download.eclipse.org/eclipse/updates/4.4/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.cdt.sdk.feature.group" version="8.5.0.201409172108"/>
+<unit id="org.eclipse.xtend.sdk.feature.group" version="2.7.2.v201409160908"/>
+<repository location="http://download.eclipse.org/releases/luna"/>
+</location>
+</locations>
+</target>

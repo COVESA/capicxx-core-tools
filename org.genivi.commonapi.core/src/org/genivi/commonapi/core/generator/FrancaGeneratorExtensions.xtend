@@ -10,15 +10,19 @@ import com.google.common.base.Charsets
 import com.google.common.hash.Hasher
 import com.google.common.hash.Hashing
 import com.google.common.primitives.Ints
+import java.math.BigInteger
+import java.util.ArrayList
 import java.util.Collection
+import java.util.HashMap
+import java.util.HashSet
 import java.util.List
+import java.util.Map
+import java.util.Set
 import org.eclipse.core.resources.IResource
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
 import org.eclipse.core.runtime.preferences.DefaultScope
 import org.eclipse.core.runtime.preferences.InstanceScope
-import org.eclipse.emf.common.util.BasicEList
-import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
@@ -27,12 +31,16 @@ import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FEnumerationType
+import org.franca.core.franca.FEnumerator
+import org.franca.core.franca.FExpression
 import org.franca.core.franca.FField
+import org.franca.core.franca.FIntegerConstant
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FStringConstant
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
@@ -40,23 +48,78 @@ import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FTypedElement
 import org.franca.core.franca.FUnionType
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor.DefaultEnumBackingType
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor.EnumBackingType
+import org.franca.core.franca.FVersion
+import org.franca.core.franca.FrancaFactory
+import org.genivi.commonapi.core.deployment.PropertyAccessor
+import org.genivi.commonapi.core.deployment.PropertyAccessor.DefaultEnumBackingType
+import org.genivi.commonapi.core.deployment.PropertyAccessor.EnumBackingType
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.osgi.framework.FrameworkUtil
 
 import static com.google.common.base.Preconditions.*
 
+import static extension java.lang.Integer.*
+import org.franca.core.franca.FConstantDef
+import org.franca.core.franca.FQualifiedElementRef
+import org.franca.core.franca.FInitializerExpression
+
 class FrancaGeneratorExtensions {
+	
+	def boolean isComplex(String _typeName) {
+        if (_typeName == "bool" || 
+            _typeName == "int8" ||
+            _typeName == "int16" ||
+            _typeName == "int32" ||
+            _typeName == "int64" ||
+            _typeName == "uint8" ||
+            _typeName == "uint16" ||
+            _typeName == "uint32" ||
+            _typeName == "uint64") {
+            return false
+        }
+        return true
+    }
+
+    def String generateIndent(int _indent) {
+        var String  empty = ""
+        var int i = 0
+        while (i < _indent) {
+            empty = empty + "    "
+            i = i + 1
+        }
+        return empty
+    }
+    
+    def String getRelativeName(FModelElement _element) {
+        if (_element instanceof FTypeCollection)
+            return ""
+        val String next = (_element.eContainer as FModelElement).relativeName
+        if (next != "")
+            return next + "_" + _element.name
+        return _element.name
+    }
 
     def String getFullyQualifiedName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel)
             return (fModelElement.eContainer as FModel).name + '.' + fModelElement.elementName
         return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.elementName
     }
-
+    
+     def String getFullyQualifiedCppName(FModelElement fModelElement) {
+        if (fModelElement.eContainer instanceof FModel) {
+        	var name = (fModelElement.eContainer as FModel).name
+        	if (fModelElement instanceof FTypeCollection) {
+        		val FVersion itsVersion = fModelElement.version
+        		if (itsVersion != null) {
+        			name = fModelElement.versionPrefix + name
+        		}
+        	}
+            return "::" + (name + "::" + fModelElement.elementName).replace(".", "::")
+        }
+        return "::" + ((fModelElement.eContainer as FModelElement).fullyQualifiedName + "::" + fModelElement.elementName).replace(".", "::")
+    }
+    
     def splitCamelCase(String string) {
         string.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
     }
@@ -79,7 +142,7 @@ class FrancaGeneratorExtensions {
     }
 
     def FTypeCollection getContainingTypeCollection(FModelElement fModelElement) {
-        if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
+        if (fModelElement.eContainer != null && fModelElement.eContainer instanceof FModel) {
             return null
         }
         if (fModelElement.eContainer instanceof FTypeCollection) {
@@ -107,14 +170,13 @@ class FrancaGeneratorExtensions {
     }
 
     def getElementName(FModelElement fModelElement) {
-        if(fModelElement.name.nullOrEmpty && fModelElement instanceof FTypeCollection) {
-            return "AnonymousTypeCollection"
+        if ((fModelElement.name == null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
+            return "__Anonymous__"
         }
         else {
             return fModelElement.name
         }
     }
-
 
     def private dispatch List<String> getNamespaceAsList(FModel fModel) {
         newArrayList(fModel.name.split("\\."))
@@ -146,7 +208,7 @@ class FrancaGeneratorExtensions {
     def getRelativeNameReference(FModelElement destination, EObject source) {
         var nameReference = destination.elementName
 
-        if (!destination.eContainer.equals(source)) {
+        if (destination.eContainer != null && !destination.eContainer.equals(source)) {
             val subnamespaceList = destination.getSubnamespaceList(source)
             if (!subnamespaceList.empty)
                 nameReference = subnamespaceList.join('::') + '::' + nameReference
@@ -156,11 +218,11 @@ class FrancaGeneratorExtensions {
     }
 
     def getHeaderFile(FTypeCollection fTypeCollection) {
-        fTypeCollection.elementName + ".h"
+        fTypeCollection.elementName + ".hpp"
     }
 
     def getHeaderPath(FTypeCollection fTypeCollection) {
-        fTypeCollection.model.directoryPath + '/' + fTypeCollection.headerFile
+        fTypeCollection.versionPathPrefix + fTypeCollection.model.directoryPath + '/' + fTypeCollection.headerFile
     }
 
     def getSourceFile(FTypeCollection fTypeCollection) {
@@ -168,15 +230,15 @@ class FrancaGeneratorExtensions {
     }
 
     def getSourcePath(FTypeCollection fTypeCollection) {
-        fTypeCollection.model.directoryPath + '/' + fTypeCollection.sourceFile
+        fTypeCollection.versionPathPrefix + fTypeCollection.model.directoryPath + '/' + fTypeCollection.sourceFile
     }
 
     def getProxyBaseHeaderFile(FInterface fInterface) {
-        fInterface.elementName + "ProxyBase.h"
+        fInterface.elementName + "ProxyBase.hpp"
     }
 
     def getProxyBaseHeaderPath(FInterface fInterface) {
-        fInterface.model.directoryPath + '/' + fInterface.proxyBaseHeaderFile
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyBaseHeaderFile
     }
 
     def getProxyBaseClassName(FInterface fInterface) {
@@ -184,31 +246,39 @@ class FrancaGeneratorExtensions {
     }
 
     def getProxyHeaderFile(FInterface fInterface) {
-        fInterface.elementName + "Proxy.h"
+        fInterface.elementName + "Proxy.hpp"
     }
 
     def getProxyHeaderPath(FInterface fInterface) {
-        fInterface.model.directoryPath + '/' + fInterface.proxyHeaderFile
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyHeaderFile
     }
 
     def getStubDefaultHeaderFile(FInterface fInterface) {
-        fInterface.elementName + "StubDefault.h"
+        fInterface.elementName + "Stub" + skeletonNamePostfix + ".hpp"
     }
+
+	def getSkeletonNamePostfix() {
+		FPreferences::instance.getPreference(PreferenceConstants::P_SKELETONPOSTFIX, "Default")
+	}
+	
+	def getHeaderDefineName(FInterface fInterface) {
+		fInterface.defineName + "_STUB_" + skeletonNamePostfix.toUpperCase()
+	}
 
     def getStubDefaultHeaderPath(FInterface fInterface) {
-        fInterface.model.directoryPath + '/' + fInterface.stubDefaultHeaderFile
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.stubDefaultHeaderFile
     }
 
-    def getStubDefaultClassName(FInterface fInterface) {
-        fInterface.elementName + 'StubDefault'
+	def getStubDefaultClassName(FInterface fInterface) {
+        fInterface.elementName + "Stub" + skeletonNamePostfix
     }
 
     def getStubDefaultSourceFile(FInterface fInterface) {
-        fInterface.elementName + "StubDefault.cpp"
+        fInterface.elementName + "Stub" + skeletonNamePostfix + ".cpp"
     }
 
     def getStubDefaultSourcePath(FInterface fInterface) {
-        fInterface.model.directoryPath + '/' + fInterface.getStubDefaultSourceFile
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.getStubDefaultSourceFile
     }
 
     def getStubRemoteEventClassName(FInterface fInterface) {
@@ -224,16 +294,16 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubHeaderFile(FInterface fInterface) {
-        fInterface.elementName + "Stub.h"
+        fInterface.elementName + "Stub.hpp"
     }
 
     def getStubHeaderPath(FInterface fInterface) {
-        fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
     }
 
     def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders,
         Collection<String> libraryHeaders) {
-        if (!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
+        if (!fInterface.broadcasts.filter[!selective].empty) {
             libraryHeaders.add("unordered_set")
         }
 
@@ -242,8 +312,8 @@ class FrancaGeneratorExtensions {
 
     def generateSelectiveBroadcastProxyIncludes(FInterface fInterface, Collection<String> generatedHeaders,
         Collection<String> libraryHeaders) {
-        if (!fInterface.broadcasts.filter[selective.nullOrEmpty].empty) {
-            libraryHeaders.add("CommonAPI/types.h")
+        if (!fInterface.broadcasts.filter[!selective].empty) {
+            libraryHeaders.add("CommonAPI/Types.hpp")
         }
 
         return null
@@ -262,102 +332,178 @@ class FrancaGeneratorExtensions {
     }
 
     def hasSelectiveBroadcasts(FInterface fInterface) {
-        !fInterface.broadcasts.filter[!selective.nullOrEmpty].empty
+        !fInterface.broadcasts.filter[selective].empty
     }
 
-    def generateDefinition(FMethod fMethod) {
-        fMethod.generateDefinitionWithin(null)
+	def Collection<FMethod> getMethodsWithError(FInterface _interface) {
+		val Map<String, FMethod> itsMethods = new HashMap<String, FMethod>()
+		for (method : _interface.methods.filter[errors != null]) {
+			var existing = itsMethods.get(method.name)
+			if (existing == null) {
+				itsMethods.put(method.name, method)
+			} else {
+				val List<FEnumerator> itsAdditionals = new ArrayList<FEnumerator>()
+				for (e : method.errors.enumerators) {
+					var found = false
+					for (f : existing.errors.enumerators) {
+						if (f.name == e.name) {
+							found = true
+						}
+					}
+					if (!found)
+						itsAdditionals.add(e)
+				}
+				existing.errors.enumerators.addAll(itsAdditionals)
+			}
+		}
+		return itsMethods.values
+	}
+
+    def generateDefinition(FMethod fMethod, boolean _isDefault) {
+        fMethod.generateDefinitionWithin(null, _isDefault)
     }
 
-    def generateDefinitionWithin(FMethod fMethod, String parentClassName) {
+    def generateDefinitionWithin(FMethod fMethod, String parentClassName, boolean _isDefault) {
         var definition = 'void '
         if (FTypeGenerator::isdeprecated(fMethod.comment))
             definition = "COMMONAPI_DEPRECATED " + definition
         if (!parentClassName.nullOrEmpty)
             definition = definition + parentClassName + '::'
 
-        definition = definition + fMethod.elementName + '(' + fMethod.generateDefinitionSignature + ')'
+        definition = definition + fMethod.elementName + '(' + fMethod.generateDefinitionSignature(_isDefault) + ')'
 
         return definition
     }
 
-    def generateDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + elementName].join(', ')
+    def generateDefinitionSignature(FMethod fMethod, boolean _isDefault) {
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod, true) + ' &_' + elementName].join(', ')
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
 
-        signature = signature + 'CommonAPI::CallStatus& callStatus'
+        signature = signature + 'CommonAPI::CallStatus &_status'
 
         if (fMethod.hasError)
-            signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
+            signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + ' &_error'
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + elementName].join(', ')
+            signature = signature + ', ' + fMethod.outArgs.map[getTypeName(fMethod, true) + ' &_' + elementName].join(', ')
 
-        return signature
-    }
-
-    def generateStubSignatureCompatibility(FMethod fMethod) {
-        var signature = fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
-        if (!fMethod.inArgs.empty && (fMethod.hasError || !fMethod.outArgs.empty))
-            signature = signature + ', '
-
-        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+        if (!fMethod.fireAndForget) {
+            signature += ", const CommonAPI::CallInfo *_info"
+            if (_isDefault)
+                signature += " = nullptr"
+        }
         return signature
     }
 
     def generateStubSignature(FMethod fMethod) {
-        var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
+        var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
 
-        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
+        
+        if (!fMethod.isFireAndForget) {
+        	if (signature != "")
+        		signature = signature + ", ";
+        	signature = signature + fMethod.elementName + "Reply_t _reply";
+        }
+        
+        return signature
+    }
+    
+    def generateStubReplySignature(FMethod fMethod) {
+        var signature = ''
 
-        if (fMethod.hasError || !fMethod.outArgs.empty)
+        if (fMethod.hasError)
+            signature = signature + fMethod.getErrorNameReference(fMethod.eContainer) + ' _error'
+        if (fMethod.hasError && !fMethod.outArgs.empty)
             signature = signature + ', '
 
-        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
+        if (!fMethod.outArgs.empty)
+            signature = signature + fMethod.outArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
 
         return signature
     }
+    
+    def String generateDummyArgumentInitializations(FMethod fMethod) {
+       var String retval = ""
+       for(list_element : fMethod.outArgs) {
+          retval += getTypeName(list_element, fMethod, true)  + ' ' + list_element.elementName
+          if (((list_element.type.derived instanceof FStructType
+             && (list_element.type.derived as FStructType).hasPolymorphicBase))
+             || list_element.array){
+                retval += " = {}"
+          } else if(list_element.type.predefined != null) {
+             // primitive types
+             switch list_element.type.predefined {
+               case FBasicTypeId::BOOLEAN: retval+= " = false"
+               case FBasicTypeId::INT8: retval += " = 0"
+               case FBasicTypeId::UINT8: retval += " = 0"
+               case FBasicTypeId::INT16: retval += " = 0"
+               case FBasicTypeId::UINT16: retval += " = 0"
+               case FBasicTypeId::INT32: retval += " = 0"
+               case FBasicTypeId::UINT32: retval += " = 0"
+               case FBasicTypeId::INT64: retval += " = 0"
+               case FBasicTypeId::UINT64: retval += " = 0"
+               case FBasicTypeId::FLOAT: retval += " = 0.0f"
+               case FBasicTypeId::DOUBLE: retval += " = 0.0"
+               case FBasicTypeId::STRING: retval += " = \"\""
+               case FBasicTypeId::BYTE_BUFFER: retval += " = {}"
+               default: {}//System.out.println("No initialization generated for" +
+                   //" non-basic type: " + list_element.getName)
+             }
+          }
+          retval += ";\n"
+       }
+       return retval
+    }
 
-    def generateStubSignatureOldStyle(FMethod fMethod) {
-        var signature = ''
+    def generateDummyArgumentDefinitions(FMethod fMethod) {
+      var definition = ''
+      if (fMethod.hasError)
+         definition = fMethod.getErrorNameReference(fMethod.eContainer) + ' error;\n'
+      if (!fMethod.outArgs.empty)
+         definition = definition + generateDummyArgumentInitializations(fMethod)
+      return definition
+    }
 
-        signature = signature + fMethod.inArgs.map[getTypeName(fMethod.model) + ' ' + elementName].join(', ')
-
-        if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
-            signature = signature + ', '
-
-        signature = signature + generateStubSignatureErrorsAndOutArgs(fMethod)
-
-        return signature
+	def generateDummyArgumentList(FMethod fMethod) {
+        var arguments = ''
+        if (fMethod.hasError)
+            arguments = "error"
+	    if (!fMethod.outArgs.empty) {
+	        if (arguments != '')
+	            arguments = arguments + ', '
+            arguments = arguments + fMethod.outArgs.map[elementName].join(', ')
+    	}
+        return arguments
     }
 
     def generateFireSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface) {
-        var signature = 'const std::shared_ptr<CommonAPI::ClientId> clientId'
+        var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
 
         if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
 
         signature = signature +
-            fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')
+            fBroadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')
 
         return signature
     }
 
     def generateSendSelectiveSignatur(FBroadcast fBroadcast, FInterface fInterface, Boolean withDefault) {
-        var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface.model) + '& ' + elementName].join(', ')
+        var signature = fBroadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')
 
         if (!fBroadcast.outArgs.empty)
             signature = signature + ', '
 
-        signature = signature + 'const std::shared_ptr<CommonAPI::ClientIdList> receivers'
+        signature = signature + 'const std::shared_ptr<CommonAPI::ClientIdList> _receivers'
 
         if (withDefault)
-            signature = signature + ' = NULL'
+            signature = signature + ' = nullptr'
 
         return signature
     }
@@ -366,24 +512,28 @@ class FrancaGeneratorExtensions {
         var signature = ''
 
         if (fMethod.hasError)
-            signature = signature + fMethod.getErrorNameReference(fMethod.eContainer) + '& methodError'
+            signature = signature + fMethod.getErrorNameReference(fMethod.eContainer) + ' &_error'
         if (fMethod.hasError && !fMethod.outArgs.empty)
             signature = signature + ', '
 
         if (!fMethod.outArgs.empty)
-            signature = signature + fMethod.outArgs.map[getTypeName(fMethod.model) + '& ' + elementName].join(', ')
+            signature = signature + fMethod.outArgs.map[getTypeName(fMethod, true) + ' &_' + elementName].join(', ')
 
         return signature
     }
 
-    def generateArgumentsToStubCompatibility(FMethod fMethod) {
-        var arguments = fMethod.inArgs.map[elementName].join(', ')
+    def generateArgumentsToStub(FMethod fMethod) {
+        var arguments = ' _client'
+        
+        if (!fMethod.inArgs.empty)
+        	arguments = arguments + ', ' + fMethod.inArgs.map[elementName].join(', ')
 
-        if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
+        if ((fMethod.hasError || !fMethod.outArgs.empty))
             arguments = arguments + ', '
 
         if (fMethod.hasError)
-            arguments = arguments + 'methodError'
+            arguments = arguments + '_error'
+            
         if (fMethod.hasError && !fMethod.outArgs.empty)
             arguments = arguments + ', '
 
@@ -393,29 +543,80 @@ class FrancaGeneratorExtensions {
         return arguments
     }
 
-    def generateAsyncDefinition(FMethod fMethod) {
-        fMethod.generateAsyncDefinitionWithin(null)
+    def generateArgumentsToStubOldStyle(FMethod fMethod) {
+        var arguments = fMethod.inArgs.map[elementName].join(', ')
+
+        if ((fMethod.hasError || !fMethod.outArgs.empty) && !fMethod.inArgs.empty)
+            arguments = arguments + ', '
+
+        if (fMethod.hasError)
+            arguments = arguments + '_error'
+        if (fMethod.hasError && !fMethod.outArgs.empty)
+            arguments = arguments + ', '
+
+        if (!fMethod.outArgs.empty)
+            arguments = arguments + fMethod.outArgs.map[elementName].join(', ')
+
+        return arguments
     }
 
-    def generateAsyncDefinitionWithin(FMethod fMethod, String parentClassName) {
+    def generateAsyncDefinition(FMethod fMethod, boolean _isDefault) {
+        fMethod.generateAsyncDefinitionWithin(null, _isDefault)
+    }
+
+    def generateAsyncDefinitionWithin(FMethod fMethod, String parentClassName, boolean _isDefault) {
         var definition = 'std::future<CommonAPI::CallStatus> '
 
         if (!parentClassName.nullOrEmpty) {
             definition = definition + parentClassName + '::'
         }
 
-        definition = definition + fMethod.elementName + 'Async(' + fMethod.generateAsyncDefinitionSignature + ')'
+        definition = definition + fMethod.elementName + 'Async(' + fMethod.generateAsyncDefinitionSignature(_isDefault) + ')'
 
         return definition
     }
 
-    def generateAsyncDefinitionSignature(FMethod fMethod) {
-        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod.model) + '& ' + elementName].join(', ')
+    def generateAsyncDefinitionSignature(FMethod fMethod, boolean _isDefault) {
+        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod, true) + ' &_' + elementName].join(', ')
         if (!fMethod.inArgs.empty) {
             signature = signature + ', '
         }
-        return signature + fMethod.asyncCallbackClassName + ' callback'
+        
+        signature += fMethod.asyncCallbackClassName + ' _callback'
+        signature += ", const CommonAPI::CallInfo *_info"
+        if (_isDefault)
+            signature += " = nullptr"
+          
+        return signature
     }
+    
+    def getErrorType(FMethod _method) {
+    	var errorType = ""
+    	if (_method.hasError) {
+    		errorType = _method.getErrorNameReference(_method.eContainer)
+    	}
+    	return errorType
+    }
+
+	def getInTypeList(FMethod _method) {
+		return _method.inArgs.map[getTypeName(_method, true)].join(', ')
+	}
+    
+	def getOutTypeList(FMethod _method) {
+		return _method.outArgs.map[getTypeName(_method, true)].join(', ')
+	}
+	
+	def getErrorAndOutTypeList(FMethod _method) {
+		val errorType = _method.errorType
+		val outTypes = _method.outTypeList
+		
+		var errorAndOutTypes = errorType
+		if (errorType != "" && outTypes != "") 
+			errorAndOutTypes = errorAndOutTypes + ", "
+		errorAndOutTypes = errorAndOutTypes + outTypes	
+			
+		return errorAndOutTypes	
+	}
 
     def private String getBasicMangledName(FBasicTypeId basicType) {
         switch (basicType) {
@@ -445,6 +646,9 @@ class FrancaGeneratorExtensions {
                 return "s"
             case FBasicTypeId::BYTE_BUFFER:
                 return "au8"
+			default: {
+				return null
+			}
         }
     }
 
@@ -522,7 +726,7 @@ class FrancaGeneratorExtensions {
             signature = signature + ', const ' + fMethod.getErrorNameReference(fMethod.eContainer) + '&'
 
         if (!fMethod.outArgs.empty)
-            signature = signature + ', ' + fMethod.outArgs.map['const ' + getTypeName(fMethod.model) + '&'].join(', ')
+            signature = signature + ', ' + fMethod.outArgs.map['const ' + getTypeName(fMethod, true) + '&'].join(', ')
 
         return signature
     }
@@ -540,7 +744,7 @@ class FrancaGeneratorExtensions {
     def getErrorNameReference(FMethod fMethod, EObject source) {
         checkArgument(fMethod.hasError, 'FMethod has no error: ' + fMethod)
         if (fMethod.errorEnum != null) {
-            return fMethod.errorEnum.getRelativeNameReference((source as FModelElement).model)
+            return fMethod.errorEnum.getElementName(fMethod, true)
         }
 
         var errorNameReference = fMethod.errors.errorName
@@ -595,7 +799,7 @@ class FrancaGeneratorExtensions {
     def getClassName(FBroadcast fBroadcast) {
         var className = fBroadcast.elementName.toFirstUpper
 
-        if (!fBroadcast.selective.nullOrEmpty)
+        if (fBroadcast.selective)
             className = className + 'Selective'
 
         className = className + 'Event'
@@ -605,6 +809,10 @@ class FrancaGeneratorExtensions {
 
     def generateGetMethodDefinition(FBroadcast fBroadcast) {
         fBroadcast.generateGetMethodDefinitionWithin(null)
+    }
+    
+    def String getTypes(FBroadcast _broadcast) {
+    	return _broadcast.outArgs.map[getTypeName(_broadcast, true)].join(', ')
     }
 
     def generateGetMethodDefinitionWithin(FBroadcast fBroadcast, String parentClassName) {
@@ -658,25 +866,27 @@ class FrancaGeneratorExtensions {
         'const std::shared_ptr<CommonAPI::ClientId> clientId, bool& success'
     }
 
-    def boolean isSelective(FBroadcast fBroadcast) {
-        return !fBroadcast.selective.nullOrEmpty
-    }
-
-    def getTypeName(FTypedElement element, EObject source) {
-        var typeName = element.type.getNameReference(source)
-
-        if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase)
+    def String getTypeName(FTypedElement _element, FModelElement _source, boolean _isOther) {
+    	var String typeName = _element.type.getElementType(_source, _isOther)
+    	
+        if (_element.type.derived instanceof FStructType && (_element.type.derived as FStructType).hasPolymorphicBase)
             typeName = 'std::shared_ptr<' + typeName + '>'
 
-        if ("[]".equals(element.array)) {
-            if (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase) {
-                typeName = 'std::vector<std::shared_ptr<' + element.type.getNameReference(source) + '>>'
-            } else {
-                typeName = 'std::vector<' + element.type.getNameReference(source) + '>'
-            }
+        if (_element.array) {
+            typeName = 'std::vector<' + typeName + '>'
         }
 
         return typeName
+    }
+    
+    def String getElementType(FTypeRef _typeRef, FModelElement _container, boolean _isOther) {
+    	var String typeName
+    	if (_typeRef.derived != null) {
+	   		typeName = _typeRef.derived.getElementName(_container, _isOther)
+    	} else if (_typeRef.predefined != null) {
+    		typeName = _typeRef.predefined.primitiveTypeName
+    	}
+    	return typeName
     }
 
     def boolean isPolymorphic(FTypeRef typeRef) {
@@ -694,7 +904,7 @@ class FrancaGeneratorExtensions {
         (fMethodErrors.eContainer as FMethod).elementName + 'Error'
     }
 
-    def getBackingType(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def getBackingType(FEnumerationType fEnumerationType, PropertyAccessor deploymentAccessor) {
         if (deploymentAccessor.getEnumBackingType(fEnumerationType) == EnumBackingType::UseDefault) {
             if (fEnumerationType.containingInterface != null) {
                 switch (deploymentAccessor.getDefaultEnumBackingType(fEnumerationType.containingInterface)) {
@@ -734,11 +944,76 @@ class FrancaGeneratorExtensions {
                 return FBasicTypeId::INT32
             case EnumBackingType::Int64:
                 return FBasicTypeId::INT64
+			default: {
+				return FBasicTypeId::INT32
+			}
         }
-        return FBasicTypeId::INT32
     }
 
-    def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {
+    def String getBaseType(FEnumerationType _enumeration, String _backingType) {
+        var String baseType
+        if (_enumeration.base != null) {
+            baseType = _enumeration.base.getElementName(_enumeration, false)
+        } else {
+            baseType = "CommonAPI::Enumeration<" + _backingType + ">"
+        }
+        return baseType
+    }
+
+	def private getMaximumEnumerationValue(FEnumerationType _enumeration) {
+		var int maximum = 0;
+		for (literal : _enumeration.enumerators) {
+			if (literal.value != null && literal.value != "") {
+				val int literalValue = Integer.parseInt(literal.value.enumeratorValue) 
+				if (maximum < literalValue)
+					maximum = literalValue
+			}
+		}
+		return maximum
+	} 
+
+	def void setEnumerationValues(FEnumerationType _enumeration) {
+		var int currentValue = 0
+		val predefineEnumValues = new ArrayList<String>()
+
+		// collect all predefined enum values
+		for (literal : _enumeration.enumerators) {
+			if (literal.value != null) {
+				System.out.println(literal.value)
+				predefineEnumValues.add(literal.value.enumeratorValue)
+			}
+		}
+		if (_enumeration.base != null) {
+			setEnumerationValues(_enumeration.base)
+			currentValue = getMaximumEnumerationValue(_enumeration.base) + 1
+		}
+
+		for (literal : _enumeration.enumerators) {
+			if (literal.value == null || literal.value == "") {
+				// not predefined
+				while (predefineEnumValues.contains(String.valueOf(currentValue))) {
+					// increment it, if this was found in the list of predefined values
+					currentValue += 1
+				}
+				literal.setValue(toExpression(Integer.toString(currentValue)))
+			} else {
+				var enumValue = literal.value.enumeratorValue
+				if (enumValue != null) {
+					try {
+						val int literalValue = Integer.parseInt(enumValue)
+						literal.setValue(toExpression(Integer.toString(literalValue)))
+					} catch (NumberFormatException e) {
+						literal.setValue(toExpression(Integer.toString(currentValue)))
+					}
+				} else {
+					literal.setValue(toExpression(Integer.toString(currentValue)))
+				}
+			}
+			currentValue += 1
+		}
+	}
+
+   def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {
         switch fBasicTypeId {
             case FBasicTypeId::BOOLEAN: "bool"
             case FBasicTypeId::INT8: "int8_t"
@@ -757,8 +1032,8 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def String typeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor, FField forThisElement) {
-        if (forThisElement.array != null && forThisElement.array.equals("[]")) {
+    def String typeStreamSignature(FTypeRef fTypeRef, PropertyAccessor deploymentAccessor, FField forThisElement) {
+        if (forThisElement.array) {
             var String ret = ""
             ret = ret + "typeOutputStream.beginWriteVectorType();\n"
             ret = ret + fTypeRef.actualTypeStreamSignature(deploymentAccessor)
@@ -768,13 +1043,43 @@ class FrancaGeneratorExtensions {
         return fTypeRef.actualTypeStreamSignature(deploymentAccessor)
     }
 
-    def String actualTypeStreamSignature(FTypeRef fTypeRef, DeploymentInterfacePropertyAccessor deploymentAccessor) {
+    def String actualTypeStreamSignature(FTypeRef fTypeRef, PropertyAccessor deploymentAccessor) {
         if (fTypeRef.derived != null) {
             return fTypeRef.derived.typeStreamFTypeSignature(deploymentAccessor)
         }
 
         return fTypeRef.predefined.basicTypeStreamSignature
     }
+
+	def String createSerials(FStructType fStructType) {
+		var String serials;
+		serials = "static const CommonAPI::Serial " 
+				  + fStructType.elementName.toUpperCase() + "_SERIAL = 0x"
+				  + getSerialId(fStructType).toHexString.toUpperCase() + ";\n";
+		for (derived : fStructType.derivedFStructTypes)
+			serials = serials + createSerials(derived)
+		return serials
+	}
+	
+	def String generateCases(FStructType fStructType, FModelElement parent, boolean qualified) {
+		var String itsCases = "case ";
+			
+		if (parent != null)
+			itsCases = itsCases + parent.elementName + "::"
+					
+		if (qualified) {
+			 itsCases = itsCases 
+			 if (fStructType.containingInterface != null)
+			     itsCases = itsCases + fStructType.containingInterface.elementName  + "::";
+		}
+		
+		itsCases = itsCases + fStructType.elementName.toUpperCase() + "_SERIAL:\n";
+
+		for (derived : fStructType.derivedFStructTypes)
+			itsCases = itsCases + derived.generateCases(parent, qualified);
+
+		return itsCases;
+	}
 
     def private String getBasicTypeStreamSignature(FBasicTypeId fBasicTypeId) {
         switch fBasicTypeId {
@@ -791,46 +1096,51 @@ class FrancaGeneratorExtensions {
             case FBasicTypeId::DOUBLE: return "typeOutputStream.writeDoubleType();"
             case FBasicTypeId::STRING: return "typeOutputStream.writeStringType();"
             case FBasicTypeId::BYTE_BUFFER: return "typeOutputStream.writeByteBufferType();"
+			default: return "UNDEFINED"
         }
     }
 
     def private dispatch String typeStreamFTypeSignature(FTypeDef fTypeDef,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         return fTypeDef.actualType.actualTypeStreamSignature(deploymentAccessor)
     }
 
     def private dispatch String typeStreamFTypeSignature(FArrayType fArrayType,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteVectorType();\n' +
             fArrayType.elementType.actualTypeStreamSignature(deploymentAccessor) + '\n' +
             'typeOutputStream.endWriteVectorType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FMapType fMap,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteMapType();\n' + fMap.keyType.actualTypeStreamSignature(deploymentAccessor) + '\n' +
             fMap.valueType.actualTypeStreamSignature(deploymentAccessor) + '\n' + 'typeOutputStream.endWriteMapType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FStructType fStructType,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.beginWriteStructType();\n' +
             fStructType.getElementsTypeStreamSignature(deploymentAccessor) + '\n' +
             'typeOutputStream.endWriteStructType();'
     }
 
     def private dispatch String typeStreamFTypeSignature(FEnumerationType fEnumerationType,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        return fEnumerationType.getBackingType(deploymentAccessor).basicTypeStreamSignature
+        PropertyAccessor deploymentAccessor) {
+        val backingType = fEnumerationType.getBackingType(deploymentAccessor)
+        if (backingType != FBasicTypeId.UNDEFINED)
+            return backingType.basicTypeStreamSignature
+    
+        return FBasicTypeId.INT32.basicTypeStreamSignature
     }
 
     def private dispatch String typeStreamFTypeSignature(FUnionType fUnionType,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         return 'typeOutputStream.writeVariantType();'
     }
 
     def private String getElementsTypeStreamSignature(FStructType fStructType,
-        DeploymentInterfacePropertyAccessor deploymentAccessor) {
+        PropertyAccessor deploymentAccessor) {
         var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor, it)].join
 
         if (fStructType.base != null)
@@ -889,6 +1199,10 @@ class FrancaGeneratorExtensions {
             return true;
 
         return fStructType.base != null && fStructType.base.hasPolymorphicBase
+    }
+    
+    def boolean hasDerivedTypes(FStructType fStructType) {
+    	return !fStructType.derivedFStructTypes.empty
     }
 
     def getSerialId(FStructType fStructType) {
@@ -957,7 +1271,7 @@ class FrancaGeneratorExtensions {
         return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
             filter[it instanceof FStructType].map[it as FStructType].filter[base == fStructType]
     }
-
+    
     def generateCppNamespace(FModel fModel) '''
     «fModel.namespaceAsList.map[toString].join("::")»::'''
 
@@ -973,8 +1287,49 @@ class FrancaGeneratorExtensions {
         «ENDFOR»
     '''
 
+    def generateVersionNamespaceBegin(FTypeCollection _tc) '''
+        «var FVersion itsVersion = _tc.version»
+        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+            namespace v«itsVersion.major.toString»_«itsVersion.minor.toString» {
+        «ENDIF»  
+    '''
+
+    def generateVersionNamespaceEnd(FTypeCollection _tc) '''
+        «var FVersion itsVersion = _tc.version»
+        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+            } // namespace v«itsVersion.major.toString»_«itsVersion.minor.toString»
+        «ENDIF»
+    '''
+
+	def generateDeploymentNamespaceBegin(FTypeCollection _tc) '''
+        namespace «_tc.elementName»_ {
+    '''
+
+    def generateDeploymentNamespaceEnd(FTypeCollection _tc) '''
+        } // namespace «_tc.elementName»_
+    '''
+    
+    def getVersionPrefix(FTypeCollection _tc) {
+        var String prefix = "::"
+        var FVersion itsVersion = _tc.version
+        if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
+            prefix += "v" + itsVersion.major.toString + "_" + itsVersion.minor.toString + "::"
+        }
+        return prefix
+    }
+
+    def getVersionPathPrefix(FTypeCollection _tc) {
+    	var String prefix = ""
+        var FVersion itsVersion = _tc.version
+        if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
+            prefix = "v" + itsVersion.major.toString + "_" + itsVersion.minor.toString + "/"
+        }
+        return prefix
+    }
+    
+	// TODO: Remove the following method
     def isFireAndForget(FMethod fMethod) {
-        return !fMethod.fireAndForget.nullOrEmpty
+        return fMethod.fireAndForget
     }
 
     def getFilePath(Resource resource) {
@@ -991,7 +1346,7 @@ class FrancaGeneratorExtensions {
         if (FrameworkUtil::getBundle(this.getClass()) != null) {
             var returnValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "")
             returnValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, returnValue)
-            returnValue = FPreferences::instance.getPreference(res, PreferenceConstants::P_LICENSE, returnValue)
+            returnValue = FPreferences::instance.getPreference(PreferenceConstants::P_LICENSE, returnValue)
             return returnValue
         }
         return ""
@@ -1057,7 +1412,7 @@ class FrancaGeneratorExtensions {
     }
 
     def stubRegisterManagedMethodImpl(FInterface fInterface) {
-        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '> stub, const std::string& instance)'
+        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '> _stub, const std::string &_instance)'
     }    
 
     def stubDeregisterManagedName(FInterface fInterface) {
@@ -1071,37 +1426,276 @@ class FrancaGeneratorExtensions {
     def proxyManagerMemberName(FInterface fInterface) {
         'proxyManager' + fInterface.elementName + '_'
     }
-
-    def EList<FMethod> getInheritedMethods(FInterface fInterface) {
+    
+    def Set<FInterface> getBaseInterfaces(FInterface _interface) {
+    	val Set<FInterface> baseInterfaces = new HashSet<FInterface>()
+    	if (_interface.base != null) {
+    		baseInterfaces.add(_interface.base)
+    		baseInterfaces.addAll(getBaseInterfaces(_interface.base))
+    	}
+    	return baseInterfaces
+    }
+    
+    def generateBaseInstantiations(FInterface _interface) {
+		val Set<FInterface> baseInterfaces = getBaseInterfaces(_interface)
+		return baseInterfaces.map[getTypeCollectionName(_interface) + "(_address, _connection)"].join(',\n')
+	}
+	
+    def generateDBusBaseInstantiations(FInterface _interface) {
+		val Set<FInterface> baseInterfaces = getBaseInterfaces(_interface)
+		return baseInterfaces.map[
+					getTypeCollectionName(_interface) +
+					"DBusProxy(_address, _connection)"		
+		].join(',\n')
+	}
+	
+	def String generateBaseRemoteHandlerConstructorsCalls(FInterface _interface) {
+		val Set<FInterface> baseInterfaces = getBaseInterfaces(_interface)
+		var String itsCalls = ""
+		itsCalls = baseInterfaces.map[getTypeCollectionName(_interface) + "StubDefault::RemoteEventHandler(_defaultStub)"].join(', ')
+		if (itsCalls != "")
+			itsCalls = itsCalls + ','
+		return itsCalls
+	}
+	
+    def List<FMethod> getInheritedMethods(FInterface fInterface) {
+    	val List<FMethod> result = new ArrayList<FMethod>()
+    	
         if(fInterface.base == null) {
-            return new BasicEList()
+        	return result
         }
 
-        val methods = fInterface.base.methods
-        methods.addAll(fInterface.base.inheritedMethods)
+        result.addAll(fInterface.base.methods)
+        result.addAll(fInterface.base.inheritedMethods)
 
-        return methods
+        return result
     }
 
-    def EList<FAttribute> getInheritedAttributes(FInterface fInterface) {
+    def List<FAttribute> getInheritedAttributes(FInterface fInterface) {
+        val List<FAttribute> result = new ArrayList<FAttribute>()
         if(fInterface.base == null) {
-            return new BasicEList()
+            return result
         }
 
-        val attributes = fInterface.base.attributes
-        attributes.addAll(fInterface.base.inheritedAttributes)
+        result.addAll(fInterface.base.attributes)
+        result.addAll(fInterface.base.inheritedAttributes)
 
-        return attributes
+        return result
     }
 
-    def EList<FBroadcast> getInheritedBroadcasts(FInterface fInterface) {
+    def List<FBroadcast> getInheritedBroadcasts(FInterface fInterface) {
+        val List<FBroadcast> result = new ArrayList<FBroadcast>()
+        
         if(fInterface.base == null) {
-            return new BasicEList()
+            return result
         }
 
-        val broadcasts = fInterface.base.broadcasts
-        broadcasts.addAll(fInterface.base.inheritedBroadcasts)
+        result.addAll(fInterface.base.broadcasts)
+        result.addAll(fInterface.base.inheritedBroadcasts)
 
-        return broadcasts
+        return result
+    }
+    
+    def static FExpression toExpression(String value)
+    {
+        return switch trimmedValue : if(value != null) value.trim else ""
+        {
+            case trimmedValue.length > 0:
+            {
+                try
+                {
+                    FrancaFactory.eINSTANCE.createFIntegerConstant => [
+                        ^val = new BigInteger(trimmedValue)
+                    ]
+                }
+                catch(NumberFormatException e)
+                {
+                    FrancaFactory.eINSTANCE.createFStringConstant => [
+                        ^val = trimmedValue
+                    ]
+                }
+            }
+            default:
+            {
+                null
+            }
+        }
+    }
+
+    def static String getEnumeratorValue(FExpression expression)
+    {
+        return switch (expression)
+        {
+            FIntegerConstant: expression.^val.toString
+            FStringConstant: expression.^val
+            FQualifiedElementRef: expression.element.constantValue
+            default: null
+        }
+    }
+
+    def static String getConstantValue(FModelElement  expression)
+    {
+        return switch (expression)
+        {
+            FConstantDef: expression.rhs.constantType
+            default: null
+        }
+    }
+
+    def static String getConstantType(FInitializerExpression  expression)
+    {
+        return switch (expression)
+        {
+            FIntegerConstant: expression.^val.toString
+            default: null
+        }
+    }
+
+    def Integer getTimeout(FMethod _method, PropertyAccessor _accessor) {
+    	var timeout = 0;
+    	try {
+    		timeout = _accessor.getTimeout(_method)
+    	}
+    	catch (NullPointerException e) {
+    		// intentionally empty
+    	}
+    	return timeout
+    }
+    
+    def boolean isTheSameVersion(FVersion _mine, FVersion _other) {
+        return ((_mine == null && _other == null) ||
+                (_mine != null && _other != null &&
+                 _mine.major == _other.major &&
+                 _mine.minor == _other.minor));
+        
+    }
+
+    def EObject getCommonContainer(EObject _me, EObject _other) {
+        if (_other == null)
+            return null
+
+        if (_me == _other)
+            return _me
+
+        if (_me instanceof FTypeCollection && _other instanceof FTypeCollection) {
+            val FTypeCollection me = _me as FTypeCollection
+            val FTypeCollection other = _other as FTypeCollection
+            
+            if (me.eContainer == other.eContainer &&
+            	((me.version == null && other.version == null) ||
+                 (me.version != null && other.version != null &&
+                  me.version.major == other.version.major &&
+                  me.version.minor == other.version.minor))) {
+                return _me;
+           	}
+		}
+
+      	return getCommonContainer(_me, _other.eContainer)
+    }
+
+    def String getContainerName(EObject _container) {
+        var String name = ""
+        if (_container instanceof FTypeCollection) {
+            name = _container.name
+            if (name == null) name = "__Anonymous__"
+        } else if (_container instanceof FModelElement) {
+            name = _container.name
+        } else if (_container instanceof FModel) {
+            name = _container.name
+        }
+        return name
+    }
+
+    def String getPartialName(FModelElement _me, EObject _until) {
+        var String name = _me.containerName
+        var EObject container = _me.eContainer
+        while (container != null && container != _until) {
+            if (container instanceof FModel) {
+                name = container.name + "::" + name
+            }
+            if (container instanceof FModelElement) {
+                name = container.name + "::" + name
+            }
+            container = container.eContainer
+        }
+        return name.replace(".", "::")
+    }
+
+    def String getFullName(EObject _me) {
+        var String name = ""
+        if (_me instanceof FModelElement) {
+            var String prefix = ""
+            var EObject container = _me
+            while (container != null) {
+                if (container instanceof FTypeCollection) {
+                    prefix = (container as FTypeCollection).versionPrefix
+                }
+                val containerName = getContainerName(container)
+                if (containerName != null && containerName != "") {
+                    if (name != "") { 
+                        name = containerName + "::" + name
+                    } else {
+                        name = containerName
+                    }
+                }
+                
+                container = container.eContainer
+            }
+            name = prefix + name
+        }
+        return name.replace(".", "::")
+    }
+
+    def String getElementName(FModelElement _me, FModelElement _other, boolean _isOther) {
+        if (_other == null)
+            return _me.containerName
+
+        var FVersion myVersion = null
+        if (_me instanceof FTypeCollection)
+            myVersion = _me.version
+            
+        var FVersion otherVersion = null
+        if (_other instanceof FTypeCollection)
+            otherVersion = _other.version
+
+        if (isTheSameVersion(myVersion, otherVersion)) {
+            val EObject myContainer = _me.eContainer
+            val EObject otherContainer = _other.eContainer
+
+            if (myContainer == otherContainer) {
+                var String name = _me.containerName
+                if (_isOther) {
+                    name = getContainerName(myContainer) + "::" + _me.containerName
+                }
+                return name
+            }
+
+	        if (myContainer.getCommonContainer(otherContainer) != null) {
+                return _me.getPartialName(myContainer.eContainer)
+            }
+
+            if (otherContainer.getCommonContainer(myContainer) != null) {
+                var String name = _me.containerName
+                if (_isOther) {
+                    name = getContainerName(myContainer) + "::" + name
+                }
+                return name
+            }
+        }
+
+        return _me.getFullName()
+    }
+
+    def String getTypeCollectionName(FTypeCollection _me, FTypeCollection _other) {
+        if (_other == null ||
+            _me.eContainer() != _other.eContainer() ||
+             !isTheSameVersion(_me.version, _other.version)) {
+            return _me.getFullName()
+        }
+        return _me.getContainerName()
+    }
+    
+    def String getEnumPrefix(){
+  			FPreferences::instance.getPreference(PreferenceConstants::P_ENUMPREFIX, "")
     }
 }

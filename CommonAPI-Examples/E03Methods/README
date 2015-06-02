@@ -1,0 +1,148 @@
+=== Example 03: Methods
+
+Franca attributes represent status variables or data sets of services which shall be accessible by the clients of the service. In contrast, methods can be used for example to start a process in the service or to query for certain information (e.g., from a database). See the following example 3:
+
+[source,java]
+----
+package commonapi.examples
+
+interface E03Methods {
+
+	version { major 1 minor 2 }
+
+	method foo {
+		in {
+			Int32 x1
+			String x2
+		}
+		out {
+			Int32 y1
+			String y2
+		}
+		error {
+			stdErrorTypeEnum
+	   	}
+	}
+
+	broadcast myStatus {
+		out {
+			Int32 myCurrentValue
+		}
+	}
+
+	enumeration stdErrorTypeEnum {
+		NO_FAULT
+		MY_FAULT
+	}
+}
+----
+
+Basically Franca methods have input parameters and output parameters and can return an optional application error which reports for example if the started process in the service could be finished successfully or not. Input and output parameters can have arbitrarily complex types, a separate definition of so-called InOut arguments of functions was not considered necessary.
+
+A special case are broadcasts. They can be used like readonly attributes. But there are several output parameters allowed (and no input parameters). Another difference is the additional optional keyword selective, which indicates that only selected clients can register on the broadcast see example 4).
+
+Another optional keyword (only for methods) is fireAndForget which indicates that neither return values nor a call status is expected.
+
+The implementation of the service class is straight:
+
+[source,{cppstr}]
+----
+void E03MethodsStubImpl::foo(const std::shared_ptr<CommonAPI::ClientId> _client,
+	    		int32_t _x1,
+	    		std::string _x2,
+	    		fooReply_t _reply) {
+
+
+    E03Methods::fooError methodError = (E03Methods::fooError) 
+    
+    E03Methods::stdErrorTypeEnum::MY_FAULT;
+    int32_t y1 = 42;
+    std::string y2 = "xyz";
+    _reply(methodError, y1, y2);
+}
+----
+
+The input parameters are available as values, the output parameter are wrapped in a generated reply object with the type fooReply_t. This is slightly different to earlier versions of CommonAPI where the return values were passed as references.
+
+In the example there is another function incCounter implemented which sends the broadcast myStatus via the generated method fireMyStatusEvent:
+
+[source,{cppstr}]
+----
+void E03MethodsStubImpl::incCounter() {
+    cnt++;
+    fireMyStatusEvent((int32_t) cnt);
+}
+----
+
+The subscription to the broadcast is nearly identical to the subscription to the change of the value of an attribute. The example shows further an asynchronous and a synchronous call of the function foo; in the asynchronous case the callback function +recv_cb+ is defined.
+
+[source,{cppstr}]
+----
+#include <iostream>
+#include <unistd.h>
+
+#include <CommonAPI/CommonAPI.hpp>
+#include <v1_2/commonapi/examples/E03MethodsProxy.hpp>
+
+using namespace v1_2::commonapi::examples;
+
+void recv_cb(const CommonAPI::CallStatus& callStatus,
+             const E03Methods::fooError& methodError,
+             const int32_t& y1,
+             const std::string& y2) {
+    
+    std::cout << "Result of asynchronous call of foo: " << std::endl;
+    
+    std::cout << "   callStatus: " 
+         << ((callStatus == CommonAPI::CallStatus::SUCCESS) ? "SUCCESS" : "NO_SUCCESS")
+         << std::endl;
+    
+    std::cout << "   error: "
+        << ((methodError.stdErrorTypeEnum ==
+            E03Methods::stdErrorTypeEnum::NO_FAULT) ? "NO_FAULT" : "MY_FAULT")
+        << std::endl;
+    
+    std::cout << "   Output values: y1 = " << y1 << ", y2 = " << y2 << std::endl;
+}
+
+int main() {
+
+	// Subscribe to broadcast
+	myProxy->getMyStatusEvent().subscribe([&](const int32_t& val) {
+		std::cout << "Received status event: " << val << std::endl;
+	});
+
+	while(true) {
+
+		int32_t inX1 = 5;
+		std::string inX2 = "abc";
+		CommonAPI::CallStatus callStatus;
+		E03Methods::fooError methodError;
+		int32_t outY1;
+		std::string outY2;
+
+		// Synchronous call
+		std::cout << "Call foo with synchronous semantics ..." << std::endl ;
+		myProxy->foo(inX1, inX2, callStatus, methodError, outY1, outY2);
+
+		// Asynchronous call
+		std::cout << "Call foo with asynchronous semantics ..." << std::endl;
+
+		std::function<void (const CommonAPI::CallStatus&,
+			const E03Methods::fooError&, const int32_t&, const std::string&)> fcb = recv_cb;
+
+		myProxy->fooAsync(inX1, inX2, recv_cb);
+
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+	}
+	return 0;
+}
+----
+
+A frequently asked question is what happens if the service does not answer. In this case, the callback function +recv_cb+ is called anyway, but the +callStatus+ has the value +REMOTE_ERROR+. It is however the responsibility of the specific middleware to implement this behavior. The CommonAPI specification says:
+
+- *NOT* considered to be a remote error is an application level error that is defined in the corresponding Franca interface, because from the point of view of the transport layer the service still returned a valid answer.
+- It *IS* considered to be a remote error if no answer for a sent remote method call is returned within a defined time. It is discouraged to allow the sending of any method calls without a defined timeout. This timeout may be middleware specific. This timeout may also be configurable by means of a Franca Deployment Model. It is *NOT* configurable at runtime by means of the Common API.
+
+The timeout of function calls can be set by the optional +CallInfo+ argument on client side.
+

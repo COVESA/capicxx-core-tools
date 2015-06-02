@@ -2,20 +2,15 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: commonapi generator Console Interface
 Bundle-SymbolicName: org.genivi.commonapi.core.cli;singleton:=true
-Bundle-Version: 2.1.6.qualifier
+Bundle-Version: 3.1.1.qualifier
 Bundle-Activator: org.genivi.commonapi.core.cli.Activator
 Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.emf.common,
- org.eclipse.emf.ecore,
- org.eclipse.emf.codegen.ecore,
- org.eclipse.xtext,
- org.franca.core.dsl,
- org.franca.deploymodel.dsl,
- org.genivi.commonapi.core,
- org.genivi.commonapi.dbus,
- org.eclipse.xtext.ui.ecore,
- org.eclipse.xtext.ui,
- org.eclipse.xtext.builder
+ org.eclipse.xtext;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
+ org.franca.core.dsl;bundle-version="[0.9.0,0.10.0)";visibility:=reexport,
+ org.franca.deploymodel.dsl;bundle-version="[0.9.0,0.10.0)";visibility:=reexport,
+ org.genivi.commonapi.core;bundle-version="3.1.1";visibility:=reexport,
+ org.genivi.commonapi.console;bundle-version="3.1.1"
 Bundle-ActivationPolicy: lazy
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-Vendor: BMW AG
+Export-Package: org.genivi.commonapi.core.cli

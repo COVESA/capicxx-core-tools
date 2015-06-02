@@ -16,8 +16,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.PreferenceStore;
-import org.genivi.commonapi.core.preferences.FPreferences;
-import org.genivi.commonapi.core.preferences.PreferenceConstants;
 
 public class PropertyStore extends PreferenceStore {
 
@@ -31,8 +29,6 @@ public class PropertyStore extends PreferenceStore {
         this.resource = resource;
         this.workbenchStore = workbenchStore;
         this.pageId = pageId;
-        FPreferences pref = FPreferences.getInstance();
-        pref.addPreferences(resource);
     }
 
     /*** Write modified values back to properties ***/
@@ -42,13 +38,8 @@ public class PropertyStore extends PreferenceStore {
      * @see org.eclipse.jface.preference.IPersistentPreferenceStore#save()
      */
     public void save() throws IOException {
-        try {
-            if (getProperty(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.TRUE.toString()))
-                writeProperties();
-        } catch (CoreException e) {
-            throw new IOException(Messages.getString("PropertyStore.Cannot_read_resource_property")
-                    + PreferenceConstants.USEPROJECTSETTINGS); //$NON-NLS-1$
-        }
+
+        writeProperties();    	
     }
 
     /*

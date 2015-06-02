@@ -1,0 +1,249 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.datatypes.combined
+
+interface TestInterface {
+    version { major 1 minor 0 }
+
+    attribute tStructL3 aStructL3
+    //attribute tUnionL3 aUnionL3
+
+    method fTest {
+        in {
+            tStructL3 tStructL3In
+            //tUnionL3 tUnionL3In
+
+        }
+        out {
+            tStructL3 tStructL3Out
+            //tUnionL3 tUnionL3Out
+        }
+    }
+
+    // Level 0
+
+    enumeration tEnum {
+        VALUE1= "0"
+        VALUE2= "123"
+    }
+
+    array tArray of String
+
+    struct tStruct {
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+        tEnum enumMember
+    }
+
+    union tUnion {
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+        tEnum enumMember
+    }
+    
+    map tMap {
+        UInt8 to String
+    }
+
+    // Level 1
+
+    array tArrayEnum of tEnum
+    array tArrayArray of tArray
+    array tArrayStruct of tStruct
+    array tArrayUnion of tUnion
+    array tArrayMap of tMap
+    
+    struct tStructL1 {
+        tEnum enumMember
+        tArray arrayMemner
+        tStruct structMember
+        tUnion unionMember
+        tMap mapMember
+    }
+    
+    union tUnionL1 {
+        tEnum enumMember
+        tArray arrayMember
+        tStruct structMember
+        tUnion unionMember
+        tMap mapMember
+    }
+    
+    map tMapEnum {
+        UInt8 to tEnum
+    }
+    
+    map tMapArray {
+        Double to tArray
+    }
+    
+    map tMapStruct {
+        String to tStruct
+    }
+    
+    map tMapUnion {
+        Float to tUnion
+    }
+    
+    map tMapMap {
+        Int8 to tMap
+    }
+
+    // Level 2
+
+    array tArrayArrayEnum of tArrayEnum
+    array tArrayArrayArray of tArrayArray
+    array tArrayArrayStruct of tArrayStruct
+    array tArrayArrayUnion of tArrayUnion
+    array tArrayArrayMap of tArrayMap
+    array tArrayStructL1 of tStructL1
+    array tArrayUnionL1 of tUnionL1
+    array tArrayMapEnum of tMapEnum
+    array tArrayMapArray of tMapArray
+    array tArrayMapStruct of tMapStruct
+    array tArrayMapUnion of tMapUnion
+    array tArrayMapMap of tMapMap
+    
+    struct tStructL2 {
+        tEnum [] arrayEnumMember
+        tArray [] arrayArrayMember
+        tStruct [] arrayStructMember
+        tUnion [] arrayUnionMember
+        tMap [] arrayMapMember
+        tStructL1 structL1Member
+        tUnionL1 unionL1Member
+        tMapEnum mapEnumMember
+        tMapArray mapArrayMember
+        tMapStruct mapStructMember
+        tMapUnion mapUnionMember
+        tMapMap mapMapMember
+    }
+    
+    union tUnionL2 {
+        tArrayEnum arrayEnumMember
+        tArrayArray arrayArrayMember
+        tArrayStruct arrayStructMember
+        tArrayUnion arrayUnionMember
+        tArrayMap arrayMapMember
+        tStructL1 structL1Member
+        tUnionL1 unionL1Member
+        tMapEnum mapEnumMember
+        tMapArray mapArrayMember
+        tMapStruct mapStructMember
+        tMapUnion mapUnionMember
+        tMapMap mapMapMember
+    }
+    
+    map tMapArrayEnum {
+        String to tArrayEnum
+    }
+    
+    map tMapArrayArray {
+        String to tArrayArray
+    }
+    
+    map tMapArrayStruct {
+        String to tArrayStruct
+    }
+    
+    map tMapArrayUnion {
+        String to tArrayUnion
+    }
+    
+    map tMapArrayMap {
+        String to tArrayMap
+    }
+    
+    map tMapStructL1 { 
+        String to tStructL1
+    }
+    
+    map tMapUnionL1 {
+        String to tUnionL1
+    }
+    
+    map tMapMapEnum {
+        String to tMapEnum
+    }
+    
+    map tMapMapArray {
+        String to tMapArray
+    }
+    
+    map tMapMapStruct {
+        String to tMapStruct
+    }
+    
+    map tMapMapUnion {
+        String to tMapUnion
+    }
+    
+    map tMapMapMap {
+        String to tMapMap
+    }
+
+    // Level 3
+    // Due to the libdbus limit of signature length < DBUS_MAXIMUM_SIGNATURE_LENGTH = 255 the structure cannot be completely used as argument
+    // see dbus-protocol.h. Simply change this value does not work.
+
+    struct tStructL3 {
+        tArrayArrayEnum arrayArrayEnumMember
+        tArrayArrayArray arrayArrayArrayMember
+        tArrayArrayStruct arrayArrayStructMember
+        tArrayArrayUnion arrayArrayUnionMember
+        tArrayArrayMap arrayArrayMapMember
+        tArrayStructL1 arrayStructL1Member
+        //tArrayUnionL1 arrayUnionL1Member
+        //tArrayMapEnum arrayMapEnumMember
+        //tArrayMapArray arrayMapArrayMember
+        //tArrayMapStruct arrayMapStructMember
+        //tArrayMapUnion arrayMapUnionMember
+        //tArrayMapMap arrayMapMapMember
+        tStructL2 structL2Member
+        //tUnionL2 unionL2Member
+        tMapArrayEnum mapArrayEnumMember
+        tMapArrayArray mapArrayArrayMember
+        tMapArrayStruct mapArrayStructMember
+        tMapArrayUnion mapArrayUnionMember
+        tMapArrayMap mapArrayMapMember
+        //tMapStructL1 mapStructL1Member
+        tMapUnionL1 mapUnionL1Member
+        tMapMapEnum mapMapEnumMember
+        tMapMapArray mapMapArrayMember
+        tMapMapStruct mapMapStructMember
+        tMapMapUnion mapMapUnionMember
+        tMapMapMap mapMapMapMember
+    }
+
+//    union tUnionL3 {
+//        tArrayArrayEnum arrayArrayEnumMember
+//        tArrayArrayArray arrayArrayArrayMember
+//        tArrayArrayStruct arrayArrayStructMember
+//        tArrayArrayUnion arrayArrayUnionMember
+//        tArrayArrayMap arrayArrayMapMember
+//        tArrayStructL1 arrayStructL1Member
+//        tArrayUnionL1 arrayUnionL1Member
+//        tArrayMapEnum arrayMapEnumMember
+//        tArrayMapArray arrayMapArrayMember
+//        tArrayMapStruct arrayMapStructMember
+//        tArrayMapUnion arrayMapUnionMember
+//        tArrayMapMap arrayMapMapMember
+//        tStructL2 structL2Member
+//        tUnionL2 unionL2Member
+//        tMapArrayEnum mapArrayEnumMember
+//        tMapArrayArray mapArrayArrayMember
+//        tMapArrayStruct mapArrayStructMember
+//        tMapArrayUnion mapArrayUnionMember
+//        tMapArrayMap mapArrayMapMember
+//        tMapStructL1 mapStructL1Member
+//        tMapUnionL1 mapUnionL1Member
+//        tMapMapEnum mapMapEnumMember
+//        tMapMapArray mapMapArrayMember
+//        tMapMapStruct mapMapStructMember
+//        tMapMapUnion mapMapUnionMember
+//        tMapMapMap mapMapMapMember
+//    }
+}

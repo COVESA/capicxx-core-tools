@@ -1,2 +1,5 @@
+/bin
+/src-gen
 /target
-/lib/guava-14.0.1.jar
+/xtend-gen
+*~

@@ -1,0 +1,903 @@
+= CommonAPI C++ User Guide
+
+:doctitle: CommonAPI C++ User Guide
+:website: http://projects.genivi.org/commonapi/
+:version:
+:date:
+:toc:
+:revdate:
+:imagedir:
+:cppstr: c++
+
+== Introduction
+
+=== Aim of this document
+
+This user guide has the following content:
+
+- installation instructions for CommonAPI in general including the code generator (CommonAPI Tools)
+- a step by step tutorial on how you can write your first Hello World program
+- examples for a deeper insight into the usage of CommonAPI in conjunction with Franca IDL
+- additional information to CommonAPI which is not part of the CommonAPI specification
+
+=== CommonAPI C++
+
+CommonAPI C\++ is a standardized C\++ API specification for the development of distributed applications which communicate via a middleware for interprocess communication. The main intention is to make the C++ interface for applications independent from the underlying IPC stack. The basic principle can be seen in the following picture.
+
+.CommonAPI C++ Overview 1
+image::{imagedir}/CommonAPIOverview01.png[CommonAPI C++ Overview 1 image]
+
+- CommonAPI C++ is divided up in a middleware-independent part (CommonAPI Core) and in a middleware-specific part (CommonAPI Binding).
+- CommonAPI uses the interface description language FrancaIDL for the specification of interfaces (logical interface specification). Code generation from FrancaIDL is an integrated part of CommonAPI.
+- The code generator for CommonAPI C++ bindings needs middleware-specific parameters (deployment parameters). These parameters are defined in Franca deployment files (*.fdepl).
+
+[NOTE]
+CommonAPI C\++ Core has no obligatory deployment parameters. But it turned out that it makes sense to add also additional deployment parameter to CommonAPI C++ Core itself. 
+
+The user API of CommonAPI is divided up into two parts (see picture below):
+
+- A FrancaIDL based, generated part which contains API functions that are related to the types, attributes and methods of the FrancaIDL files.
+- A "common" part (Runtime API) which contains API functions for loading the runtime environment, creating proxies and so on.   
+
+.CommonAPI C++ Overview 2
+image::{imagedir}/CommonAPIOverview02.png[CommonAPI C++ Overview 2 image]
+
+This picture shows in more detail how the elements of CommonAPI C++ fit together. Note that:
+
+- the vast majority of the user API is the generated part of CommonAPI.
+- there is no direct relation between CommonAPI Core and the IPC stack.
+- the generated code of the CommonAPI Binding has interfaces to all other parts of CommonAPI.
+
+The workflow for developers of applications is as follows:
+
+- Create a FrancaIDL file with the specification of an interface with methods and attributes.
+- Generate code for client and service by starting the CommonAPI code generator.
+- Implement the service by implementing the methods in the generated skeleton.
+- Implement the client by creating proxies and calling these methods by using the proxy.
+
+=== Links
+
+CommonAPI is a GENIVI project. Source code and latest news can be found at http://projects.genivi.org/commonapi/. Source code can be found in the Git repository (http://git.projects.genivi.org/). For documentation please visit the GENIVI document page http://docs.projects.genivi.org/.
+
+[NOTE]
+At http://git.projects.genivi.org/ you will find only source code even for the code generator. It might be cumbersome to build the code generator of your own; for your convenience you will find executables and update-sites at http://docs.projects.genivi.org/yamaica-update-site/.
+
+Closely related to CommonAPI is the yamaica project which provides a full integration of all Franca IDL and CommonAPI plugins and some more enhanced features like the import and export of Franca files to Enterprise Architect. The yamaica project provides eclipse update-sites for CommonAPI and yamaica (see http://docs.projects.genivi.org/yamaica-update-site/) ready for installation.
+
+The official FrancaIDL site is at the moment: https://code.google.com/a/eclipselabs.org/p/franca/
+
+== Integration Guide for CommonAPI users
+
+The following descriptions assume that host and target platform are Linux platforms. However CommonAPI supports also Windows as host and target platform. All you need to know for Windows concerning CommonAPI you find in the separate Windows paragraph below at the end of this Integration Guide.
+
+=== Requirements
+
+CommonAPI was developed for GENIVI and will run on most Linux platforms. Additionally it is possible to run it under Windows for test and development purposes. Please note:
+
+- CommonAPI uses a lot of C++11 features, as variadic templates, std::bind, std::function and so on. Make sure that the compiler of your target platform is able to compile it (e.g. gcc 4.8).
+- The build system of CommonAPI is CMake; please make sure that it is installed on your host. CommonAPI requires a CMake version > 2.8.12. 
+- This user guide describes only the "common" CommonAPI part; there are no binding specific explanations. Please refer to the binding specific user guide for further information.
+- Do not use earlier versions of Eclipse as Luna; it could work but there is no warranty.
+- The build tool chain for the code generators is Maven; make sure that at least Maven 3 is available. If you use eclipse make sure that the maven plug-in is installed.
+
+=== Compile Runtime 
+
+==== Command-line
+
+For building CommonAPI from the command-line download the Common API runtime via Git from the GENIVI Git repository, switch to the desired tag (e.g. 3.0.0) and compile it using CMake:
+
+----
+$ git clone git://git.projects.genivi.org/ipc/common-api-runtime.git
+$ cd common-api-runtime
+$ git checkout tags/3.0.0
+$ mkdir build
+$ cd build
+$ cmake ..
+$ make
+----
+
+This is the standard procedure and will hopefully create the shared CommonAPI runtime library libCommonAPI.so in _build/src/CommonAPI_. Note that CMake checks if doxygen and asciidoc are installed. These tools are only necessary if you want to generate the documentation of your own. The unit tests of CommonAPI are implemented by using the Google C++ Testing Framework. If you want to build and run the unit tests the environment variable +GTEST_ROOT+ must point to the correct directory (see the contributor's guide below). 
+
+[NOTE]
+If you prefer to install CommonAPI from a tar file you can get the actual tar file from:
+	http://docs.projects.genivi.org/yamaica-update-site/CommonAPI/runtime/
+
+There are several options for calling CMake and make targets.
+
+Generate makefile for building a static CommonAPI library (default is a shared library). The library will be in _/build/src/CommonAPI_.
+----
+$ cmake -DBUILD_SHARED_LIBS=OFF ..
+----
+
+Generate makefile for building the release version of CommonAPI (default is debug).
+----
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
+----
+
+Without any further settings +make install+ will copy CommonAPI libraries and header files to _/usr/local_. You can change this destination directory by changing the installation prefix (e.g. to test).
+----
+$ cmake -DCMAKE_INSTALL_PREFIX=/test  ..
+----
+
+Additional cmake parameters:
+
+[width="90%",cols="6,5,5"]
+|=========================================================
+
+|+-DUSE_INSTALLED_COMMONAPI+ | 
+OFF, ON | use uninstalled / installed CommonAPI core library 
+
+|+-DMAX_LOG_LEVEL+ |
+ERROR, WARNING, INFO, DEBUG, VERBOSE | log messages with lower log level are ignored
+
+|=========================================================
+
+Make targets:
+
+[width="90%",cols="4,10"]
+|=========================================================
+
+|+make all+ |
+Same as make. Will compile and link CommonAPI.
+
+|+make clean+ |
+Deletes binaries, but not the files which has been generated by CMake.
+
+|+make maintainer-clean+ |
+Deletes everything in the build directory.
+
+|+make install+ |
+Copies libraries to _/user/local/lib/commonapiX.X.X_ and header files to _/user/local/include/commonapiX.X.X/CommonAPI_.
+
+|+make DESTDIR=< install_dir > install+ |
+The destination directory for the installation can be influenced by +DESTDIR+. 
+
+|=========================================================
+
+Further make targets will be described in the contributor's guide below.
+
+==== Eclipse
+
+Start with importing your project by _File->New->Makefile Project with Existing Code_. Select your project directory and _Linux GCC_. 
+
+If not yet available, create a +Make Target+ (e.g. with the name +Run cmake+) and edit it. Set the "+Build command:+" to:
+----
+cmake -E chdir build/ cmake -G "Unix Makefiles" ../
+----
+
+and delete the "+Make target:+" field and let it empty.
+
+Edit the project properties and go to +C/C\++ Build+. Set the +Build command:+ in the +Builder Settings+ to +make -C ${ProjDirPath}/build+ and delete the +Build directory+ line and keep it empty.
+
+.CommonAPI C++ Eclipse Settings 01
+image::{imagedir}/EclipseCommonAPISettings01.png[CommonAPI C++ Eclipse Settings 01 image]
+
+Create the +build+ directory directly in your project directory.  
+
+Then you can start +Build target+ in the context menu of your +Make target+ and then build the project by _Project->Build Project_.
+
+=== Compile tools
+
+An executable version of the command-line version of the CommonAPI code generator is available for Linux (32 bit) as zip-file. An update-site for installing the code generators in eclipse is also available (see below). The following instructions are for the case that you have to build the code generator yourself.
+
+==== Command-line
+
+You can build all code generators by calling maven from the command-line. Open a console and change in the directory org.genivi.commonapi.core.releng of your CommonAPI-Tools directory. Then call:
+
+----
+mvn -Dtarget.id=org.genivi.commonapi.core.target clean verify
+----
+
+After the successful build you will find the commond-line generators archived in org.genivi.commonapi.core.cli.product/target/products/commonapi-generator.zip and the update-sites in org.genivi.commonapi.core.updatesite/target.
+
+==== Eclipse
+
+Make sure that you have installed the _m2e - Maven Integration for Eclipse_ plug-in. Then create a _Run Configuration_ in Eclipse. Open the _Run configuration_ settings. On the left side of you should find a launch configuration category _Maven Build_. Create a new launch configuration and add the parameter +target.id+ with the value +org.genivi.commonapi.core.target+. Set the _Goals_ to _clean verify_.
+
+.CommonAPI C++ Eclipse Build Tools Settings
+image::{imagedir}/EclipseBuildToolsSettings.png[CommonAPI C++ Eclipse Build Tools Settings image]
+
+=== Write Applications
+
+CommonAPI requires a basic workflow for creating executable applications.
+
+.CommonAPI C++ Workflow
+image::{imagedir}/CommonAPIWorkflow.png[CommonAPI C++ Workflow image]
+
+==== Generating Code
+
+No matter which development environment is used, the API for the applications is created by the CommonAPI code generator which is available as command-line version and as Eclipse update-site. 
+
+The simplest way to use the CommonAPI Tools is to add the update-site available on the GENIVI project servers to your Eclipse. Add the update site in Eclipse by calling _Help->Install New Software->Add_. Enter the URL: http://docs.projects.genivi.org/yamaica-update-site/CommonAPI/updatesite/ and confirm. 
+
+Then select the newly added site in the site selection dropdown box, and in the Software selection window, select the entire "GENIVI Common API" Tree.
+
+After the software has been installed in Eclipse you can right-click on any +.fidl+ or +.fdepl+ file and generate C++ code for CommonAPI by selecting the _CommonAPI->Generate Common API Code_ option.
+
+If you have built the update-site of your own, you can add the site as well; just add it as archive.
+
+An executable version of the command-line version of the CommonAPI code generator is available only for Linux (32 bit) as zip-file at http://docs.projects.genivi.org/yamaica-update-site/CommonAPI/generator. Download the zip-file and unzip it to an appropriate directory. Then it is ready for use. 
+
+Call the executable +commonapi_generator+ as follows:
+
+----
+commonapi_generator [options] file [file...]
+----
+
+Valid Options are:
+[width="80%",cols="1,1"]
+|=========================================================
+
+|+-dest < path/to/output/folder >+ |
+The generated files will be saved at this Location.
+
+|+-pref < path/to/header/file >+ |
+Here you can set the text which will be placed as a comment on each generated file (for example your license).
+
+|=========================================================
+
+[NOTE]
+If your CommonAPI binding requires deployment files the input for the code generator is the appropriate deployment file which imports the Franca file. For some bindings (e.g. D-Bus) and deployment file is not obligatory; in this case it is also possible to start the code generator with fidl-files as input.
+
+==== Build Applications
+
+Your application should compile and link only with the generated CommonAPI code and the CommonAPI runtime library. For a fast setup please consider the provided examples in CommonAPI-Tools/CommonAPI-Examples.
+
+=== Project Setup
+
+==== Structuring CommonAPI project libraries
+
+CommonAPI executables typically consist of 6 parts:
+
+1. The application code itself which is written manually by the developer.
+2. The generated CommonAPI (binding independent) code. In clients this code contains proxy functions which are called by the application; in services it contains generated functions which must be manually implemented by the developer (optionally it is possible to generate default implementations).
+3. The CommonAPI runtime library.
+4. The generated, binding specific code (so-called glue code).
+5. The runtime library of the binding.
+6. Generic libraries of the used middleware (e.g. +libdbus+).
+
+Even if there are several possibilities to divide these 6 parts up into shared or static libraries and to integrate them on a target platform, there is a standard way which is intended for the integration of CommonAPI applications (see picture below).
+
+.CommonAPI C++ Structuring Libraries
+image::{imagedir}/CommonAPIStructuringLibraries.png[CommonAPI C++ Structuring Libraries image]
+
+The standard way assumes that there is a platform software which provides necessary standard libraries in a suitable version. For CommonAPI these are the runtime libraries of CommonAPI itself, bindings and the associated middleware. Furthermore the platform should provide binding specific libraries which contain generated binding specific code (glue code). The glue code can be divided up into several shared libraries depending on used bindings, number of interfaces and other platform and project specific requirements. The application can now be delivered together with the generated binding independent code which can be statically or dynamically linked.
+
+The glue code library will now be loaded at the exact moment in which a proxy is created. The right library will be found by the evaluation of the CommonAPI configuration file that contains the association between CommonAPI address and the glue code library. In the case that there are no entries in the configuration file, default settings are used.
+
+The glue code library is binding specific; that means that the required runtime libraries are loaded automatically by the runtime linker. In the case that a certain instantiated interface in a service is offered via another middleware as before, it is sufficient just to change the entries in the configuration file, provided that a generated glue code library is available.
+
+==== Write CommonAPI Configuration Files
+
+CommonAPI and available bindings can be configured by ini-files (see e.g. http://en.wikipedia.org/wiki/INI_file).
+
+The CommonAPI configuration file is +commonapi.ini+. There are three places where CommonAPI Runtime tries to find this file (in the following order):
+
+1. in the directory of the current executable. If there is a +commonapi.ini+ file, it has the highest priority.
+2. in the directory which is specified by the environment variable +COMMONAPI_CONFIG+.
+3. in the global default directory +/etc+.
+
+The configuration file has 4 possible sections; all sections are optional.
+
+===== +logging+
+CommonAPI has an internal logging mechanism which can be parameterized by the settings of this section:
+
+- +console=true/false+
+- +file=+ _<file name>_
+- +dlt=true/false+
+- +level=fatal/error/warning/info/debug/verbose+
+
+Example:
+----
+[logging]
+console=true
+file=./mylog.log
+dlt=true
+level=verbose
+----
+
+[NOTE]
+If the configured log level is higher than the maximum log level that was defined at compile time, the maximum log level will be used.
+
+===== +default+
+Section for setting the default value for the used binding.
+
+- +binding=dbus/someip+
+
+Example:
+----
+[default]
+binding=dbus
+----
+
+===== +proxy+
+This section defines for each required CommonAPI address the shared library with the binding specific, generated glue code which has to be loaded when the proxy is created.
+
+- _<CommonAPI address>_=_<library name>_
+
+If no library is defined, CommonAPI uses default settings for library names and paths; for further information see chapter _Creating Proxies And Stubs_.
+
+Example:
+----
+[proxy]
+local:commonapi.examples.Test:commonapi.examples.Test=libTest-DBus.so
+----
+
+===== +stub+
+Analogous to the proxy section.
+
+Example:
+----
+[stub]
+local:commonapi.examples.Test:commonapi.examples.Test=libTest-DBus.so
+----
+
+==== CommonAPI Deployment
+
+The CommonAPI code generator supports nearly the full feature set of Franca IDL and works without any deployment file. However it is possible to write deployment files for interface specifications not only for bindings but also for CommonAPI itself based on the following deployment specification. 
+
+[source,java]
+----
+specification org.genivi.commonapi.core.deployment {
+
+    for interfaces {
+        /*
+         * define the enumeration backing type on CommonAPI C++ level for whole interface.
+         */
+        DefaultEnumBackingType : {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (default: UInt32);
+    }
+
+    for providers {
+        /*
+         * Enumerate all service instances this provider depends on (if any).
+         */
+        ClientInstanceReferences : Instance[] (optional);
+    }
+
+    for instances {
+        /*
+         * The CommonAPI address string has the format "domain:interfaceid:instanceid"
+         * according to CommonAPI specification.
+         * To avoid inconsistencies only domain and instance id can be specified during deployment,
+         * while the interface id is fixed by the interface the instance realizes.
+         */
+        Domain :     String (default: "local"); // the domain part of the CommonAPI address.
+        InstanceId : String;                     // the instance id of the CommonAPI address.
+
+        /*
+         * Define default timeout for all methods awaiting results of an instance in seconds.
+         * 0s means no timeout/waiting forever.
+         * if the timeout elapsed without arrival of a valid result an error will be delivered to the application.
+         */
+        DefaultMethodTimeout : Integer (default:0);
+
+        /*
+         * provide properties to register for instance. use "Name=Value" as format.
+         * This deployment property is currently not supported.
+         */
+        PreregisteredProperties : String [] (optional);
+    }
+
+    for methods {
+        /*
+         * timeout for method calls in ns.
+         * If timeout is defined with value > 0, then a method call will return with a timeout error
+         * in case no result arrived before the timeout elapsed.
+         * 0 means no timeout.
+         */
+        Timeout : Integer (default: 0);
+    }
+
+    for enumerations {
+        /*
+         * define the enumeration backing type on CommonAPI C++ level for a specific enumeration.
+         * If not specified use "ApiDefaultEnumBackingType".
+         */
+        EnumBackingType : {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (optional);
+    }
+}
+----
+
+The enumeration backing type can be set on CommonAPI C++ level not only specific for single enumerations but also generally for the whole interface. Please note that bindings might also have deployment settings which concern the backing type of enumerations.
+
+It is also possible to define timeouts for function calls. Another possibility to set this timeout is to define it in the optional +CallInfo+ parameter of the method call.     
+
+The settings for instances and providers are not evaluated by the code generator. 
+
+See the following example for the usage of the deployment parameters. The Franca specification is:
+[source,java]
+----
+package commonapi.examples
+
+interface Example {
+    
+    version { major 0  minor 1 }
+    
+    method test {
+        in {
+            EN x
+        }
+    }
+    
+    enumeration EN {
+        DEFAULT
+        NEW
+    }
+}
+----
+
+Possible deployment settings could look like:
+[source,java]
+----
+import "CommonAPI_deployment_spec.fdepl"
+import "Example.fidl"
+
+define org.genivi.commonapi.core.deployment for interface commonapi.examples.Example {
+    
+    DefaultEnumBackingType = UInt8
+    
+    method test {
+        Timeout = 1
+    }
+    
+    enumeration EN {
+        EnumBackingType = UInt64
+    }
+}
+----
+
+==== CommonAPI Logging
+
+CommonAPI Runtime informs about internal errors, warnings and other events by means of the CommonAPI Logger. Please refer to the chapter _Write CommonAPI Configuration Files_ if you want to know in general how it is possible to get CommonAPI log messages.
+
+CommonAPI supports the DLT standard. To get DLT log messages make sure that DLT is installed when running _CMake_. If _CMake_ finds the DLT library the compiler switch +-DUSE_DLT+ is set. Additionally set the key +dlt=true+ in the logging section of your configuration file.
+
+The DLT application ID is always set to +CAPI+; the context ID can be set by the application (see e.g. example 01):
+
+[source,{cppstr}]
+---- 
+CommonAPI::Runtime::setProperty("LogContext", "E01C");
+----
+
+The default value for the _LogContext_ is +CAPI+.
+
+==== CMake
+
+Since version 3 the build system of CommonAPI has been converted from Autotools to CMake (http://www.cmake.org/). A good starting point for writing CMake files for your application are the CMake files which are delivered with the CommonAPI examples in the CommonAPI Tools project.
+
+Here are some additional hints how specific problems related to Franca IDL and CMake can be solved.
+
+===== Get a CMake variable with all generated files
+
+Let's assume that the code generator has generated all source fules into thedirectory src-gen. The CMake command:
+----
+FILE(GLOB GEN_SRCS src-gen/*cpp) 
+----
+creates the CMake variable +GEN_SRC+ which can be used e.g. like
+----
+add_executable(${GEN_SRCS} _<other sources>_)
+----
+for building the execuatble.
+
+===== Generate code within your CMake file
+
+As described before one step in building your application is the generation of source files from your Franca interface specification. If you do not want to start the code generator manually you have several possibilities to automate that step. The following extract of a CMake file shows how it could be done within a CMake file. 
+
+We assume that your fidl files are located in the subdirecory _fidl_ of your project directory and the generated output in _src-gen_.   
+
+----
+set(FIDL_DIR ${PRJ_SRC_DIR}/fidl)
+set(GEN_SRC_DIR ${PRJ_SRC_DIR}/src-gen)
+ 
+set(GEN_COMMAND _<path-to-generator>_/commonapi_generator -dest ${GEN_SRC_DIR} ${FIDL_DIR}/MyFidl.fidl)
+
+add_custom_command(OUTPUT ${SRC_GEN_DIR}/_<generated-source-files>_.cpp
+    COMMAND ${GEN_COMMAND}
+    DEPENDS ${FIDL_DIR}/MyFidl.fidl
+    WORKING_DIRECTORY ${PRJ_SRC_DIR}
+    COMMENT "Call CommonAPI code generator."
+)
+----
+
+Set the +OUTPUT+ in the custom command to all generated src files.
+
+[NOTE]
+For CommonAPI itself it might be possible that there are no cpp files in the output. This is the case if you don't generate the skeletons for the stub and you don't have any complex datatypes in yor fidl file. 
+ 
+=== Windows
+
+CommonAPI can also run on Windows platforms. In order to get a running system please refer to the binding specific user guides. To compile CommonAPI for Windows, do the following steps:
+
+- Open the file +CommonAPI.sln+ with Visual Studio 2013 (at least Update 4).
+- Build the project +CommonAPI+.
+
+== Basic Features
+
+=== New CommonAPI 3 Features
+
+The new CommonAPI version 3 contains a number of bug fixes, some internal modifications and new features. For the user of CommonAPI there are not as many changes as it may seem at first glance. The following sections provide an overview of the most important changes.
+
+==== Franca And Deployment
+
+CommonAPI 3 supports Franca IDL 0.9.1 and additionally some new deployment parameters (see chapter _CommonAPI Deployment_).  
+
+==== Build System CMake
+
+The build system of CommonAPI has been converted from Autotools to CMake. Please refer to the build instructions of this user guide. For an improved window support also Windows project files are delivered. 
+
+==== Changed Configuration Files
+
+The configuration files have now the ini file format and some additional settings. Please refer to the chapter _Write CommonAPI Configuration Files_.
+
+==== CommonAPI Logging
+
+CommonAPI 3 provides logging messages, e.g. in DLT format. Refer to chapter _CommonAPI Logging_. 
+
+==== New Code Generator Command-line Parameters 
+
+The parameters of the code generator are now significantly extended. The usage of the code generator is now (Linux 32 bit):
+
+----
+commonapi-generator-linux-x86 <options> <fidl files>
+----
+
+[cols="6,10", options="header"]
+|=========================================================
+
+|Options|
+Description
+
+|+-h, --help+|
+Print out options of the code generator
+
+|+-d, --dest+ _<arg>_|
+The default output directory
+
+|+-dc, --dest-common+ _<arg>_|
+The directory for the common code (relevant for proxy and stub, e.g. type definitions)
+
+|+-dp, --dest-proxy+ _<arg>_|
+The directory for proxy code
+
+|+-ds, --dest-stub+ _<arg>_|
+The directory for stub code
+
+|+-dsk, --dest-skel+ _<arg>_|
+The directory for the skeleton code
+
+|+-l, --license+ _<arg>_|
+The file path to the license text that will be added to each generated file
+
+|+-ll, --loglevel+ _<arg>_|
+The log level (quiet or verbose)
+
+|+-np, --no-proxy+ _<arg>_|
+Switch off generation of proxy code
+
+|+-ns, --no-stub+ _<arg>_|
+Switch off generation of stub code
+
+|+-pre, --prefix-enum-literal+ _<arg>_|
+The prefix added to all generated enumeration literals
+
+|+-sk, --skel+ _<arg>_|
+ Generate skeleton code. The optional argument specifies the postfix. Without argument, the postfix is 'default'
+|=========================================================
+
+Please note:
+
+- It is now possible to define different destination directories for proxy and stub code and to switch off the generation of proxy or stub code.
+- The CommonAPI 2.x code generator always generated default implementations for the stubs (skeleton). This is not the default behavior anymore. Call the code generator with the option +-sk+ without an argument to get the same result as before.
+-  It is possible to influence the literals of enumerations by setting the option +-pre+. With this option you can add a custom prefix to all generated enumeration literals.
+
+==== Version In Namespace
+
+Since CommonAPI version 3, the version of the Franca interface becomes part of the C++ namespace. The version is added at the beginning of the namespace path, e.g. for an interface with version 1.0 the modified namespace begins with +v1_0+. Please refer to chapter _Namespaces_ for further information.    
+ 
+==== New Runtime Loading Concept
+
+With CommonAPI 2.x you had to follow three steps to create proxies (or stubs):
+
+- Get a runtime object for your required middleware.
+- Create a factory from this runtime object (optionally with a mainloop context). 
+- Build your proxy using this factory; one argument is the CommonAPI address.
+
+This procedure has been simplified and improved for the dynamic loading of CommonAPI bindings. For the relevant details see chapter _Creating Proxies And Stubs_.
+
+==== Asynchronous Stubs
+
+For client implementations CommonAPI offers the possibility to call functions (Franca methods or setter/getter functions for attributes) synchronously or asynchronously. In the asynchronous case the reply for the call will come as callback-function call. On stub side CommonAPI required to calculate the return values immediatly (see picture). 
+
+.Asynchronous Stubs
+image::{imagedir}/AsynchronousStubs.png[Asynchronous Stubs image]
+
+But some applications work as kind of intermediate layer and simply pass on function calls to a next application. In this case it was only under relatively high cost possible to pass the function calls to another application and to delegate the calculation of the return values. This is now possible because the return values are now wrapped into a function object which can be passed to another execution path. 
+
+==== CallInfo For Method Calls
+
+Method calls now have an additional, optional parameter which is called +CallInfo+. See e.g. the generated call +sayHello+ on proxy side:
+
+[source,{cppstr}]
+----
+virtual void sayHello(
+	const std::string &_name, CommonAPI::CallStatus &_status,
+	std::string &_message,
+	const CommonAPI::CallInfo *_info = nullptr
+);
+----
+
++CallInfo+ is defined as:
+
+[source,{cppstr}]
+----
+struct COMMONAPI_EXPORT CallInfo {
+	CallInfo()
+		: timeout_(DEFAULT_SEND_TIMEOUT_MS), sender_(0) {
+	}
+	CallInfo(Timeout_t _timeout)
+		: timeout_(_timeout), sender_(0) {
+	}
+
+	Timeout_t timeout_;
+	Sender_t sender_;
+};
+----
+
+The +timeout_+ defines how long the client will wait for the response from the service before it returns with CallStatus +REMOTE_ERROR+.
+
+The attribute +sender_+ can be used for passing an application specific sender handle to the method call which can be used in bindings to log the correlation between the sender handle and middleware specific information like serial numbers.
+
+=== Creating Proxies And Stubs
+
+The CommonAPI runtime creates proxies/registers stubs at the binding which is either configured for the given proxy/stub instance or is the default binding if no configured binding could be found. The configuration of a binding for a specific instance is done by providing an address mapping for the instance. An address mapping can either be specified using a deployment file to generate the interface specific binding code or by an entry in the binding configuration file. Such entries look like:
+
+----
+[_<commonapi address>_]
+_<ipc specific address parameter>_ = ...
+_<ipc specific address parameter>_ = ...
+...
+----
+
+[NOTE]
+CommonAPI does not check for multiple definitions for the same CommonAPI address. In this case, the binding that was registered first, will be used to create the proxy/register the stub.
+
+The default default binding is "dbus". This can be changed by setting the "binding" variable in the "default"-section of the CommonAPI configuration file or by setting the environment variable "COMMONAPI_DEFAULT_BINDING". The environment variable overwrites the setting provided by the configuration file.
+
+[NOTE]
+A binding that is used as default binding should be able to automatically (without further configuration) translate CommonAPI addresses to the addresses used by the communication mechanism it binds to. Otherwise all used instances must be defined in the deployment.
+
+Bindings are implicitly registered by the binding specific generated code for an interface. This code can either be statically linked or dynamically loaded at runtime. In the first case, the bindings an application uses are statically bound to the application while in the second case the application and their used bindings are independent from each other. The name of a library that needs to be loaded before being able to create a proxy or register a stub for a specific interface instance is determined
+as follows:
+
+. It is checked whether the requested action can be done be an already registered factory.
+   
+. If 1. fails, the name of the library that contains the needed code is determined:  
+   
+.. If the requested proxy/stub instance is configured, the configured name will be used. Such configurations are done in the "proxy" and "stub" sections of the CommonAPI configuration file and look like: _<commonapi address>_ = _<library name>_
+   
+.. If no configuration exists it is checked whether the property "LibraryBase" is set. If yes, the name is set to _lib<LibraryBase>_.
+      
+.. If neither a configuration exists nor the property "LibraryBase" is set, the name will be built from the CommonAPI address as _lib<domain>____<interface>____<instance>_.
+      
+. The runtime tries to load the library with the determined name. If it succeeds, it tries to create the proxy/register the stub again.
+
+=== Namespaces
+
+See the example +E01HelloWorld+:
+
+[source,java]
+----
+package commonapi.examples
+
+
+interface E01HelloWorld {
+	version { major 1 minor 0 }
+
+	// Interface definition here
+}
+----
+
+The generated code looks as follows:
+[source,{cppstr}]
+----
+namespace v1_0 {
+namespace commonapi {
+namespace examples {
+
+class E01HelloWorld {
+public:
+    
+// Code here
+
+CommonAPI::Version E01HelloWorld::getInterfaceVersion() {
+    return CommonAPI::Version(1, 0);
+}
+
+} // namespace examples
+} // namespace commonapi
+} // namespace v1_0
+----
+
+The generated code will be generated into the directory +src-gen/v1_0/commonapi/examples+.
+
+The main reason for adding the version at the beginning of the namespace is that we consider the name of the interfaces together with the package path (fully qualified name) as a unit, as it is specified in the Franca file. This name should not be destroyed by an intervening add on.
+
+It is however possible to create project specific namespaces if needed, as the following example shows: 
+
+[source,{cppstr}]
+----
+#include <iostream>
+
+namespace v1_0 {
+namespace commonapi {
+namespace examples {
+
+class MySample {
+public:
+	void print() const { std::cout << "commonapi.examples.v1_0.MySample" << std::endl; }
+};
+
+} // namespace examples
+} // namespace commonapi
+} // namespace v1_0
+
+namespace v1_1 {
+namespace commonapi {
+namespace examples {
+
+class MySample {
+public:
+        void print() const { std::cout << "commonapi.examples.v1_1.MySample" << std::endl; }
+};
+
+} // namespace examples
+} // namespace commonapi
+} // namespace v1_1
+
+namespace commonapi {
+namespace examples {
+
+namespace V1_0 = v1_0::commonapi::examples;
+namespace V1_1 = v1_1::commonapi::examples;
+
+} // namespace examples
+} // namespace commonapi
+
+using namespace commonapi::examples;
+
+int
+main(int argc, char **argv) {
+	V1_0::MySample aSample;
+	V1_1::MySample bSample;
+
+	aSample.print();
+	bSample.print();
+
+	return 0;
+}
+----
+
+=== Multithreading and Mainloops
+
+Please refer to example 07 for an example of the CommonAPI mainloop integration with the +glib+ mainloop.
+
+== Examples
+
+include::../CommonAPI-Examples/README[]
+include::../CommonAPI-Examples/E01HelloWorld/README[]
+include::../CommonAPI-Examples/E02Attributes/README[]
+include::../CommonAPI-Examples/E03Methods/README[]
+include::../CommonAPI-Examples/E04PhoneBook/README[]
+include::../CommonAPI-Examples/E05Manager/README[]
+include::../CommonAPI-Examples/E06Unions/README[]
+include::../CommonAPI-Examples/E07Mainloop/README[]
+
+== Contributor's Guide
+
+=== Preliminary Remarks
+
+You can contribute as little or as much as you like: bug reports, patches or documentation are all equally appreciated:
+
+- Create bug reports for CommonAPI and bindings at http://bugs.genivi.org, Product _Common API for IPC_
+- For the creation of patches: see chapter _Contribution of Code_ below
+- Provide changes in the existing documentation or new documentations as patch or _asciidoc_ document
+
+=== Build Tests and Documentation
+
+There are additional make targets for contributors and developers:
+
+[width="80%",cols="4,10"]
+|=========================================================
+
+|+make dist+ |
+Generates a packed tarball (*.tar.bz) from your current branch in your git repository.
+
+|+make doxygen-doc+ |
+Generates a packed tarball (*.tar.bz) from your current branch in your git repository. 
+
+|=========================================================
+
+The CommonAPI documentation is written with _asciidoc_ (http://www.methods.co.nz/asciidoc/). You will find the source of this user guide and the specification in the _docx_ directory of the CommonAPI-Tools project. Please make sure that _asciidoc_ is installed before you try to create the pdf- or html-files yourself. The documentation can be created by starting the Makefile in the _docx_ directory. The doxygen output can be obtained by the make target _doxygen-doc_.
+
+Please note that CommonAPI itself does not contain any unit tests (only the source code of CommonAPI bindings might be delivered with unit tests). CommonAPI provides so-called verification tests which can be found in the ComonAPI Tools repository and there in the project _org.genivi.commonapi.core.verification_. 
+
+The verification tests can be used to test features and the correct behavior of the CommonAPI framework together with the binding. These tests shall guarantee that CommonAPI and binding implement the CommonAPI specification and are stable.
+
+The verification tests are implemented by using _googletest_ (http://code.google.com/p/googletest). For compiling and running the tests _googletest_ must be built and the configuration script location must be available in the environment variable +GTEST_CONFIG+. 
+
+The first step is to create the glue code library. The term "glue code" refers to a binary that contains the binding specific generated code from the provided Franca files which you can find in _org.genivi.commonapi.core.verification/fidl_. The glue code library must contain the generated binding specific proxy and stub files. Please follow the instructions in your binding code for creating the glue code library.
+
+Now create a _build_ directory in the verification project and start CMake. Call CMake with the following parameters:
+
+[width="80%",cols="5,5"]
+|=========================================================
+
+|+-DUSE_INSTALLED_COMMONAPI+ |
+OFF/ON
+
+|+-DBINDING_NAME+ |
+DBus/SomeIP/...
+
+|+-DCMAKE_BINDING_NAME+ |
+CommonAPI-DBus/CommonAPI-SomeIP/...
+
+|+-DCMAKE_BINDING_PATH+ |
+Path to the binding library
+
+|+-DCMAKE_GLUECODE_NAME+ |
+Name of the glue code library
+
+|+DCMAKE_GLUECODE_PATH+ |
+Path to the glue code library
+
+|+-DBINDING_EXTRA+ |
+Path to additional libraries which are needed by the linker (e.g. _libdbus_)
+
+|+-DCOMMONAPI_CMAKE_INSTALL_PATH+ |
+Path to the CommonAPI library
+
+|+-DCOMMONAPI_DBUS_TOOL_GENERATOR+ |
+Code generator executable with path
+
+|=========================================================
+
+After that start _make check_ to build and run the verification tests.  
+
+=== Formatting Code
+
+Use the Eclipse internal formatter _K&R [built-in]_ for formatting the code.
+
+=== Contribution of Code
+
+First get the code from the git:
+----
+$ git clone
+----
+
+Get an overview of all branches:
+----
+$ git branch
+----
+
+Switch to the branch you want to work on (master is the feature branch) and verify that it has switched (* changed)
+----
+$ git checkout <your branch>
+$ git branch
+----
+
+Best practice is to create a local branch based on the current branch:
+----
+$ git branch working_branch
+----
+
+Start working, best practice is to commit smaller, compilable pieces during the development process that makes it easier to handle later on. If you want to commit you changes, send them to the author, you can create a patch like this:
+
+----
+$ git format-patch working_branch <your branch>
+----
+
+This creates a set of patches that are published via the mailing list.The patches will be discussed and then merged & uploaded on the git by the maintainer.
+
+Patches can be accepted either under GENIVI Cla or MPL 2.0 (see section License). Please be sure that the signed-off-by is set correctly. For more, check out http://gerrit.googlecode.com/svn/documentation/2.0/user-signedoffby.html
+
+

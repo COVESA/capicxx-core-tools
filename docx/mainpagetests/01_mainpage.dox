@@ -1,13 +1,10 @@
 /**
- * Copyright (C) 2013 BMW AG
+ * Copyright (C) 2015 BMW AG
  * *
  * This file is part of GENIVI project IPC CommonAPI C++.
  *
  * Contributions are licensed to the GENIVI Alliance under one or more
  * Contribution License Agreements.
- *
- * \author Juergen Gehring (juergen.gehring@bmw.de)
- * \author Manfred Bathelt (manfred.bathelt@bmw.de)
  *
  */
 

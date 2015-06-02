@@ -1,0 +1,6 @@
+=== Example 07: Mainloop
+
+This example shows how CommonAPI can be integrated with an external main loop. For demonstration purposes the +glib+ main loop is used.
+
+CommonAPI does not contain a main loop implementation itself; just a demo implementation is provided for test purposes (please have a look to the verification tests in the CommonAPI tools project to find out how the demo main loop is used).
+

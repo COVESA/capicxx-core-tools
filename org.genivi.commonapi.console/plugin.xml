@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension-point id="commands" name="CommonAPI Console Commands" schema="schema/commands.exsd"/>
+   <extension-point id="optionGroups" name="CommonAPI Console Option Groups" schema="schema/optionGroups.exsd"/>
+   <extension-point id="options" name="CommonAPI Console Options" schema="schema/options.exsd"/>
+   <extension
+         id="application"
+         point="org.eclipse.core.runtime.applications">
+      <application>
+         <run
+               class="org.genivi.commonapi.console.internal.Application">
+         </run>
+      </application>
+   </extension>
+   <extension
+         id="product"
+         point="org.eclipse.core.runtime.products">
+      <product
+            application="org.genivi.commonapi.console.application"
+            name="CommonAPI Code Generator">
+         <property
+               name="appName"
+               value="CommonAPI Code Generator">
+         </property>
+      </product>
+   </extension>
+   <extension
+         point="org.genivi.commonapi.console.commands">
+      <command
+            class="org.genivi.commonapi.console.internal.HelpCommandHandler"
+            id="org.genivi.commonapi.console.commands.help"
+            name="Console Help">
+         <options>
+            <option
+                  argCount="0"
+                  description="display help of available console commands"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.console.options.help"
+                  longName="help"
+                  required="true"
+                  shortName="h">
+            </option>
+         </options>
+      </command>
+      <command
+            class="org.genivi.commonapi.console.internal.VersionCommandHandler"
+            id="org.genivi.commonapi.console.commands.versionInfo"
+            name="Version Information">
+         <options>
+            <option
+                  argCount="0"
+                  description="print code generator version"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.console.options.version"
+                  longName="version"
+                  required="true"
+                  shortName="v">
+            </option>
+            <optionGroup
+                  id="org.genivi.commonapi.console.optionGroups.version"
+                  required="false">
+               <option
+                     argCount="0"
+                     description="print code generator and plug-in versions"
+                     hasOptionalArg="false"
+                     id="org.genivi.commonapi.console.options.pluginVersions"
+                     longName="all"
+                     required="false"
+                     shortName="a">
+               </option>
+               <option
+                     argCount="0"
+                     description="print plug-in versions"
+                     hasOptionalArg="false"
+                     id="org.genivi.commonapi.console.options.allVersions"
+                     longName="plugins"
+                     required="false"
+                     shortName="p">
+               </option>
+            </optionGroup>
+         </options>
+      </command>
+   </extension>
+</plugin>

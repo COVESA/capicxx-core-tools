@@ -1,0 +1,125 @@
+=== Example 05: Managed
+
+So far we have looked at software systems, which consisted of services and users of these services, the clients. However, in some systems there is a slightly different kind of relationship between the software components: a central manager manages other services (let's call them slaves or leaves). This central manager is a service itself but acts as client for the managed services. One example for such a system is, for example, a device manager that manages several devices, which can be available for usage in the system or not. The central manager handles all administrative tasks related to the slaves and provides a central, common interface to the user frontend.
+
+image::{imagedir}/E05Manager.png[ManagerExample image]
+
+Franca IDL supports this kind of software structure by the keyword _manages_, which can be added to the keyword interface. The following example illustrates the application of this keyword.
+
+[source,java]
+----
+package commonapi.examples
+
+interface E05Manager manages E05Device, E05SpecialDevice {
+	version { major 1 minor 0 }
+
+	attribute String [] myDevices
+
+}
+
+interface E05Device {
+	version { major 1 minor 0 }
+
+	method doSomething {
+	}
+}
+
+interface E05SpecialDevice extends E05Device {
+	version { major 1 minor 0 }
+
+	method doSomethingSpecial {
+	}
+}
+----
+
+The device manager has the service interface E05Manager and it manages devices with the interfaces E05Device and E05SpecialDevice. It is important to understand, that the exact meaning of the keyword +manages+ cannot be defined by the IDL; the keyword just indicates that there is a relationship between software components which implement manager and managed interfaces. It can be used in bindings as CommonAPI to provide API functions for a more convenient implementation of this certain kind of relationship.
+
+Therefore let's have a look at the generated and implemented source code. Since we have three interfaces the code generator generates for every interface proxy and stub classes. In our example we just want to illuminate one aspect of the managed interfaces: the registration of the managed interfaces via the manager. We assume that we have only one service (the manager) which gets informed about a detected or a removed device via the public function deviceDetected and deviceRemoved. The devices are distinguished by a number; in principle there is an arbitrary number of devices possible. The registration of the devices at CommonAPI does the manager in his stub implementation.
+
+[source,{cppstr}]
+----
+... // includes, namespaces, constructors as usual
+
+E05ManagerStubImpl::E05ManagerStubImpl(const std::string instanceName) {
+    managerInstanceName = instanceName;
+}
+
+
+void E05ManagerStubImpl::deviceDetected (unsigned int n) {
+
+	std::string deviceInstanceName = getDeviceName(n);
+	myDevices[deviceInstanceName] = DevicePtr (new E05DeviceStubImpl);
+	const bool deviceRegistered = this->registerManagedStubE05Device(
+		myDevices[deviceInstanceName], deviceInstanceName);
+}
+
+void E05ManagerStubImpl::deviceRemoved (unsigned int n) {
+
+	std::string deviceInstanceName = getDeviceName (n);
+	const bool deviceDeregistered = this->deregisterManagedStubE05Device(
+		deviceInstanceName);
+	if ( deviceDeregistered ) {	myDevices.erase (deviceInstanceName); }
+}
+
+std::string E05ManagerStubImpl::getDeviceName (unsigned int n) {
+
+	std::stringstream ss;
+	ss <<  managerInstanceName <<
+		".device" << std::setw(2) << std::hex << std::setfill('0') << n;
+	return ss.str();
+}
+
+... // implementation of special device analogously
+----
+
+The functions for the special device has been omitted for clarity.The implementations of the devices themselves are not important here as well. See now the implementation of the client. The client gets informed about new or removed devices including the addresses of these devices via the callback function newDeviceAvailable. This function can be subscribed as function object at an status event that is triggered when a device is added or removed.
+
+[source, {cppstr}]
+----
+#include <unistd.h>
+#include <iostream>
+
+#include <CommonAPI/CommonAPI.hpp>
+#include <v1_0/commonapi/examples/E05ManagerProxy.hpp>
+
+using namespace v1_0::commonapi::examples;
+
+void newDeviceAvailable(const std::string address,
+					const CommonAPI::AvailabilityStatus status) {
+    
+    if (status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+        std::cout << "New device available: " << address << std::endl;
+    }
+
+    if (status == CommonAPI::AvailabilityStatus::NOT_AVAILABLE) {
+        std::cout << "Device removed: " << address << std::endl;
+    }
+}
+
+int main() {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+
+    const std::string &domain = "local";
+    const std::string &instance = "commonapi.examples.Manager";
+    
+    std::shared_ptr<E05ManagerProxyDefault> myProxy =
+    	runtime->buildProxy<E05ManagerProxy>(domain, instance);
+    
+    while (!myProxy->isAvailable()) { usleep(10); }
+
+    CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& deviceEvent =
+    	myProxy->getProxyManagerE05Device().getInstanceAvailabilityStatusChangedEvent();
+    
+	/* special device analogously */
+
+    std::function<void(const std::string, const CommonAPI::AvailabilityStatus)>
+    		newDeviceAvailableFunc = newDeviceAvailable;
+
+    deviceEvent.subscribe(newDeviceAvailableFunc);
+    specialDeviceEvent.subscribe(newDeviceAvailableFunc);
+
+    while (true) { std::this_thread::sleep_for(std::chrono::seconds(5)); }
+    return 0;
+}
+----
+

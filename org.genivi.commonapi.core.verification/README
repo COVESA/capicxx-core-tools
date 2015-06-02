@@ -1,5 +1,5 @@
 GENIVI_org.genivi.commonapi.core.verification
-======================
+=============================================
 :Author: Juergen Gehring - juergen.gehring@bmw.de, Manfred Bathelt - manfred.bathelt@bmw.de
 :doctitle: GENIVI_org.genivi.commonapi.core.verification
 
@@ -35,32 +35,72 @@ The term "gluecode" refers to a binary that contains the binding specific genera
 src directory within that project. The gluecode library needs to contain the generated proxy and stub files (Common-API as well as binding specific ones) from
 the three .fidl files mentioned above.
 
-There are some configure options that allow you to define the binding that should be tested:
+There are some cmake options that allow you to define the binding that should be tested:
 
---with-gluecode=... specifies the path to your gluecode libraries, including name, excluding file ending; .a and .so files with
-the given name will be used.
---with-binding-name=... specifies the "well-known" name for the binding to be tested. This is the name which may be used to
-dynamically load the binding.
---with-binding=... specifies the path to the binding library, including name, excluding file ending; .a and .so files with
-the given name will be used.
+* -DCMAKE_GLUECODE_SOMEIP_NAME=SomeIPGlue and -DSomeIPGlue_DIR : 
+    This will enable the verification test for SomeIP in ctest
+* -DCMAKE_GLUECODE_DBUS_NAME=DBusGlue and -DDBusGlue_DIR : 
+    This will enable the verifcation tests for DBus in ctest
 
-If your binding needs additional libraries, use --binding-extra=... to specify them.
+If the gluecode for both middlewarebindings is defined, there will be two 
+testcases available for one verification tests. One with postfix `DBus` and one
+with `SomeIP`.
+
+Example: Excerpt of a `ctest -N` call inside the build directory, when both middlewares
+were specified in the `cmake` call:
+----
+$ ctest -N
+Test project ascgit017.CommonAPI-Tools/org.genivi.commonapi.core.verification/build
+  [...]
+  Test  #6: DTPrimitiveDBus
+  Test  #7: DTAdvancedDBus
+  Test  #8: DTDerivedDBus
+  [...]
+  Test #20: DTPrimitiveSomeIP
+  Test #21: DTAdvancedSomeIP
+  Test #22: DTDerivedSomeIP
+  [...]
+----
 
 GTest is needed to compile and run the test. Its confuguration script location must be available 
-in the environment variable GTEST_CONFIG. 
+in the environment variable `GTEST_CONFIG`. 
 
 == Usage
 
-1. Generate CommonAPI code for alll .fidl files within /src using the code generator. After that you should find the generated files in /src-gen
-2. Run autoreconf -i
-3. Configure the project to find the gluecode (see also "Description")
-Ensure you have GTEST_CONFIG set to the correct location, e.g. GTEST_CONFIG=/home/user/work/gtest/scripts/gtest-config 
-   Examples:
-   configure --with-gluecode=/home/user/CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification/.libs/libDBusGlue \
-             --with-binding-name=DBus \
-             --with-binding=/home/user/CommonAPI-D-Bus/.libs/libCommonAPI-DBus
-             --with-binding-extra=/home/user/dbus-1.4.16/dbus/.libs/libdbus-1.so   
-   If you do not need extra libraries, you can omit the --with-binding-extra option
-4. Run make check (Ensure that any additional .so which may be required can be found, for example by setting the LD_LIBRARY_PATH variable)
-5. Execute ./verification in order to run the test cases once again
-   
+1. Build needed glue code libraries, e.g. for SomeIP and for DBus.
+   Instructions how to do so can be found in the corresponding READMEs in the 
+   verification folders of the middlewares. For example 
+   `ascgit017.CommonAPI-SomeIP-Tools/org.genivi.commonapi.someip.verification`
+   in case of SomeIP.
+2. Run `cmake` (see below).
+   Ensure you have `GTEST_CONFIG` set to the correct location, 
+   e.g. `GTEST_CONFIG=/home/user/work/gtest/scripts/gtest-config`
+3. Run `make check` (Ensure that any additional .so, like the patched libdbus, 
+   which may be required can be found, for example by setting the LD_LIBRARY_PATH variable)
+4. Call `ctest -N` in the build directory to list the available test cases.
+   Run `ctest -V` (additional .so must be set in LD_LIBRARY_PATH) to run all tests.
+   or run `ctest -V -R $TESTCASENAME` to run a single test. 
+
+CMake Example call:
+----
+export GTEST_ROOT=$YOUR_PATH_HERE/gtest-1.7.0/
+
+cd org.genivi.commonapi.core.verification/
+rm -rf build
+rm -rf src-gen
+mkdir build
+cd build
+cmake \
+-DCommonAPI_DIR=$(readlink -f ../../../ascgit017.CommonAPI/build) \
+-DCOMMONAPI_TOOL_GENERATOR=$(readlink -f ../../../ascgit017.CommonAPI-Tools/org.genivi.commonapi.core.cli.product/target/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64) \
+-DCMAKE_GLUECODE_SOMEIP_NAME=SomeIPGlue \
+-DSomeIPGlue_DIR=$(readlink -f ../../../ascgit017.CommonAPI-SomeIP-Tools/org.genivi.commonapi.someip.verification/build) \
+-DCMAKE_GLUECODE_DBUS_NAME=DBusGlue \
+-DDBusGlue_DIR=$(readlink -f ../../../ascgit017.CommonAPI-D-Bus-Tools/org.genivi.commonapi.dbus.verification/build) \
+..
+
+make check
+ctest -V
+----
+
+

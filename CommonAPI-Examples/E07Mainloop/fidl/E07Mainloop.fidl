@@ -1,0 +1,22 @@
+/* Copyright (C) 2015 BMW Group
+ * Author: Lutz Bichler (lutz.bichler@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package commonapi.examples
+
+interface E07Mainloop {
+	version { major 1 minor 0 }
+	
+	attribute Int32 x
+
+	method sayHello {
+		in {
+			String name
+		}
+		out {
+			String message
+		}
+	}
+}

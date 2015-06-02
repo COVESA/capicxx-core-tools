@@ -8,29 +8,27 @@
 
 package org.genivi.commonapi.core.preferences;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
+
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
-import org.eclipse.core.resources.IResource;
-import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.QualifiedName;
-import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.xtext.generator.IFileSystemAccess;
+import org.eclipse.xtext.generator.OutputConfiguration;
 import org.franca.core.franca.FModel;
+
 
 public class FPreferences {
 
     private static FPreferences instance = null;
-    private Map<IResource, Map<String, String>> preferences = null;
+    private Map<String, String> preferences = null;
 
-    private FPreferences() {
-        preferences = new HashMap<IResource, Map<String, String>>();
+    public Map<String, String> getPreferences() {
+		return preferences;
+	}
+
+	private FPreferences() {
+        preferences = new HashMap<String, String>();
+        clidefPreferences();
     }
 
     public void resetPreferences(){
@@ -39,172 +37,115 @@ public class FPreferences {
 
     public static FPreferences getInstance() {
         if (instance == null) {
-            return instance = new FPreferences();
+            instance = new FPreferences();
         }
         return instance;
     }
 
-    public void clidefPreferences(){
-        Map<String, String> map = new HashMap<String, String>();
-        if (preferences.get(null) == null) {
-            preferences.put(null, map);
-        }
+    /**
+     * Apply defaults
+     */
+    private void clidefPreferences(){
 
-        if (!preferences.get(null).containsKey(PreferenceConstants.USEPROJECTSETTINGS)) {
-            map.put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.FALSE.toString());
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_COMMON)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
+        }    	
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_PROXIES)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_PROXIES, PreferenceConstants.DEFAULT_OUTPUT);
         }
-        if (!preferences.get(null).containsKey(PreferenceConstants.P_OUTPUT_PROXIES)) {
-            map.put(PreferenceConstants.P_OUTPUT_PROXIES, PreferenceConstants.DEFAULT_OUTPUT);
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_STUBS)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
         }
-        if (!preferences.get(null).containsKey(PreferenceConstants.P_OUTPUT_STUBS)) {
-            map.put(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_DEFAULT)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_DEFAULT, PreferenceConstants.DEFAULT_OUTPUT);
+        }    
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_SKELETON)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
+        }    
+        
+        if (!preferences.containsKey(PreferenceConstants.P_LICENSE)) {
+            preferences.put(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
         }
-        if (!preferences.get(null).containsKey(PreferenceConstants.P_LICENSE)) {
-            map.put(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATESTUB)) {
+            preferences.put(PreferenceConstants.P_GENERATESTUB, "true");
         }
-        if (!preferences.get(null).containsKey(PreferenceConstants.P_GENERATESTUB)) {
-            map.put(PreferenceConstants.P_GENERATESTUB, Boolean.TRUE.toString());
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATEPROXY)) {
+            preferences.put(PreferenceConstants.P_GENERATEPROXY, "true");
         }
-        if (!preferences.get(null).containsKey(PreferenceConstants.P_GENERATEPROXY)) {
-            map.put(PreferenceConstants.P_GENERATEPROXY, Boolean.TRUE.toString());
+        if (!preferences.containsKey(PreferenceConstants.P_SKELETONPOSTFIX)) {
+            preferences.put(PreferenceConstants.P_SKELETONPOSTFIX, "Default");
         }
-        map.putAll(preferences.get(null));
-        preferences.put(null, map);
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATESKELETON)) {
+            preferences.put(PreferenceConstants.P_GENERATESKELETON, "false");
+        }
+        if (!preferences.containsKey(PreferenceConstants.P_LOGOUTPUT)) {
+            preferences.put(PreferenceConstants.P_LOGOUTPUT, "true");
+        }
+        if (!preferences.containsKey(PreferenceConstants.P_ENUMPREFIX)) {
+            preferences.put(PreferenceConstants.P_ENUMPREFIX, "");
+        }
+        
     }
 
-    public void addPreferences(IResource res) {
-        Map<String, String> map = new HashMap<String, String>();
-
-        if (res != null) {
-            try {
-                QualifiedName useProjectSettingsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.USEPROJECTSETTINGS);
-                map.put(PreferenceConstants.USEPROJECTSETTINGS, res.getPersistentProperty(useProjectSettingsIdentifier));
-
-                QualifiedName outputPathIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_PROXIES);
-                map.put(PreferenceConstants.P_OUTPUT_PROXIES, res.getPersistentProperty(outputPathIdentifier));
-
-                QualifiedName outputPathStubsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_STUBS);
-                map.put(PreferenceConstants.P_OUTPUT_STUBS, res.getPersistentProperty(outputPathStubsIdentifier));
-
-                QualifiedName licenseIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_LICENSE);
-                map.put(PreferenceConstants.P_LICENSE, res.getPersistentProperty(licenseIdentifier));
-
-                QualifiedName generateStubsIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATESTUB);
-                map.put(PreferenceConstants.P_GENERATESTUB, res.getPersistentProperty(generateStubsIdentifier));
-
-                QualifiedName generateProxiesIdentifier = new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATEPROXY);
-                map.put(PreferenceConstants.P_GENERATEPROXY, res.getPersistentProperty(generateProxiesIdentifier));
-
-            } catch (CoreException e) {
-                e.printStackTrace();
-            }
-
-        } else {
-            clidefPreferences();
-        }
-        preferences.put(res, map);
+    public String getPreference(String preferencename, String defaultValue) {
+    	
+    	if (preferences.containsKey(preferencename)) {
+    		return preferences.get(preferencename);
+    	}
+    	System.err.println("Unknown preference " + preferencename);
+        return "";
     }
 
-    public String getPreference(IResource res, String preferencename, String defaultValue) {
-        Map<String, String> map = getPreferencesForResource(res);
-        if (map != null
-                        && map.get(preferencename) != null
-                        && map.get(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.TRUE.toString())) {
-            return map.get(preferencename);
+    public void setPreference(String name, String value) {
+        if(preferences != null) {
+        	preferences.put(name, value);
         }
-        if (res instanceof IFile) {
-            return getPreference(res.getProject(), preferencename, defaultValue);
-        }
-        return defaultValue;
-    }
-
-    public boolean useModelSpecific(IResource res) {
-        Map<String, String> map = getPreferencesForResource(res);
-        return map.get(PreferenceConstants.USEPROJECTSETTINGS) != null
-               && map.get(PreferenceConstants.USEPROJECTSETTINGS).equals(Boolean.TRUE.toString());
-    }
-
-    private Map<String, String> getPreferencesForResource(IResource res) {
-        return preferences.get(res);
-    }
-
-    public void setPreferences(String name, File file) throws IOException {
-        Reader r = null;
-        try {
-            r = new FileReader(file);
-            setPreference(name, r, "");
-        } finally {
-            try {
-                r.close();
-            } catch (IOException e) {
-            }
-        }
-    }
-
-    public void setPreference(String name, String preference) {
-        if(preferences.get(null) == null) {
-            preferences.put(null, new HashMap<String, String>());
-        }
-        preferences.get(null).put(name, preference);
-    }
-
-    public void setPreference(String name, Reader inreader, String path) throws IOException {
-        BufferedReader reader = new BufferedReader(inreader);
-        StringBuilder builder = new StringBuilder();
-        String line = "";
-        while ((line = reader.readLine()) != null) {
-            builder.append(line + "\n");
-        }
-        if (preferences.get(null) == null)
-            preferences.put(null, new HashMap<String, String>());
-        preferences.get(null).put(name, builder.toString());
     }
 
     public String getModelPath(FModel model) {
         String ret = model.eResource().getURI().toString();
         return ret;
     }
+    
+    /**
+     * Set the output path configurations (based on stored preference values) for file system access used in the generator.
+     * @return the map of output configurations
+     */
+    public HashMap<String, OutputConfiguration> getOutputpathConfiguration() {
 
-    public static void init(IPreferenceStore store, IPreferenceStore defaultstore, IProject project) {
-        if (instance == null) {
-            instance = new FPreferences();
-        }
-        String useProjectSettingsString = store.getString(PreferenceConstants.USEPROJECTSETTINGS);
-        boolean useProjectSettings = useProjectSettingsString.equals(Boolean.toString(true));
-        if (useProjectSettings) {
-            if (instance.preferences.get(project) == null) {
-                instance.preferences.put(project, new HashMap<String, String>());
-            }
-            instance.preferences.get(project).put(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
+        String defaultDir = getPreference(PreferenceConstants.P_OUTPUT_DEFAULT, PreferenceConstants.DEFAULT_OUTPUT);
+        String outputCommonDir = getPreference(PreferenceConstants.P_OUTPUT_COMMON, defaultDir);
+        String outputProxyDir = getPreference(PreferenceConstants.P_OUTPUT_PROXIES, defaultDir);
+        String outputStubDir = getPreference(PreferenceConstants.P_OUTPUT_STUBS, defaultDir);
+        String outputSkelDir = getPreference(PreferenceConstants.P_OUTPUT_SKELETON, defaultDir);
+    	
+        // the map of output directory configurations
+        HashMap<String, OutputConfiguration>  outputs = new HashMap<String, OutputConfiguration> ();
 
-            String outputFolderProxies = store.getString(PreferenceConstants.P_OUTPUT_PROXIES);
-            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT_PROXIES, outputFolderProxies);
-
-            String outputFolderStubs = store.getString(PreferenceConstants.P_OUTPUT_STUBS);
-            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT_STUBS, outputFolderStubs);
-
-            String licenseHeader = store.getString(PreferenceConstants.P_LICENSE);
-            instance.preferences.get(project).put(PreferenceConstants.P_LICENSE, licenseHeader);
-
-            String generateProxy = store.getString(PreferenceConstants.P_GENERATEPROXY);
-            instance.preferences.get(project).put(PreferenceConstants.P_GENERATEPROXY, generateProxy);
-
-            String generatStub = store.getString(PreferenceConstants.P_GENERATESTUB);
-            instance.preferences.get(project).put(PreferenceConstants.P_GENERATESTUB, generatStub);
-        } else {
-            if (instance.preferences.get(project) == null) {
-                instance.preferences.put(project, new HashMap<String, String>());
-            }
-            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT_PROXIES,
-                    defaultstore.getString(PreferenceConstants.P_OUTPUT_PROXIES));
-            instance.preferences.get(project).put(PreferenceConstants.P_OUTPUT_STUBS,
-                    defaultstore.getString(PreferenceConstants.P_OUTPUT_STUBS));
-            instance.preferences.get(project).put(PreferenceConstants.P_LICENSE,
-                    defaultstore.getString(PreferenceConstants.P_LICENSE));
-            instance.preferences.get(project).put(PreferenceConstants.P_GENERATEPROXY,
-                    defaultstore.getString(PreferenceConstants.P_GENERATEPROXY));
-            instance.preferences.get(project).put(PreferenceConstants.P_GENERATESTUB,
-                    defaultstore.getString(PreferenceConstants.P_GENERATESTUB));
-        }
+        OutputConfiguration commonOutput = new OutputConfiguration(PreferenceConstants.P_OUTPUT_COMMON);
+        commonOutput.setDescription("Common Output Folder");
+        commonOutput.setOutputDirectory(outputCommonDir);
+        commonOutput.setCreateOutputDirectory(true);
+        outputs.put(IFileSystemAccess.DEFAULT_OUTPUT, commonOutput);
+        
+        OutputConfiguration proxyOutput = new OutputConfiguration(PreferenceConstants.P_OUTPUT_PROXIES);
+        proxyOutput.setDescription("Proxy Output Folder");
+        proxyOutput.setOutputDirectory(outputProxyDir);
+        proxyOutput.setCreateOutputDirectory(true);
+        outputs.put(PreferenceConstants.P_OUTPUT_PROXIES, proxyOutput);
+        
+        OutputConfiguration stubOutput = new OutputConfiguration(PreferenceConstants.P_OUTPUT_STUBS);
+        stubOutput.setDescription("Stub Output Folder");
+        stubOutput.setOutputDirectory(outputStubDir);
+        stubOutput.setCreateOutputDirectory(true);
+        outputs.put(PreferenceConstants.P_OUTPUT_STUBS, stubOutput);
+        
+        OutputConfiguration skelOutput = new OutputConfiguration(PreferenceConstants.P_OUTPUT_SKELETON);
+        skelOutput.setDescription("Skeleton Output Folder");
+        skelOutput.setOutputDirectory(outputSkelDir);
+        skelOutput.setCreateOutputDirectory(true);
+        outputs.put(PreferenceConstants.P_OUTPUT_SKELETON, skelOutput);
+        
+        return outputs;
     }
 }

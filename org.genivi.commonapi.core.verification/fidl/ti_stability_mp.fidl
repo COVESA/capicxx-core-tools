@@ -1,0 +1,46 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.stability.mp
+
+interface TestInterface {
+    version { major 1 minor 0 }
+
+	attribute tArray testAttribute
+	   
+    method testMethod {
+        in {
+            tArray x
+        }
+        out {
+            tArray y
+        }
+    }
+	    	
+    broadcast testBroadcast {
+        out {
+            tArray y
+        }
+    }
+       
+    array tArray of UInt8
+}
+
+interface ControlInterface {
+	version { major 1 minor 0 }
+    method controlMethod {
+    	in {
+    		UInt8 id
+    		UInt32 data
+    	}
+    	out {
+    		UInt8 command
+    		UInt32 data1
+    		UInt32 data2
+    	}
+    }
+
+
+}
+
+

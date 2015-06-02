@@ -1,10 +1,3 @@
-/.settings
-/.DS_Store
-/org.genivi.commonapi.dbus
-/org.genivi.commonapi.core
-/.settings/org.eclipse.ltk.core.refactoring.prefs
-/workspaceitestra.xml
-/build.xml
-/temp
-/.classpath
+*~
+/bin
 /target

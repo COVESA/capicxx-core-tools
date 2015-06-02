@@ -1,5 +1,4 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+/* Copyright (C) 2014 - 2015 BMW Group
  * Author: Juergen Gehring (juergen.gehring@bmw.de)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -12,7 +11,7 @@
 #if !defined (COMMONAPI_INTERNAL_COMPILATION)
 #define COMMONAPI_INTERNAL_COMPILATION
 #endif
-#include <CommonAPI/MainLoopContext.h>
+#include <CommonAPI/MainLoopContext.hpp>
 #undef COMMONAPI_INTERNAL_COMPILATION
 
 #include <vector>
@@ -23,7 +22,10 @@
 #include <sys/eventfd.h>
 #include <cassert>
 #include <chrono>
+#include <sys/time.h>
+#include <future>
 
+const long maxTimeout = 10;
 
 namespace CommonAPI {
 
@@ -54,6 +56,8 @@ class VerificationMainLoop {
                 std::bind(&CommonAPI::VerificationMainLoop::deregisterTimeout, this, std::placeholders::_1));
         wakeupListenerSubscription_ = context_->subscribeForWakeupEvents(
                 std::bind(&CommonAPI::VerificationMainLoop::wakeup, this));
+
+        stopPromise = new std::promise<bool>;
     }
 
     ~VerificationMainLoop() {
@@ -65,12 +69,14 @@ class VerificationMainLoop {
         context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
         close(wakeFd_.fd);
+
+        delete stopPromise;
     }
 
     /**
      * \brief Runs the mainloop indefinitely until stop() is called.
      *
-     * Runs the mainloop indefinitely until stop() is called. The given timeout (milliseconds)
+     * Runs the mainloop infinitely until stop() is called. The given timeout (milliseconds)
      * will be overridden if a timeout-event is present that defines an earlier ready time.
      */
     void run(const int64_t& timeoutInterval = TIMEOUT_INFINITE) {
@@ -78,24 +84,40 @@ class VerificationMainLoop {
         while(running_) {
             doSingleIteration(timeoutInterval);
         }
-    }
 
-    void runVerification(const int64_t& timeoutInterval, bool dispatchTimeoutAndWatches = false, bool dispatchDispatchSources = false) {
-        running_ = true;
-        clock_t start = clock();
-        while(running_) {
-
-            doVerificationIteration(dispatchTimeoutAndWatches, dispatchDispatchSources);
-
-            if(timeoutInterval != TIMEOUT_INFINITE && clock()-start > timeoutInterval*CLOCKS_PER_SEC)
-                stop();
+        if (stopPromise) {
+        	stopPromise->set_value(true);
         }
     }
 
-    void stop() {
+    void runVerification(const long& timeoutInterval, bool dispatchTimeoutAndWatches = false, bool dispatchDispatchSources = false) {
+        running_ = true;
+
+        prepare(maxTimeout);
+        long ti = timeoutInterval*((long)(1000/currentMinimalTimeoutInterval_));
+
+        while (ti>0) {
+            ti--;
+            doVerificationIteration(dispatchTimeoutAndWatches, dispatchDispatchSources);
+        }
         running_ = false;
         wakeup();
     }
+
+    std::future<bool> stop() {
+    	// delete old promise to secure, that always a new future object is returned
+    	delete stopPromise;
+    	stopPromise = new std::promise<bool>;
+
+        running_ = false;
+        wakeup();
+
+        return stopPromise->get_future();
+    }
+
+    bool isRunning() {
+    	return running_;
+	}
 
     /**
      * \brief Executes a single cycle of the mainloop.
@@ -228,16 +250,16 @@ class VerificationMainLoop {
         ::write(wakeFd_.fd, &wake, sizeof(int64_t));
     }
 
-    void dispatchTimeouts()
-    {
+    void dispatchTimeouts() {
+
         for (auto timeoutIterator = timeoutsToDispatch_.begin(); timeoutIterator != timeoutsToDispatch_.end();
                         timeoutIterator++) {
             std::get<1>(*timeoutIterator)->dispatch();
         }
     }
 
-    void dispatchWatches()
-    {
+    void dispatchWatches() {
+
         for (auto watchIterator = watchesToDispatch_.begin();
                         watchIterator != watchesToDispatch_.end();
                         watchIterator++) {
@@ -247,29 +269,32 @@ class VerificationMainLoop {
         }
     }
 
-    void dispatchSources()
-    {
+    void dispatchSources() {
+
         breakLoop_ = false;
         for (auto dispatchSourceIterator = sourcesToDispatch_.begin();
                         dispatchSourceIterator != sourcesToDispatch_.end() && !breakLoop_; dispatchSourceIterator++) {
             while (std::get<1>(*dispatchSourceIterator)->dispatch())
                 ;
-
         }
     }
 
-    void doVerificationIteration(bool dispatchTimeoutAndWatches, bool dispatchDispatchSources)
-                                 {
-        prepare(TIMEOUT_INFINITE);
+    void doVerificationIteration(bool dispatchTimeoutAndWatches, bool dispatchDispatchSources) {
+
+        prepare(maxTimeout);
         poll();
         if (dispatchTimeoutAndWatches || dispatchDispatchSources) {
+
             if (check()) {
+
                 if (dispatchTimeoutAndWatches) {
-                    dispatchTimeouts();
                     dispatchWatches();
+                    dispatchTimeouts();
                 }
-                if (dispatchDispatchSources)
+
+                if (dispatchDispatchSources) {
                     dispatchSources();
+                }
             }
             timeoutsToDispatch_.clear();
             sourcesToDispatch_.clear();
@@ -367,6 +392,8 @@ class VerificationMainLoop {
     bool running_;
 
     pollfd wakeFd_;
+
+    std::promise<bool>* stopPromise;
 };
 
 

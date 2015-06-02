@@ -1,0 +1,73 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.datatypes.primitive
+
+interface TestInterface {
+    version { major 1 minor 0 }
+
+    attribute UInt8 aUint8
+    attribute Int8 aInt8
+    attribute UInt16 aUint16
+    attribute Int16 aInt16
+    attribute UInt32 aUint32
+    attribute Int32 aInt32
+    attribute UInt64 aUint64
+    attribute Int64 aInt64
+    attribute Boolean aBoolean
+    attribute Float aFloat
+    attribute Double aDouble
+    attribute String aString
+    //attribute ByteBuffer aByteBuffer
+
+    method fTest {
+        in {
+            UInt8 uint8In
+            Int8 int8In
+            UInt16 uint16In
+            Int16 int16In
+            UInt32 uint32In
+            Int32 int32In
+            UInt64 uint64In
+            Int64 int64In
+            Boolean booleanIn
+            Float floatIn
+            Double doubleIn
+            String stringIn
+            //ByteBuffer byteBufferIn
+        }
+        out {
+            UInt8 uint8Out
+            Int8 int8Out
+            UInt16 uint16Out
+            Int16 int16Out
+            UInt32 uint32Out
+            Int32 int32Out
+            UInt64 uint64Out
+            Int64 int64Out
+            Boolean booleanOut
+            Float floatOut
+            Double doubleOut
+            String stringOut
+            //ByteBuffer byteBufferOut
+        }
+    }
+
+    broadcast bTest {
+        out {
+            UInt8 uint8Out
+            Int8 int8Out
+            UInt16 uint16Out
+            Int16 int16Out
+            UInt32 uint32Out
+            Int32 int32Out
+            UInt64 uint64Out
+            Int64 int64Out
+            Boolean booleanOut
+            Float floatOut
+            Double doubleOut
+            String stringOut
+            //ByteBuffer byteBufferOut
+        }
+    }
+}

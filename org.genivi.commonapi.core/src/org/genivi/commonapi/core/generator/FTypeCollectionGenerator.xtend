@@ -6,14 +6,14 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
+import java.util.Collection
+import java.util.HashSet
 import javax.inject.Inject
+import org.eclipse.core.resources.IResource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FTypeCollection
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
-import java.util.HashSet
-import java.util.Collection
-import org.eclipse.core.resources.IResource
+import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
@@ -22,21 +22,21 @@ class FTypeCollectionGenerator {
 
     def generate(FTypeCollection fTypeCollection,
                  IFileSystemAccess fileSystemAccess,
-                 DeploymentInterfacePropertyAccessor deploymentAccessor,
+                 PropertyAccessor deploymentAccessor,
                  IResource modelid) {
 
-        fileSystemAccess.generateFile(fTypeCollection.headerPath, fTypeCollection.generateHeader(deploymentAccessor, modelid))
+        fileSystemAccess.generateFile(fTypeCollection.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateHeader(modelid, deploymentAccessor))
 
         if (fTypeCollection.hasSourceFile) {
-            fileSystemAccess.generateFile(fTypeCollection.sourcePath, fTypeCollection.generateSource(modelid))
+            fileSystemAccess.generateFile(fTypeCollection.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateSource(modelid, deploymentAccessor))
         }
     }
 
-    def private generateHeader(FTypeCollection fTypeCollection, DeploymentInterfacePropertyAccessor deploymentAccessor, IResource modelid) '''
+    def private generateHeader(FTypeCollection fTypeCollection, IResource modelid, PropertyAccessor deploymentAccessor) '''
         «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
-        #ifndef «fTypeCollection.defineName»_H_
-        #define «fTypeCollection.defineName»_H_
+        #ifndef «fTypeCollection.defineName»_HPP_
+        #define «fTypeCollection.defineName»_HPP_
 
         «val libraryHeaders = new HashSet<String>»
         «val generatedHeaders = new HashSet<String>»
@@ -56,9 +56,10 @@ class FTypeCollectionGenerator {
 
         #undef COMMONAPI_INTERNAL_COMPILATION
 
+        «fTypeCollection.generateVersionNamespaceBegin»
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
 
-        namespace «fTypeCollection.elementName» {
+        struct «fTypeCollection.elementName» {
             «fTypeCollection.generateFTypeDeclarations(deploymentAccessor)»
 
         «FOR type : fTypeCollection.types»
@@ -77,14 +78,12 @@ class FTypeCollectionGenerator {
             }
         «ENDIF»
 
-        } // namespace «fTypeCollection.elementName»
+        }; // struct «fTypeCollection.elementName»
 
         «fTypeCollection.model.generateNamespaceEndDeclaration»
+        «fTypeCollection.generateVersionNamespaceEnd»
 
         namespace CommonAPI {
-
-            «fTypeCollection.generateTypeWriters(deploymentAccessor)»
-
             «fTypeCollection.generateVariantComparators»
         }
 
@@ -93,10 +92,10 @@ class FTypeCollectionGenerator {
             «fTypeCollection.generateHashers(deploymentAccessor)»
         }
 
-        #endif // «fTypeCollection.defineName»_H_
+        #endif // «fTypeCollection.defineName»_HPP_
     '''
 
-    def private generateSource(FTypeCollection fTypeCollection, IResource modelid) '''
+    def private generateSource(FTypeCollection fTypeCollection, IResource modelid, PropertyAccessor _accessor) '''
         «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
         #include "«fTypeCollection.headerFile»"
@@ -105,21 +104,20 @@ class FTypeCollectionGenerator {
             #include <«fStructTypeHeaderPath»>
         «ENDFOR»
 
+        «fTypeCollection.generateVersionNamespaceBegin»
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
-        namespace «fTypeCollection.elementName» {
 
         «FOR type : fTypeCollection.types»
-            «/*FTypeGenerator::generateComments(type.comment, false)*/»
-            «type.generateFTypeImplementation(type)»
+            «type.generateFTypeImplementation(fTypeCollection, _accessor)»
         «ENDFOR»
 
-        } // namespace «fTypeCollection.elementName»
         «fTypeCollection.model.generateNamespaceEndDeclaration»
+        «fTypeCollection.generateVersionNamespaceEnd»
     '''
 
     def void getRequiredHeaderFiles(FTypeCollection fInterface, Collection<String> generatedHeaders,
         Collection<String> libraryHeaders) {
-        libraryHeaders.add('CommonAPI/types.h')
+        libraryHeaders.add('CommonAPI/Types.hpp')
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
         generatedHeaders.remove(fInterface.headerPath)
     }

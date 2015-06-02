@@ -1,23 +1,16 @@
-Preliminary remarks
-~~~~~~~~~~~~~~~~~~~
+=== Preliminary remarks
 
-The examples describe how some standard problems of interface design and implementation can be solved with Franca IDL and CommonAPI. Before you start make sure that your environment is properly installed. That means:
-
-- You can start the code generator in your Eclipse installation or from command line.
-- Your PKG_CONFIG_PATH contains the paths to the package config files of CommnAPI, CommonAPI-DBus and your patched D-Bus.
-- You have patched the DBus library with the patch in CommonAPI-D-Bus and you are sure that your LD_LIBRARY_PATH contains the path to the patched DBus library.
-- Make sure dbus session bus is available ($ env |grep DBUS_SESSION_BUS_ADDRESS, output must not be empty!).
-- If your platform is Windows, please read the instructions for Windows first. The following instructions assume that your are working on a Linux platform.
+The examples describe how some standard problems of interface design and implementation can be solved with Franca IDL and CommonAPI. Before you start make sure that your environment is properly installed as described in the integration guide. Please do not consider only the integration guide in this document but also in the binding specific tutorial.
 
 The examples provide a more or less generic CMake file for building the executables. Two executables are needed: a service and a client program. The standard procedure to build one of these example programs is:
 
 ----
-$ mkdir build; cd build
-$ cmake -D DBUS_PATH_LOCAL=<your_local_path_of_the_patched_dbus_library> -D PRJ_NAME=<name_of_the_example> ..
+$ cd build
+$ cmake -D USE_INSTALLED_COMMONAPI=ON/OFF ..
 $ make
 ----
 
-_name_of_the_example_ is +e01HelloWorld+ for the first example.
+Set USE_INSTALLED_COMMONAPI to ON if you use an installed version of CommonAPI; set it to OFF if you use working copy.
 
 Here are some hints if you want to configure your eclipse project for the CMake build:
 
@@ -27,13 +20,10 @@ Here are some hints if you want to configure your eclipse project for the CMake 
 ----
 make -C ${ProjDirPath}/build VERBOSE=1
 ----
-- The Build Directory must be empty.
-- Create a make target (eg via Window->Show View->Make Target). Set the build command to:
+
+The Build Directory must be empty. Create a make target (eg via Window->Show View->Make Target). Set the build command to:
 
 ----
-cmake -E chdir build/ cmake -D DBUS_PATH_LOCAL=
-	<your_local_path_of_the_patched_dbus_library> -D PRJ_NAME=<name_of_the_example> ..
+cmake -E chdir build/ cmake ..
 ----
-
-and leave the Make Target field empty. Finally, create in "Run Configurations" two configurations for client and service. Note that it might be necessary to start the executables with a local setting of the +LD_LIBRARY_PATH+ (eg to +/usr/local/lib+) since CommonAPI applications use a patched version of libdbus.
 

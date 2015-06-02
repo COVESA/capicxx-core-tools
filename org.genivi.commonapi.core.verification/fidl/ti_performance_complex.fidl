@@ -1,0 +1,38 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.performance.complex
+
+interface TestInterface {
+	version { major 1 minor 0 }
+
+	method testMethod {
+	    in {
+	        tArray x
+	    }
+	    out {
+	        tArray y
+	    }
+	}
+	
+	struct tStruct {
+		innerStruct iStruct
+		innerUnion iUnion
+	}
+	
+	struct innerStruct {
+		UInt32 uint32Member
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+        UInt16 uint16Member
+    }
+    
+    union innerUnion {
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+    }
+	
+	array tArray of tStruct
+}

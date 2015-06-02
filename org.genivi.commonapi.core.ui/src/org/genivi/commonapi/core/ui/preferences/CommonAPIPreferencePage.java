@@ -8,10 +8,16 @@
 
 package org.genivi.commonapi.core.ui.preferences;
 
+import org.eclipse.cdt.ui.newui.MultiLineTextFieldEditor;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.preferences.DefaultScope;
+import org.eclipse.jface.preference.BooleanFieldEditor;
 import org.eclipse.jface.preference.FieldEditor;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.preference.StringFieldEditor;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
@@ -19,25 +25,27 @@ import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
 
 /**
  * This class represents a preference page that is contributed to the
- * Preferences dialog. By subclassing <samp>FieldEditorOverlayPage</samp>, we
- * can use the field support built into JFace that allows us to create a page
- * that is small and knows how to save, restore and apply itself.
+ * Preferences dialog. By subclassing <samp>FieldEditorOverlayPage</samp>.
  * <p>
- * This page is used to modify preferences only. They are stored in the preference store that belongs to the main plug-in class. That way,
- * preferences can be accessed directly via the preference store.
+ * This page is used to modify preferences. They are stored in the preference store that 
+ * belongs to the main plug-in class. 
  */
 
 public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements IWorkbenchPreferencePage
 {
 
-    private FieldEditor license     = null;
+    private MultiLineTextFieldEditor license     = null;
     private FieldEditor proxyOutput = null;
     private FieldEditor stubOutput  = null;
-
+    private FieldEditor commonOutput  = null;
+    private FieldEditor skeletonOutput  = null;
+    private StringFieldEditor postFix = null;
+    private BooleanFieldEditor generatSkeleton = null;
+	private StringFieldEditor enumPrefix = null;
+	
     public CommonAPIPreferencePage()
     {
         super(GRID);
-        setDescription("Preferences for CommonAPI");
     }
 
     /**
@@ -47,24 +55,54 @@ public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements I
      */
     public void createFieldEditors()
     {
-        license = new MultiLineTextField(PreferenceConstants.P_LICENSE, "The header to insert for all generated files", 60,
+    	generatSkeleton = new BooleanFieldEditor(PreferenceConstants.P_GENERATESKELETON, "Generate skeleton code", getFieldEditorParent());    	
+    	addField(generatSkeleton);
+
+        license = new MultiLineTextFieldEditor(PreferenceConstants.P_LICENSE, "The license header to be inserted in all generated files", 30,
                 getFieldEditorParent());
+        license.setLabelText(""); // need to set this parameter (seems to be a bug)
         addField(license);
-        proxyOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_PROXIES, "Output directory for proxies inside project", 30,
+        
+        // output directory definitions
+        commonOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_COMMON, "Output directory for the common code", 30,
+                getFieldEditorParent());
+        addField(commonOutput);
+        proxyOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_PROXIES, "Output directory for proxy code", 30,
                 getFieldEditorParent());
         addField(proxyOutput);
-        stubOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_STUBS, "Output directory for stubs inside project", 30,
+        stubOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_STUBS, "Output directory for stub code", 30,
                 getFieldEditorParent());
-        addField(stubOutput);
+        addField(stubOutput);        
+        skeletonOutput = new StringFieldEditor(PreferenceConstants.P_OUTPUT_SKELETON, "Output directory for the skeleton code", 30,
+                getFieldEditorParent());
+        addField(skeletonOutput);        
+
+        postFix = new StringFieldEditor(PreferenceConstants.P_SKELETONPOSTFIX, "Postfix for skeleton filenames", 30, getFieldEditorParent());
+        addField(postFix);
+        postFix.setValidateStrategy(StringFieldEditor.VALIDATE_ON_KEY_STROKE);
+
+        enumPrefix  = new StringFieldEditor(PreferenceConstants.P_ENUMPREFIX, "Prefix for enumeration literals", 30, getFieldEditorParent());
+        addField(enumPrefix);
     }
 
     @Override
     protected void performDefaults()
     {
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES,
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATEPROXY, "true");
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATESTUB, "true");
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATESKELETON, "false");
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_SKELETONPOSTFIX, "Default");
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_ENUMPREFIX, "");
+    	
+    	DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES,
                 PreferenceConstants.DEFAULT_OUTPUT);
         DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
                 .put(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+        		.put(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
+        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+        		.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
+        
         super.performDefaults();
     }
 
@@ -86,4 +124,32 @@ public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements I
         return CommonApiUiPlugin.getDefault().getPreferenceStore();
     }
 
+    @Override
+    public void propertyChange(PropertyChangeEvent event) {
+    	super.propertyChange(event);
+
+    	String preferenceName = ((FieldEditor) event.getSource()).getPreferenceName();
+    	// was the skeletonOutput field editor changed ?
+    	if(preferenceName != null && preferenceName.equals(PreferenceConstants.P_SKELETONPOSTFIX)) {
+    		boolean enableSkeletonCode = !event.getNewValue().toString().isEmpty();
+    		generatSkeleton.setEnabled(enableSkeletonCode, getFieldEditorParent());
+
+    		if(!enableSkeletonCode) {
+    			// disable skeleton code generation
+    			generatSkeleton.loadDefault();
+
+    			IResource resource = (IResource) getElement();
+    			try
+    			{
+    				resource.setPersistentProperty(new QualifiedName(getPageId(), PreferenceConstants.P_GENERATESKELETON), "false");
+    			}
+    			catch (CoreException e)
+    			{
+    			}
+    		}
+    	}
+    	// will be disposed from FieldEditorPreferencePage !
+    }
+    
+    
 }

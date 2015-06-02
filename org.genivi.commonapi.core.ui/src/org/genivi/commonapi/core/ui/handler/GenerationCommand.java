@@ -23,6 +23,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.emf.common.util.URI;
@@ -36,9 +37,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.eclipse.xtext.builder.EclipseResourceFileSystemAccess2;
-import org.eclipse.xtext.generator.IFileSystemAccess;
 import org.eclipse.xtext.generator.IGenerator;
-import org.eclipse.xtext.resource.IResourceDescriptions;
 import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.ui.editor.XtextEditor;
 import org.eclipse.xtext.ui.resource.IResourceSetProvider;
@@ -46,233 +45,320 @@ import org.eclipse.xtext.util.concurrent.IUnitOfWork;
 import org.genivi.commonapi.core.preferences.FPreferences;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
-import org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage;
-import org.genivi.commonapi.core.ui.preferences.FieldEditorOverlayPage;
 
 import com.google.inject.Provider;
 
 public class GenerationCommand extends AbstractHandler {
 
-    @Inject
-    private Provider<EclipseResourceFileSystemAccess2> fileAccessProvider;
-    @Inject
-    private IResourceDescriptions resourceDescriptions;
-    @Inject
-    private IResourceSetProvider resourceSetProvider;
-    @Inject
-    private IGenerator francaGenerator;
+	@Inject
+	protected Provider<EclipseResourceFileSystemAccess2> fileAccessProvider;
+	@Inject
+	private IResourceSetProvider resourceSetProvider;
+	@Inject
+	private IGenerator francaGenerator;
 
-    @Override
-    public Object execute(final ExecutionEvent event) throws ExecutionException {
-        final ISelection selection = HandlerUtil.getCurrentSelection(event);
-        if (selection instanceof IStructuredSelection) {
-            if (!selection.isEmpty())
-                executeGeneratorForSelection((IStructuredSelection) selection);
-        } else {
-            final IEditorPart activeEditor = HandlerUtil.getActiveEditor(event);
-            if (activeEditor instanceof XtextEditor)
-                executeGeneratorForXtextEditor((XtextEditor) activeEditor);
-            else
-                throw new ExecutionException("Cannot handle ExecutionEvent: "
-                        + event);
-        }
+	@Override
+	public Object execute(final ExecutionEvent event) throws ExecutionException {
+		final ISelection selection = HandlerUtil.getCurrentSelection(event);
+		if (selection instanceof IStructuredSelection) {
+			if (!selection.isEmpty())
+				executeGeneratorForSelection((IStructuredSelection) selection);
+		} else {
+			final IEditorPart activeEditor = HandlerUtil.getActiveEditor(event);
+			if (activeEditor instanceof XtextEditor)
+				executeGeneratorForXtextEditor((XtextEditor) activeEditor);
+			else
+				throw new ExecutionException("Cannot handle ExecutionEvent: "
+						+ event);
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private void executeGeneratorForSelection(
-            final IStructuredSelection structuredSelection) {
-        IProject project = null;
-        for (Iterator<?> iterator = structuredSelection.iterator(); iterator
-                .hasNext();) {
-            final Object selectiobObject = iterator.next();
-            if (selectiobObject instanceof IFile) {
-                final IFile file = (IFile) selectiobObject;
-                final URI uri = URI.createPlatformResourceURI(file
-                        .getFullPath().toString(), true);
-                final ResourceSet rs = resourceSetProvider.get(file
-                        .getProject());
-                final Resource r = rs.getResource(uri, true);
+	private void executeGeneratorForSelection(
+			final IStructuredSelection structuredSelection) {
+		IProject project = null;
+		for (Iterator<?> iterator = structuredSelection.iterator(); iterator
+				.hasNext();) {
+			final Object selectiobObject = iterator.next();
+			if (selectiobObject instanceof IFile) {
+				final IFile file = (IFile) selectiobObject;
+				final URI uri = URI.createPlatformResourceURI(file
+						.getFullPath().toString(), true);
+				final ResourceSet rs = resourceSetProvider.get(file
+						.getProject());
+				final Resource r = rs.getResource(uri, true);
 
-                project = file.getProject();
-                FieldEditorOverlayPage page = new CommonAPIPreferencePage();
-                page.setElement(project);
-                page.createControl(null);
-                FPreferences.init(page.getPreferenceStore(), CommonApiUiPlugin
-                        .getDefault().getPreferenceStore(), project);
-                final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess(project);
-                fileSystemAccess.setProject(project);
-                Job job = new Job("validation and generation") {
+				project = file.getProject(); 
 
-                    @Override
-                    protected IStatus run(IProgressMonitor monitor) {
-                        monitor.beginTask("handle " + file.getName(),
-                                IProgressMonitor.UNKNOWN);
-                        monitor.subTask("validation");
-                        int i = 0;
-                        try {
-                            for (IMarker m : ((IResource) file).findMarkers(
-                                    IMarker.PROBLEM, true, 2)) {
-                                if ((Integer) m.getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
-                                    i++;
-                                    break;
-                                }
-                            }
+				setupPreferences(file);               
 
-                        } catch (CoreException ce) {
-                        }
-                        if (r.getErrors().size() == 0 && i == 0) {
-                            monitor.subTask("Generate");
-                            try {
-                                francaGenerator.doGenerate(r, fileSystemAccess);
-                            } catch (Exception e) {
-                                exceptionPopUp(e, file);
-                                return Status.CANCEL_STATUS;
-                            } catch (Error e) {
-                                errorPopUp(e, file);
-                                return Status.CANCEL_STATUS;
-                            }
-                            return Status.OK_STATUS;
-                        } else {
-                            markerPopUp(file);
-                            return Status.CANCEL_STATUS;
-                        }
+				final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
+				fileSystemAccess.setProject(project);
+				Job job = new Job("validation and generation") {
 
-                    }
+					@Override
+					protected IStatus run(IProgressMonitor monitor) {
+						monitor.beginTask("handle " + file.getName(),
+								IProgressMonitor.UNKNOWN);
+						monitor.subTask("validation");
+						int i = 0;
+						try {
+							for (IMarker m : ((IResource) file).findMarkers(
+									IMarker.PROBLEM, true, 2)) {
+								if ((Integer) m.getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
+									i++;
+									break;
+								}
+							}
 
-                };
-                job.schedule();
-            }
-        }
-    }
+						} catch (CoreException ce) {
+						}
+						if (r.getErrors().size() == 0 && i == 0) {
+							monitor.subTask("Generate");
+							try {
+								francaGenerator.doGenerate(r, fileSystemAccess);
+							} catch (Exception e) {
+ 								exceptionPopUp(e, file);
+								return Status.CANCEL_STATUS;
+							} catch (Error e) {
+								errorPopUp(e, file);
+								return Status.CANCEL_STATUS;
+							}
+							return Status.OK_STATUS;
+						} else {
+							markerPopUp(file);
+							return Status.CANCEL_STATUS;
+						}
 
-    private void executeGeneratorForXtextEditor(final XtextEditor xtextEditor) {
-        final Object fileObject = xtextEditor.getEditorInput().getAdapter(
-                IFile.class);
-        if (fileObject instanceof IFile) {
-            IProject project = ((IResource) fileObject).getProject();
-            final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess(project);
-            fileSystemAccess.setProject(project);
+					}
 
-            xtextEditor.getDocument().readOnly(
-                    new IUnitOfWork<Boolean, XtextResource>() {
-                        @Override
-                        public Boolean exec(XtextResource xtextResource)
-                                throws Exception {
-                            final XtextResource xtextRes = xtextResource;
-                            Job job = new Job("validation and generation") {
+				};
+				job.schedule();
+			}
+		}
+	}
 
-                                @Override
-                                protected IStatus run(IProgressMonitor monitor) {
+	/**
+	 * Init core preferences
+	 * @param file 
+	 * @param page
+	 * @param project
+	 */
+	protected void setupPreferences(IFile file) {
 
-                                    monitor.beginTask(
-                                            "handle "
-                                                    + ((IResource) fileObject)
-                                                            .getName(),
-                                            IProgressMonitor.UNKNOWN);
-                                    monitor.subTask("validation");
-                                    int i = 0;
-                                    try {
-                                        for (IMarker m : ((IResource) fileObject)
-                                                .findMarkers(IMarker.PROBLEM,
-                                                        true, 2)) {
-                                            if ((Integer) m
-                                                    .getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
-                                                i++;
-                                                break;
-                                            }
-                                        }
-                                    } catch (CoreException ce) {
-                                    }
-                                    if (xtextRes.getErrors().size() == 0
-                                            && i == 0) {
-                                        monitor.subTask("Generate");
-                                        try {
-                                            francaGenerator.doGenerate(
-                                                    xtextRes, fileSystemAccess);
-                                        } catch (Exception e) {
-                                            exceptionPopUp(e,
-                                                    (IFile) fileObject);
-                                            return Status.CANCEL_STATUS;
-                                        } catch (Error e) {
-                                            errorPopUp(e, (IFile) fileObject);
-                                            return Status.CANCEL_STATUS;
-                                        }
-                                        return Status.OK_STATUS;
-                                    } else {
-                                        markerPopUp((IFile) fileObject);
-                                        return Status.CANCEL_STATUS;
-                                    }
-                                }
+		initPreferences(file, CommonApiUiPlugin.getDefault().getPreferenceStore());
+	}
 
-                            };
-                            job.schedule();
-                            return Boolean.TRUE;
-                        }
-                    });
-        }
-    }
+	private void executeGeneratorForXtextEditor(final XtextEditor xtextEditor) {
+		final Object fileObject = xtextEditor.getEditorInput().getAdapter(
+				IFile.class);
+		if (fileObject instanceof IFile) {
+			IProject project = ((IResource) fileObject).getProject();
+			final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
+			fileSystemAccess.setProject(project);
 
-    private void exceptionPopUp(Exception e, IFile f) {
-        final Exception ex = e;
-        final IFile file = f;
-        Display.getDefault().asyncExec(new Runnable() {
-            public void run() {
-                ex.printStackTrace();
-                MessageDialog.openError(
-                        null,
-                        "Error by generating file " + file.getName(),
-                        "Couldn't generate file. Exception occured:\n"
-                                + ex.toString()
-                                + "\n\nSee console for stack trace.");
-            }
-        });
-    }
+			xtextEditor.getDocument().readOnly(
+					new IUnitOfWork<Boolean, XtextResource>() {
+						@Override
+						public Boolean exec(XtextResource xtextResource)
+								throws Exception {
+							final XtextResource xtextRes = xtextResource;
+							Job job = new Job("validation and generation") {
 
-    private void markerPopUp(IFile f) {
-        final IFile file = f;
-        Display.getDefault().asyncExec(new Runnable() {
-            public void run() {
-                MessageDialog.openError(
-                        null,
-                        "Error in file " + file.getName(),
-                        "Couldn't generate file. File still holds errors!\n\nSee Problems view for details.");
-            }
-        });
-    }
+								@Override
+								protected IStatus run(IProgressMonitor monitor) {
 
-    private void errorPopUp(Error e, IFile f) {
-        final Error er = e;
-        final IFile file = f;
-        Display.getDefault().asyncExec(new Runnable() {
-            public void run() {
-                er.printStackTrace();
-                MessageDialog.openError(
-                        null,
-                        "Error by generating file " + file.getName(),
-                        "Couldn't generate file. Error occured:\n"
-                                + er.toString()
-                                + "\n\nSee console for stack trace.");
-            }
-        });
-    }
+									monitor.beginTask(
+											"handle "
+													+ ((IResource) fileObject)
+													.getName(),
+													IProgressMonitor.UNKNOWN);
+									monitor.subTask("validation");
+									int i = 0;
+									try {
+										for (IMarker m : ((IResource) fileObject)
+												.findMarkers(IMarker.PROBLEM,
+														true, 2)) {
+											if ((Integer) m
+													.getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
+												i++;
+												break;
+											}
+										}
+									} catch (CoreException ce) {
+									}
+									if (xtextRes.getErrors().size() == 0
+											&& i == 0) {
+										monitor.subTask("Generate");
+										try {
+											francaGenerator.doGenerate(
+													xtextRes, fileSystemAccess);
+										} catch (Exception e) {
+											exceptionPopUp(e,
+													(IFile) fileObject);
+											return Status.CANCEL_STATUS;
+										} catch (Error e) {
+											errorPopUp(e, (IFile) fileObject);
+											return Status.CANCEL_STATUS;
+										}
+										return Status.OK_STATUS;
+									} else {
+										markerPopUp((IFile) fileObject);
+										return Status.CANCEL_STATUS;
+									}
+								}
 
-    private EclipseResourceFileSystemAccess2 createFileSystemAccess(
-            IProject project) {
-        IPreferenceStore store = CommonApiUiPlugin.getDefault()
-                .getPreferenceStore();
-        String outputDir = store.getString(PreferenceConstants.P_OUTPUT_PROXIES);
-        if (FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT_PROXIES, null) != null)
-        {
-            outputDir = FPreferences.getInstance().getPreference(project, PreferenceConstants.P_OUTPUT_PROXIES, null);
-        }
-        final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
+							};
+							job.schedule();
+							return Boolean.TRUE;
+						}
+					});
+		}
+	}
 
-        fsa.setOutputPath(outputDir);
-        fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT)
-                .setCreateOutputDirectory(true);
-        fsa.setMonitor(new NullProgressMonitor());
+	private void exceptionPopUp(Exception e, IFile f) {
+		final Exception ex = e;
+		final IFile file = f;
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				ex.printStackTrace();
+				MessageDialog.openError(
+						null,
+						"Error by generating file " + file.getName(),
+						"Couldn't generate file. Exception occured:\n"
+								+ ex.toString()
+								+ "\n\nSee console for stack trace.");
+			}
+		});
+	}
 
-        return fsa;
-    }
+	private void markerPopUp(IFile f) {
+		final IFile file = f;
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				MessageDialog.openError(
+						null,
+						"Error in file " + file.getName(),
+						"Couldn't generate file. File still holds errors!\n\nSee Problems view for details.");
+			}
+		});
+	}
+
+	private void errorPopUp(Error e, IFile f) {
+		final Error er = e;
+		final IFile file = f;
+		Display.getDefault().asyncExec(new Runnable() {
+			public void run() {
+				er.printStackTrace();
+				MessageDialog.openError(
+						null,
+						"Error by generating file " + file.getName(),
+						"Couldn't generate file. Error occured:\n"
+								+ er.toString()
+								+ "\n\nSee console for stack trace.");
+			}
+		});
+	}
+
+	protected EclipseResourceFileSystemAccess2 createFileSystemAccess() {
+
+		final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
+
+		fsa.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
+
+		fsa.setMonitor(new NullProgressMonitor());
+
+		return fsa;
+	}
+
+	/**
+	 * Set the properties for the code generation from the resource properties (set with the property page, via the context menu).
+	 * Take default values from the eclipse preference page.
+	 * @param file 
+	 * @param store - the eclipse preference store
+	 */
+	private void initPreferences(IFile file, IPreferenceStore store) {
+		FPreferences instance = FPreferences.getInstance();
+		
+		String outputFolderCommon = null;
+		String outputFolderProxies = null;
+		String outputFolderStubs = null;
+		String outputFolderSkeleton = null;
+		String licenseHeader = null;
+		String generateProxy = null;
+		String generatStub = null;
+		String generatSkeleton = null;
+		String skeletonPostfix = null;
+		String enumPrefix = null;
+		
+		IProject project = file.getProject();
+		IResource resource = file;
+
+		try {
+			// Should project or file specific properties be used ?
+			String useProject1 = project.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_USEPROJECTSETTINGS));
+			String useProject2 = file.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_USEPROJECTSETTINGS));
+			if("true".equals(useProject1) || "true".equals(useProject2)) {
+				resource = project;
+			} 
+			outputFolderCommon = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_COMMON));
+			outputFolderSkeleton = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_SKELETON));
+			outputFolderProxies = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_PROXIES));
+			outputFolderStubs = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_STUBS));
+			licenseHeader = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_LICENSE));
+			generateProxy = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATEPROXY));
+			generatStub = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATESTUB));
+			generatSkeleton = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATESKELETON));
+			skeletonPostfix = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_SKELETONPOSTFIX));
+			enumPrefix = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_ENUMPREFIX));
+		} catch (CoreException ce) {
+			System.err.println("Failed to get property for " + resource.getName());
+		}  
+		
+		// Set defaults in the case, where nothing was specified from the user.
+		if(outputFolderCommon == null) {
+			outputFolderCommon = store.getString(PreferenceConstants.P_OUTPUT_COMMON);			
+		}
+		if(outputFolderProxies == null) {
+			outputFolderProxies = store.getString(PreferenceConstants.P_OUTPUT_PROXIES);			
+		}
+		if(outputFolderStubs == null) {
+			outputFolderStubs = store.getString(PreferenceConstants.P_OUTPUT_STUBS);	
+		}
+		if(outputFolderSkeleton == null) {
+			outputFolderSkeleton = store.getString(PreferenceConstants.P_OUTPUT_SKELETON);	
+		}
+		if(skeletonPostfix == null) {
+			skeletonPostfix = store.getString(PreferenceConstants.P_SKELETONPOSTFIX);	
+		}
+		if(enumPrefix == null) {
+			enumPrefix = store.getString(PreferenceConstants.P_ENUMPREFIX);	
+		}
+		if(licenseHeader == null) {
+			licenseHeader = store.getString(PreferenceConstants.P_LICENSE);			
+		}
+		if(generateProxy == null) {
+			generateProxy = "true";	
+		}
+		if(generatStub == null) {
+			generatStub = "true";		
+		}
+		if(generatSkeleton == null) {
+			generatSkeleton = "false";		
+		}
+		
+		// finally, store the properties for the code generator
+		instance.setPreference(PreferenceConstants.P_OUTPUT_COMMON, outputFolderCommon);
+		instance.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, outputFolderProxies);
+		instance.setPreference(PreferenceConstants.P_OUTPUT_STUBS, outputFolderStubs);
+		instance.setPreference(PreferenceConstants.P_OUTPUT_SKELETON, outputFolderSkeleton);
+		instance.setPreference(PreferenceConstants.P_LICENSE, licenseHeader);
+		instance.setPreference(PreferenceConstants.P_GENERATEPROXY, generateProxy);
+		instance.setPreference(PreferenceConstants.P_GENERATESTUB, generatStub);
+		instance.setPreference(PreferenceConstants.P_GENERATESKELETON, generatSkeleton);
+		instance.setPreference(PreferenceConstants.P_SKELETONPOSTFIX, skeletonPostfix);
+		instance.setPreference(PreferenceConstants.P_ENUMPREFIX, enumPrefix);
+	}    
+
 }

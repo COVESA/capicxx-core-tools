@@ -66,6 +66,23 @@
             </iterate>
          </or>
       </definition>
+      <definition
+            id="org.genivi.commonapi.core.ui.FrancaIDL.Resources.fdepl.selected">
+         <or>
+            <reference
+                  definitionId="org.franca.core.dsl.FrancaIDL.Editor.opened">
+            </reference>
+            <iterate>
+               <adapt
+                     type="org.eclipse.core.resources.IResource">
+                     <test
+                           property="org.eclipse.core.resources.name"
+                           value="*.fdepl">
+                     </test>
+               </adapt>
+            </iterate>
+         </or>
+      </definition>      
    </extension>
    <extension
          point="org.eclipse.ui.preferencePages">

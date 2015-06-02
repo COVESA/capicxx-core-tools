@@ -1,15 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?eclipse version="3.0"?>
 <plugin>
-   <extension
-         id="application"
-         point="org.eclipse.core.runtime.applications">
-      <application>
-         <run
-               class="org.genivi.commonapi.core.cli.Application">
-         </run>
-      </application>
-   </extension>
 
    <extension
          id="product"
@@ -22,5 +13,114 @@
                value="CommonAPI Code Generator">
          </property>
       </product>
+   </extension>
+   <extension
+         point="org.genivi.commonapi.console.commands">
+      <command
+            class="org.genivi.commonapi.core.cli.CommandLineHandler"
+            id="org.genivi.commonapi.core.cli.command"
+            name="CommonAPI Core Code Generation">
+         <options>
+            <option
+                  argCount="0"
+                  description="Switch off generation of proxy code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.noproxy"
+                  longName="no-proxy"
+                  required="false"
+                  shortName="np">
+            </option>
+            <option
+                  argCount="0"
+                  description="Switch off generation of stub code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.nostub"
+                  longName="no-stub"
+                  required="false"
+                  shortName="ns">
+            </option>
+            <option
+                  argCount="1"
+                  description="The default output directory"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.default"
+                  longName="dest"
+                  required="false"
+                  shortName="d">
+            </option>
+            <option
+                  argCount="1"
+                  description="The directory for the common code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.common"
+                  longName="dest-common"
+                  required="false"
+                  shortName="dc">
+            </option>
+            <option
+                  argCount="1"
+                  description="The directory for proxy code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.proxy"
+                  longName="dest-proxy"
+                  required="false"
+                  shortName="dp">
+            </option>
+            <option
+                  argCount="1"
+                  description="The directory for stub code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.stub"
+                  longName="dest-stub"
+                  required="false"
+                  shortName="ds">
+            </option>
+            <option
+                  argCount="1"
+                  description="The directory for the skeleton code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.skel"
+                  longName="dest-skel"
+                  required="false"
+                  shortName="dsk">
+            </option>
+            <option
+                  argCount="1"
+                  description="The file path to the license text that will be added to each generated file"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.license"
+                  longName="license"
+                  required="false"
+                  shortName="l">
+            </option>
+            <option
+                  argCount="1"
+                  description="The log level (quiet or verbose)"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.loglevel"
+                  longName="loglevel"
+                  required="false"
+                  shortName="ll">
+            </option>  
+            <option
+                  argCount="1"
+                  description="The prefix added to all generated enumeration literals"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.prefix"
+                  longName="prefix-enum-literal"
+                  required="false"
+                  shortName="pre">
+            </option>  
+            <option
+                  argCount="1"
+                  description="Generate skeleton code. The optional argument specifies the postfix. Without argument, the postfix is 'default'"
+                  hasOptionalArg="true"
+                  id="org.genivi.commonapi.core.cli.option.prefix"
+                  longName="skel"
+                  required="false"
+                  shortName="sk">
+            </option>
+        </options>
+      </command>
    </extension>
 </plugin>

@@ -1,0 +1,134 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Schema file written by PDE -->
+<schema targetNamespace="org.genivi.commonapi.console" xmlns="http://www.w3.org/2001/XMLSchema">
+<annotation>
+      <appinfo>
+         <meta.schema plugin="org.genivi.commonapi.console" id="optionGroups" name="CommonAPI Console Option Groups"/>
+      </appinfo>
+      <documentation>
+         This extension point allows plug-ins to declaratively register console option groups which can be referenced by the org.genivi.commonapi.console.commands extension point. An option group is a group of mutually exclusive options.
+      </documentation>
+   </annotation>
+
+   <include schemaLocation="options.exsd"/>
+
+   <element name="extension">
+      <annotation>
+         <appinfo>
+            <meta.element />
+         </appinfo>
+      </annotation>
+      <complexType>
+         <choice minOccurs="1" maxOccurs="unbounded">
+            <element ref="optionGroup"/>
+         </choice>
+         <attribute name="point" type="string" use="required">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="id" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="name" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="optionGroup">
+      <annotation>
+         <documentation>
+            This element represents a console option group. An option group is a group of mutually exclusive options.
+         </documentation>
+      </annotation>
+      <complexType>
+         <choice minOccurs="2" maxOccurs="unbounded">
+            <element ref="option"/>
+            <element ref="optionId"/>
+         </choice>
+         <attribute name="id" type="string" use="required">
+            <annotation>
+               <documentation>
+                  An unique identifier for this option group.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="required" type="boolean" use="required">
+            <annotation>
+               <documentation>
+                  Specifies if this group is required.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="optionGroupId">
+      <annotation>
+         <documentation>
+            This element can refer to an option group which was contributed by the org.genivi.commonapi.console.optionGroups extension point.
+         </documentation>
+      </annotation>
+      <complexType>
+         <attribute name="optionGroupId" type="string" use="required">
+            <annotation>
+               <documentation>
+                  The unique identifier of the option group which was contributed by the org.genivi.commonapi.console.optionGroups extension point.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="since"/>
+      </appinfo>
+      <documentation>
+         [Enter the first release in which this extension point appears.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="examples"/>
+      </appinfo>
+      <documentation>
+         [Enter extension point usage example here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="apiinfo"/>
+      </appinfo>
+      <documentation>
+         [Enter API information here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="implementation"/>
+      </appinfo>
+      <documentation>
+         [Enter information about supplied implementation of this extension point.]
+      </documentation>
+   </annotation>
+
+
+</schema>

@@ -1,0 +1,181 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Schema file written by PDE -->
+<schema targetNamespace="org.genivi.commonapi.console" xmlns="http://www.w3.org/2001/XMLSchema">
+<annotation>
+      <appinfo>
+         <meta.schema plugin="org.genivi.commonapi.console" id="commands" name="CommonAPI Console Commands"/>
+      </appinfo>
+      <documentation>
+         This extension point allows plug-ins to declaratively register console commands which can be executed by running the console application with the ID org.genivi.commonapi.console.application.
+      </documentation>
+   </annotation>
+
+   <include schemaLocation="options.exsd"/>
+
+   <include schemaLocation="optionGroups.exsd"/>
+
+   <element name="extension">
+      <annotation>
+         <appinfo>
+            <meta.element />
+         </appinfo>
+      </annotation>
+      <complexType>
+         <choice>
+            <element ref="command" minOccurs="1" maxOccurs="unbounded"/>
+         </choice>
+         <attribute name="point" type="string" use="required">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="id" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="name" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="command">
+      <annotation>
+         <documentation>
+            This element represents a console command.
+         </documentation>
+      </annotation>
+      <complexType>
+         <sequence>
+            <element ref="options"/>
+            <element ref="header" minOccurs="0" maxOccurs="1"/>
+            <element ref="footer" minOccurs="0" maxOccurs="1"/>
+         </sequence>
+         <attribute name="id" type="string" use="required">
+            <annotation>
+               <documentation>
+                  An unique identifier for this command.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="name" type="string" use="required">
+            <annotation>
+               <documentation>
+                  A name for this command.
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+         <attribute name="syntax" type="string">
+            <annotation>
+               <documentation>
+                  The syntax for this command (optional).
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+         <attribute name="class" type="string" use="required">
+            <annotation>
+               <documentation>
+                  Command handler class which must implement the ICommandLineHandler interface.
+               </documentation>
+               <appinfo>
+                  <meta.attribute kind="java" basedOn="org.genivi.commonapi.console.AbstractCommandLineHandler:org.genivi.commonapi.console.ICommandLineHandler"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="options">
+      <annotation>
+         <documentation>
+            An required subelement whose children define the console options which are available for this command.
+         </documentation>
+      </annotation>
+      <complexType>
+         <choice minOccurs="1" maxOccurs="unbounded">
+            <element ref="option"/>
+            <element ref="optionId"/>
+            <element ref="optionGroup"/>
+            <element ref="optionGroupId"/>
+         </choice>
+      </complexType>
+   </element>
+
+   <element name="header" type="string">
+      <annotation>
+         <appinfo>
+            <meta.element translatable="true"/>
+         </appinfo>
+         <documentation>
+            An optional subelement whose body should represent a short description which will be printed above the generated help text.
+         </documentation>
+      </annotation>
+   </element>
+
+   <element name="footer" type="string">
+      <annotation>
+         <appinfo>
+            <meta.element translatable="true"/>
+         </appinfo>
+         <documentation>
+            An optional subelement whose body should represent a short description which will be printed below the generated help text.
+         </documentation>
+      </annotation>
+   </element>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="since"/>
+      </appinfo>
+      <documentation>
+         [Enter the first release in which this extension point appears.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="examples"/>
+      </appinfo>
+      <documentation>
+         [Enter extension point usage example here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="apiinfo"/>
+      </appinfo>
+      <documentation>
+         [Enter API information here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="implementation"/>
+      </appinfo>
+      <documentation>
+         [Enter information about supplied implementation of this extension point.]
+      </documentation>
+   </annotation>
+
+
+</schema>

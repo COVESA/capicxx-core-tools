@@ -9,676 +9,423 @@
 package org.genivi.commonapi.core.cli;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.inject.Inject;
-
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.preferences.DefaultScope;
-import org.eclipse.core.runtime.preferences.InstanceScope;
 import org.eclipse.emf.common.util.URI;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.xtext.generator.IFileSystemAccess;
+import org.eclipse.xtext.generator.IGenerator;
 import org.eclipse.xtext.generator.JavaIoFileSystemAccess;
 import org.eclipse.xtext.resource.XtextResourceSet;
+import org.eclipse.xtext.validation.AbstractValidationMessageAcceptor;
+import org.eclipse.xtext.validation.ValidationMessageAcceptor;
+import org.franca.core.dsl.FrancaIDLRuntimeModule;
+import org.franca.core.franca.FModel;
+import org.genivi.commonapi.console.ConsoleLogger;
 import org.genivi.commonapi.core.generator.FrancaGenerator;
 import org.genivi.commonapi.core.generator.FrancaGeneratorExtensions;
 import org.genivi.commonapi.core.preferences.FPreferences;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
-import org.genivi.commonapi.dbus.generator.FrancaDBusGenerator;
+import org.genivi.commonapi.core.verification.ValidatorCore;
 
+import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.Provider;
 
 /**
- * This is a little Tool to generate C++ files from Franca files over the
- * commandline without Eclipse. The arguments of this tool can be the Franca
- * files which have to be generated. Additional you can set an argument -dbus to
- * generate for dbus, -dest and a path to a folder in the arguments will set the
- * output-destination to the given path and finally with -pref and a path to a
- * Textile will set the comment in the head of each file to the text from the
- * file given after -pref
- * 
- * @author Patrick Sattler
+ * Receive command line arguments and set them as preference values for the code generation.
  */
 public class CommandlineToolMain
 {
 
-    public static final String                      FILESEPARATOR    = System.getProperty("file.separator");
+	public static final String       FILESEPARATOR    = System.getProperty("file.separator");
 
-    public static final String                      FILESEPARATORIMP = "/";
-    public static final String                      TEMP_PFAD        = System.getProperty("user.dir") + FILESEPARATOR + "temp/";
-    public static final String                      CORE_DEPL        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core"
-                                                                             + FILESEPARATOR + "deployment" + FILESEPARATOR
-                                                                             + "CommonAPI_deployment.fdepl";
-    public static final String                      CORE_PFAD        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.core"
-                                                                             + FILESEPARATOR + "deployment";
-    public static final String                      DBUS_DEPL        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.dbus"
-                                                                             + FILESEPARATOR + "deployment" + FILESEPARATOR
-                                                                             + "CommonAPI-DBus_deployment.fdepl";
-    public static final String                      DBUS_PFAD        = TEMP_PFAD + FILESEPARATOR + "org.genivi.commonapi.dbus"
-                                                                             + FILESEPARATOR + "deployment";
-    public static final String                      TEMP_FDEPL_PFAD  = TEMP_PFAD + FILESEPARATOR + "fdepl";
-    public static List<String>                      files            = new ArrayList<String>();
-    // All given files were saved in this list with an absolute path
-    private static Set<String>                     filelist         = new LinkedHashSet<String>();
-    // true if for all interfaces have to be generated the stubs
-    private static boolean                          allstubs         = false;
+	public static List<String>       files            = new ArrayList<String>();
+	// All given files were saved in this list with an absolute path
+	protected static Set<String>     filelist         = new LinkedHashSet<String>();
+	// true if for all interfaces have to be generated the stubs
+	protected static boolean         allstubs         = false;
 
-    @Inject
-    private static Provider<JavaIoFileSystemAccess> fileAccessProvider;
+	protected JavaIoFileSystemAccess fsa;
+	private FPreferences             pref;
+	protected Injector               injector;
+	private List<String>             tempfilelist;
 
-    public static void generate(String[] args)
-    {
+	protected IGenerator             francaGenerator;
 
-        // Initialization with all options
-        File tempfolder = null;
-        boolean dbus = false;
-        String dest = createAbsolutPath("." + FILESEPARATOR + "src-gen" + FILESEPARATOR);
-        if (args.length < 1)
-        {
-            String errorMessage = "Usage: commonapi_generator [options] file...\n"
-                    + "\n"
-                    + "Options:\n"
-                    + "  -dbus                    Additionally generate gluecode for the CommonAPI-D-Bus middleware binding\n"
-                    + "  -dest <path/to/folder>   Relative to current location, the generated files will be saved there\n"
-                    + "  -pref <path/to/file>     The text in this file which will be inserted as a comment in each generated file (for example your license)\n"
-                    + "  -version                 Used versions from the CommonAPI-Generator and Franca plugin\n"
-                    + "  -genallincl              Generates all included fidls too (all Proxys and Stubs will be generated)\n";
-            throw new IllegalArgumentException(errorMessage);
-        }
+	protected ValidatorCore		 	validator;
+	private int validationErrorCount;
+	protected String SCOPE = "Core validation: ";
 
-        List<String> tempfilelist = new ArrayList<String>();
-        FPreferences pref = FPreferences.getInstance();
-        pref.clidefPreferences();
-        /*
-         * Reading the options and the files given in the arguments and they
-         * will be saved in the predefined attributes
-         */
-        String francaversion = getFrancaVersion();
-        String coreversion = FrancaGeneratorExtensions.getCoreVersion();
-        pref.setPreference(PreferenceConstants.FRANCA_VERSION, francaversion);
-        pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.TRUE.toString());
-        for (int i = 0; i < args.length; i++)
-        {
-            String arg = args[i];
-            if (arg.equals("-dbus"))
-                dbus = true;
-            else if (arg.equals("-dest"))
-            {
-                if (i + 1 == args.length)
-                {
-                    System.err.println("Please write a destination folder after -dest");
-                    System.exit(0);
-                }
-                File file = new File(args[i + 1]);
-                if (!file.exists() || !file.isDirectory())
-                {
-                    if (!file.mkdirs())
-                    {
-                        System.err.println("Could not create dest path");
-                        System.exit(0);
-                    }
-                }
-                dest = createAbsolutPath(args[i + 1]);
-                i++;
-            }
-            else if (arg.equals("-pref"))
-            {
-                if (i + 1 == args.length)
-                {
-                    System.err.println("Please write a path to an existing file after -pref");
-                    System.exit(0);
-                }
-                File file = new File(createAbsolutPath(args[i + 1]));
-                i++;
-                if (!file.exists() || file.isDirectory())
-                {
-                    System.err.println("Please write a path to an existing file after -pref");
-                    System.exit(0);
-                }
-                System.out.println("The following file was set as header:\n" + file.getAbsolutePath());
-                try
-                {
-                    pref.setPreference(PreferenceConstants.USEPROJECTSETTINGS, Boolean.toString(true));
-                    pref.setPreferences(PreferenceConstants.P_LICENSE, file);
-                }
-                catch (IOException e)
-                {
-                    e.printStackTrace();
-                }
-            }
-            else if (arg.equals("-version"))
-            {
-                System.out.println("Franca Version: " + francaversion);
-                System.out.println("CommonAPI Version: " + coreversion);
-                System.exit(0);
-            }
-            else if (arg.equals("-genallincl"))
-            {
-                allstubs = true;
-            }
-            else
-            {
-                File file = new File(createAbsolutPath(args[i]));
-                if (!file.exists() || file.isDirectory())
-                {
-                    System.err.println("The following path won't be generated because it doesn't exists:\n" + args[i] + "\n");
-                }
-                else
-                    tempfilelist.add(createAbsolutPath(arg));
-            }
-        }
-        if (tempfilelist.size() == 0)
-        {
-            System.err.println("There are no valid files to generate!");
-            System.exit(0);
-        }
-        System.out.println("The following path was set as the Outputfolder: \n" + dest);
-        System.out.println("Using Franca Version " + francaversion);
-        System.out.println("and CommonAPI Version " + coreversion);
-        try
-        {
-            /*
-             * The FDeploy.xmi will be loaded from the jar in a temporary folder
-             * because the Generator expects a hierarchical URI an with a
-             * Hierarchical URI you can't refer to a file in a jar
-             */
-            File xmifile = null;
-            InputStream in = null;
-            OutputStream out = null;
-            try
-            {
-                in = CommandlineToolMain.class.getResourceAsStream("/org/franca/deploymodel/dsl/FDeploy.xmi");
-                xmifile = new File(TEMP_PFAD + FILESEPARATOR + "FDeploy.xmi");
-                tempfolder = new File(TEMP_PFAD);
-                tempfolder.mkdir();
-                xmifile.createNewFile();
-                out = new DataOutputStream(new FileOutputStream(xmifile));
-                int l = 0;
-                while ((l = in.read()) != -1)
-                    out.write(l);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
-                try
-                {
-                    out.close();
-                }
-                catch (Exception e)
-                {
-                }
-                try
-                {
-                    in.close();
-                }
-                catch (Exception e)
-                {
-                }
-            }
-            /*
-             * Here we look recursively at all files and their imports because
-             * all fdepls must have overwritten imports so that the user can use
-             * the same files in eclipse and the Commandline to generate. In the
-             * same time the temporary path to the modified file will be saved
-             * instead of the original one
-             */
+	private ValidationMessageAcceptor cliMessageAcceptor = new AbstractValidationMessageAcceptor() {
 
-            for (int i = 0; i < tempfilelist.size(); i++)
-            {
-                filelist.add(rewriteImports(tempfilelist.get(i)));
-            }
+		@Override
+		public void acceptInfo(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+			ConsoleLogger.printLog(SCOPE + message);
+		}
 
-            DBusCommandExecutableExtensionFactory dbusCommandFactory = new DBusCommandExecutableExtensionFactory();
-            Injector injectorDBus = dbusCommandFactory.getInjector();
-            CommandExecutableExtensionFactory commandFactory = new CommandExecutableExtensionFactory();
-            Injector injectorCore = commandFactory.getInjector();
-            URI uri = null;
-            // we initialize both generators with the Injectors
-            FrancaDBusGenerator dbusgenerator = injectorDBus.getInstance(FrancaDBusGenerator.class);
-            FrancaGenerator generator = injectorCore.getInstance(FrancaGenerator.class);
+		@Override
+		public void acceptWarning(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+			ConsoleLogger.printLog("Warning: " + SCOPE + message);
+		}
 
-            XtextResourceSet rsset = injectorCore.getProvider(XtextResourceSet.class).get();
-            fileAccessProvider = injectorCore.getProvider(JavaIoFileSystemAccess.class);
+		@Override
+		public void acceptError(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+			validationErrorCount++;
+			ConsoleLogger.printLog("Error: " + SCOPE + message);
+		}
+	};
 
-            final JavaIoFileSystemAccess fsa = fileAccessProvider.get();
+	/**
+	 * The constructor registers the needed bindings to use the generator
+	 */
+	public CommandlineToolMain()
+	{
+		injector = Guice.createInjector(new FrancaIDLRuntimeModule());
 
-            DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES, dest);
-            DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_STUBS, dest);
-            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_OUTPUT_PROXIES, dest);
-            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_OUTPUT_STUBS, dest);
-            pref.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, dest);
-            pref.setPreference(PreferenceConstants.P_OUTPUT_STUBS, dest);
-            fsa.setOutputPath(createAbsolutPath(dest));
-            fsa.getOutputConfigurations().get(IFileSystemAccess.DEFAULT_OUTPUT).setCreateOutputDirectory(true);
-            for (String file : filelist)
-            {
-                uri = URI.createFileURI(file);
-                Resource rs = rsset.createResource(uri);
-                if (dbus)
-                {
-                    // Attention!!! some Methods from the generator are
-                    // deprecated because of this it could be in the near future
-                    // that URI's will be used
-                    dbusgenerator.doGenerate(rs, fsa);
-                }
-                else
-                {
-                    generator.doGenerate(rs, fsa);
-                }
-            }
+		fsa = injector.getInstance(JavaIoFileSystemAccess.class);
 
-        }
-        finally
-        {
-            deleteTempFiles(tempfolder);
-        }
-    }
+		pref = FPreferences.getInstance();
 
-    /**
-     * gets the last segment from a path which fileseperators are
-     * System.getProperty("file.separator")
-     * 
-     * @param pfad
-     *            the path from were the filename is going to be extracted
-     * @return the last segment of the path
-     */
-    private static String getFileName(String pfad)
-    {
-        if (pfad.lastIndexOf(FILESEPARATOR) >= 0)
-            return pfad.substring(pfad.lastIndexOf(FILESEPARATOR) + 1).trim();
-        return pfad.trim();
-    }
+		validator = new ValidatorCore();
 
-    /**
-     * the file on the path will be loaded, if the file has imports then the
-     * imports will be overwritten with the right path. if the imported files
-     * are also *.fdepl then thex will be also loaded
-     * 
-     * @param path
-     *            the path to the file which has to be loaded and analyzed
-     * @return the new path to the file
-     */
-    private static String rewriteImports(String path)
-    {
-        files.add(path);
-        String rootpath = path.substring(0, path.lastIndexOf(FILESEPARATOR));
-        String ret = path;
-        if (path.endsWith(".fdepl"))
-        {
-            File filein = new File(createAbsolutPath(path));
-            String uristr = "";
-            File fileout = null;
-            uristr = TEMP_FDEPL_PFAD + FILESEPARATOR + getFileName(path);
-            fileout = new File(uristr);
-            ret = uristr;
-            File folder = new File(TEMP_FDEPL_PFAD);
-            folder.mkdirs();
-            BufferedReader instr = null;
-            BufferedWriter outstr = null;
-            try
-            {
-                fileout.createNewFile();
-                instr = new BufferedReader(new FileReader(filein));
-                outstr = new BufferedWriter(new FileWriter(fileout));
-                String line = "";
-                while ((line = instr.readLine()) != null)
-                {
-                    // if a line contains the string "import" it will be
-                    // analyzed if there is something imported that i dont know
-                    // how to handle it will be passed through
+	}
 
-                    // here could be problems with relative paths on things that
-                    // get imported but not handled
+	/**
+	 * Set the text from a file which will be inserted as a comment in each generated file (for example your license)
+	 * 
+	 * @param fileWithText
+	 * @return
+	 */
+	public void setLicenseText(String fileWithText) {
+		if (fileWithText != null && !fileWithText.isEmpty())
+		{
+			File file = new File(createAbsolutPath(fileWithText));
+			if (!file.exists() || file.isDirectory())
+			{
+				ConsoleLogger.printErrorLog("Please specify a path to an existing file after option -l");
+			}
+			BufferedReader inReader = null;
+			String licenseText = "";
+			try
+			{
+				inReader = new BufferedReader(new FileReader(file));
+				String thisLine;
+				while ((thisLine = inReader.readLine()) != null)
+				{
+					licenseText = licenseText + thisLine + "\n";
+				}
+				if (licenseText != null && !licenseText.isEmpty())
+				{
+					pref.setPreference(PreferenceConstants.P_LICENSE, licenseText);
+				}
+			}
+			catch (IOException e)
+			{
+				ConsoleLogger.printLog("Failed to set the text from the given file: " + e.getLocalizedMessage());
+			}
+			finally
+			{
+				try
+				{
+					inReader.close();
+				}
+				catch (Exception e)
+				{
+					;
+				}
+			}
+			ConsoleLogger.printLog("The following text was set as header: \n" + licenseText);
+		}
+		else
+		{
+			ConsoleLogger.printErrorLog("Please write a path to an existing file after -p");
+		}
+	}
 
-                    // the imported files will only be handled if they weren't
-                    // handled before
-                    if (line.trim().startsWith("import"))
-                    {
-                        if (line.contains("dbus/deployment/CommonAPI-DBus_deployment.fdepl"))
-                        {
-                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(DBUS_DEPL, "\\", "/") + "\"";
-                            if (!files.contains(DBUS_DEPL))
-                            {
-                                handleDeployment(false);
-                            }
-                        }
-                        else if (line.contains("core/deployment/CommonAPI_deployment.fdepl"))
-                        {
-                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(CORE_DEPL, "\\", "/") + "\"";
-                            if (!files.contains(CORE_DEPL))
-                            {
-                                handleDeployment(true);
-                            }
-                        }
-                        else if (line.contains(".fdepl"))
-                        {
-                            String cp = line;
-                            line = "import \"file:" + FILESEPARATORIMP + replaceAll(TEMP_FDEPL_PFAD, "\\", "/") + FILESEPARATORIMP
-                                    + getImportsName(line) + "\"";
-                            if (!files.contains(createAbsolutPath(getImportPath(cp), path)))
-                                rewriteImports(createAbsolutPath(getImportPath(cp), path));
-                        }
-                        else if (line.contains(".fidl"))
-                        {
-                            String fidlpath = createAbsolutPath(getImportPath(line), path.substring(0, path.lastIndexOf(FILESEPARATOR)));
-                            if (allstubs)
-                                filelist.add(fidlpath);
-                            line = "import \"file:" + replaceAll(fidlpath, "\\", "/") + "\"";
+	public void generateCore(List<String> fileList)
+	{
+		francaGenerator = injector.getInstance(FrancaGenerator.class);
 
-                        }
-                    }
-                    outstr.write(line + "\n");
-                }
+		doGenerate(fileList);
+	}
 
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
-                try
-                {
-                    instr.close();
-                }
-                catch (Exception e)
-                {
-                    ;
-                }
-                try
-                {
-                    outstr.close();
-                }
-                catch (Exception e)
-                {
-                    ;
-                }
-            }
-        }
-        else if (allstubs)
-        {
-            File file = new File(createAbsolutPath(path));
-            BufferedReader str = null;
-            try
-            {
-                str = new BufferedReader(new FileReader(file));
-                String line = "";
-                while ((line = str.readLine()) != null)
-                {
-                    if (line.contains("import"))
-                    {
-                        String importfile = line.substring(line.indexOf('"') + 1);
-                        importfile = importfile.substring(0, importfile.indexOf('"'));
-                        filelist.add(createAbsolutPath(importfile,rootpath));
-                    }
-                }
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
-                try
-                {
-                    str.close();
-                }
-                catch (Exception e)
-                {
-                }
-            }
-        }
-        return ret;
-    }
+	/**
+	 * Call the franca generator for the specified list of files.
+	 * 
+	 * @param fileList
+	 *            the list of files to generate code from
+	 */
+	protected void doGenerate(List<String> fileList)
+	{
+		fsa.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
 
-    /**
-     * Here we create an absolute path from a relativ path and a rootpath from
-     * which the relative path begins
-     * 
-     * @param path
-     *            the relative path which begins on rootpath
-     * @param rootpath
-     *            an absolute path to a folder
-     * @return the merded absolute path without points
-     */
-    private static String createAbsolutPath(String path, String rootpath)
-    {
-        if (System.getProperty("os.name").contains("Windows"))
-        {
-            if (path.startsWith(":", 1))
-                return path;
-        }
-        else
-        {
-            if (path.startsWith(FILESEPARATOR))
-                return path;
-        }
+		XtextResourceSet rsset = injector.getProvider(XtextResourceSet.class).get();
 
-        String ret = (rootpath.endsWith(FILESEPARATOR) ? rootpath : (rootpath + FILESEPARATOR)) + path;
-        while (ret.contains(FILESEPARATOR + "." + FILESEPARATOR) || ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
-        {
-            if (ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
-            {
-                String temp = ret.substring(0, ret.indexOf(FILESEPARATOR + ".."));
-                temp = temp.substring(0, temp.lastIndexOf(FILESEPARATOR));
-                ret = temp + ret.substring(ret.indexOf(FILESEPARATOR + "..") + 3);
-            }
-            else
-            {
-                ret = replaceAll(ret, FILESEPARATOR + "." + FILESEPARATOR, FILESEPARATOR);
-            }
-        }
-        return ret;
-    }
+		tempfilelist = new ArrayList<String>();
 
-    /**
-     * reads from a line with import "path/to/file" the path to file
-     * 
-     * @param line
-     *            the line with the import instruction
-     * @return the path alone without import and ""
-     */
-    private static String getImportPath(String line)
-    {
-        line = line.substring(line.indexOf("import") + 8).trim();
-        line = line.substring(0, line.length() - 1);
-        return line;
-    }
+		/*
+		 * Reading the options and the files given in the arguments and they
+		 * will be saved in the predefined attributes
+		 */
+		String francaversion = getFrancaVersion();
+		String coreversion = FrancaGeneratorExtensions.getCoreVersion();
+		for (String element : fileList)
+		{
+			File file = new File(createAbsolutPath(element));
+			if (!file.exists() || file.isDirectory())
+			{
+				ConsoleLogger.printErrorLog("The following path won't be generated because it doesn't exists:\n" + element + "\n");
+			}
+			else
+				tempfilelist.add(createAbsolutPath(element));
+		}
+		if (tempfilelist.size() == 0)
+		{
+			ConsoleLogger.printErrorLog("There are no valid files to generate !");
+			return;
+		}
+		ConsoleLogger.printLog("Using Franca Version " + francaversion);
+		ConsoleLogger.printLog("and CommonAPI Version " + coreversion);
 
-    /**
-     * creates a absolute path from a relative path which starts on the current
-     * user directory
-     * 
-     * @param path
-     *            the relative path which start on the current user-directory
-     * @return the created absolute path
-     */
-    public static String createAbsolutPath(String path)
-    {
-        return createAbsolutPath(path, System.getProperty("user.dir") + FILESEPARATOR);
-    }
+		for (String file : tempfilelist)
+		{
+			URI uri = URI.createFileURI(file);
+			Resource resource = rsset.createResource(uri);
+			validationErrorCount = 0;
+			validate(resource);
+			if(validationErrorCount == 0) {
+				ConsoleLogger.printLog("Generating code for " + file);
+				try {
+					francaGenerator.doGenerate(resource, fsa);
+				}
+				catch (Exception e) {
+					ConsoleLogger.printErrorLog("Failed to generate code !");
+					ConsoleLogger.printErrorLog(e.getMessage());
+				}	
+			}
+			else {
+				ConsoleLogger.printErrorLog(file + " contains errors !");
+			}
+		}
+	}
 
-    /**
-     * reads from a line with import "path/to/import/file" the filename
-     * 
-     * @param line
-     *            the line with the import instruction
-     * @return The name of the imported file
-     */
-    private static String getImportsName(String line)
-    {
-        return getFileName(getImportPath(line));
-    }
+	private void validate(Resource resource) {
+		EObject model = null;
 
-    /**
-     * handles the import instructions which refer to a deployment.fdepl (dbus
-     * or core). These deployment files are in the commandline jar and because
-     * of this they have to be loaded on a different way you can choose if you
-     * would like only to load the core or also the dbus depl (because the dbus
-     * deployment.fdepl imports the core deployment.fdepl)
-     * 
-     * @param core
-     *            if true only the core file will be loaded otherwise also the
-     *            dbus deployment.fdepl will be loaded
-     */
-    private static void handleDeployment(boolean core)
-    {
-        BufferedReader reader = null;
-        BufferedWriter writer = null;
-        if (!core)
-        {
-            File file = new File(DBUS_DEPL);
-            File folder = new File(DBUS_PFAD);
-            folder.mkdirs();
-            try
-            {
-                file.createNewFile();
-                reader = new BufferedReader(new InputStreamReader(
-                        CommandlineToolMain.class.getResourceAsStream("/CommonAPI-DBus_deployment.fdepl")));
-                writer = new BufferedWriter(new FileWriter(file));
-                String line = "";
-                while ((line = reader.readLine()) != null)
-                {
-                    if (line.contains("import"))
-                    {
-                        line = "import \"file:" + FILESEPARATORIMP + replaceAll(CORE_DEPL, "\\", "/") + "\"";
-                    }
+		if(resource != null && resource.getURI().isFile())   {
 
-                    writer.write(line + "\n");
-                }
-                files.add(DBUS_DEPL);
-            }
-            catch (IOException e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
-                try
-                {
-                    reader.close();
-                }
-                catch (Exception e)
-                {
-                    ;
-                }
-                try
-                {
-                    writer.close();
-                }
-                catch (Exception e)
-                {
-                    ;
-                }
-            }
+			try {
+				resource.load(Collections.EMPTY_MAP);
+				model = resource.getContents().get(0);    
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 
-        }
-        File file = new File(CORE_DEPL);
-        File folder = new File(CORE_PFAD);
-        folder.mkdirs();
-        try
-        {
-            file.createNewFile();
-            reader = new BufferedReader(new InputStreamReader(CommandlineToolMain.class.getResourceAsStream("/CommonAPI_deployment.fdepl")));
-            writer = new BufferedWriter(new FileWriter(file));
-            int i = 0;
-            while ((i = reader.read()) != -1)
-                writer.write(i);
-            files.add(CORE_DEPL);
-        }
-        catch (IOException e)
-        {
-            e.printStackTrace();
-        }
-        finally
-        {
-            try
-            {
-                reader.close();
-            }
-            catch (Exception e)
-            {
-                ;
-            }
-            try
-            {
-                writer.close();
-            }
-            catch (Exception e)
-            {
-                ;
-            }
-        }
-    }
+			ConsoleLogger.printLog("validating...");
 
-    /**
-     * a relaceAll Method which doesn't interprets the toreplace String as a
-     * regex and so you can also replace \ and such special things
-     * 
-     * @param text
-     *            the text who has to be modified
-     * @param toreplace
-     *            the text which has to be replaced
-     * @param replacement
-     *            the text which has to be inserted instead of toreplace
-     * @return the modified text with all toreplace parts replaced with
-     *         replacement
-     */
-    public static String replaceAll(String text, String toreplace, String replacement)
-    {
-        String ret = "";
-        while (text.contains(toreplace))
-        {
-            ret += text.substring(0, text.indexOf(toreplace)) + replacement;
-            text = text.substring(text.indexOf(toreplace) + toreplace.length());
-        }
-        ret += text;
-        return ret;
-    }
+			// check for (internal )resource validation errors
+			for(org.eclipse.emf.ecore.resource.Resource.Diagnostic error : resource.getErrors()) {
+				ConsoleLogger.printErrorLog("ERROR at line: " + error.getLine() + " : " + error.getMessage());
+				validationErrorCount++;
+			}
 
-    /**
-     * removes recursively all files on the path and his folders and at the end
-     * himself
-     * 
-     * @param path
-     *            the path to the folder which has to be deleted
-     */
-    public static void deleteTempFiles(File path)
-    {
-        if (path != null && path.isDirectory())
-        {
-            for (File file : path.listFiles())
-            {
-                if (file.isDirectory())
-                    deleteTempFiles(file);
-                file.delete();
-            }
-        }
-        if (path != null)
-            path.delete();
-    }
+			// check for external validation errors if no errors have been detected so far
+			if(validationErrorCount == 0 ) {
+				if( model instanceof FModel) {
+					FModel fmodel = (FModel)model;
+					try {
+						validator.validateModel(fmodel, cliMessageAcceptor);
+					} catch (Exception e) {
+						ConsoleLogger.printErrorLog(e.getMessage());
+						validationErrorCount++;
+					}
+				}
+			}
+		}
+	}
 
-    public static String getFrancaVersion()
-    {
-        return Platform.getBundle("org.franca.core").getVersion().toString();
-    }
+	/**
+	 * creates a absolute path from a relative path which starts on the current
+	 * user directory
+	 * 
+	 * @param path
+	 *            the relative path which start on the current user-directory
+	 * @return the created absolute path
+	 */
+	public String createAbsolutPath(String path)
+	{
+		return createAbsolutPath(path, System.getProperty("user.dir") + FILESEPARATOR);
+	}
 
+	/**
+	 * Here we create an absolute path from a relativ path and a rootpath from
+	 * which the relative path begins
+	 * 
+	 * @param path
+	 *            the relative path which begins on rootpath
+	 * @param rootpath
+	 *            an absolute path to a folder
+	 * @return the merded absolute path without points
+	 */
+	private String createAbsolutPath(String path, String rootpath)
+	{
+		if (System.getProperty("os.name").contains("Windows"))
+		{
+			if (path.startsWith(":", 1))
+				return path;
+		}
+		else
+		{
+			if (path.startsWith(FILESEPARATOR))
+				return path;
+		}
+
+		String ret = (rootpath.endsWith(FILESEPARATOR) ? rootpath : (rootpath + FILESEPARATOR)) + path;
+		while (ret.contains(FILESEPARATOR + "." + FILESEPARATOR) || ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
+		{
+			if (ret.contains(FILESEPARATOR + ".." + FILESEPARATOR))
+			{
+				String temp = ret.substring(0, ret.indexOf(FILESEPARATOR + ".."));
+				temp = temp.substring(0, temp.lastIndexOf(FILESEPARATOR));
+				ret = temp + ret.substring(ret.indexOf(FILESEPARATOR + "..") + 3);
+			}
+			else
+			{
+				ret = replaceAll(ret, FILESEPARATOR + "." + FILESEPARATOR, FILESEPARATOR);
+			}
+		}
+		return ret;
+	}
+
+
+	/**
+	 * a relaceAll Method which doesn't interprets the toreplace String as a
+	 * regex and so you can also replace \ and such special things
+	 * 
+	 * @param text
+	 *            the text who has to be modified
+	 * @param toreplace
+	 *            the text which has to be replaced
+	 * @param replacement
+	 *            the text which has to be inserted instead of toreplace
+	 * @return the modified text with all toreplace parts replaced with
+	 *         replacement
+	 */
+	public String replaceAll(String text, String toreplace, String replacement)
+	{
+		String ret = "";
+		while (text.contains(toreplace))
+		{
+			ret += text.substring(0, text.indexOf(toreplace)) + replacement;
+			text = text.substring(text.indexOf(toreplace) + toreplace.length());
+		}
+		ret += text;
+		return ret;
+	}
+
+	/**
+	 * removes recursively all files on the path and his folders and at the end
+	 * himself
+	 * 
+	 * @param path
+	 *            the path to the folder which has to be deleted
+	 */
+	public void deleteTempFiles(File path)
+	{
+		if (path != null && path.isDirectory())
+		{
+			for (File file : path.listFiles())
+			{
+				if (file.isDirectory())
+					deleteTempFiles(file);
+				file.delete();
+			}
+		}
+		if (path != null)
+			path.delete();
+	}
+
+	public String getFrancaVersion()
+	{
+		return Platform.getBundle("org.franca.core").getVersion().toString();
+	}
+
+	public void setNoProxyCode() {
+		pref.setPreference(PreferenceConstants.P_GENERATEPROXY, "false");
+		ConsoleLogger.printLog("No proxy code will be generated");
+	}
+
+	public void setNoStubCode() {
+		pref.setPreference(PreferenceConstants.P_GENERATESTUB, "false");
+		ConsoleLogger.printLog("No stub code will be generated");
+	}
+
+	public void setDefaultDirectory(String optionValue) {
+		ConsoleLogger.printLog("Default output directory: " + optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_DEFAULT, optionValue);
+		// In the case where no other output directories are set, 
+		// this default directory will be used for them
+		pref.setPreference(PreferenceConstants.P_OUTPUT_COMMON, optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_STUBS, optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_SKELETON, optionValue);
+	}
+
+	public void setCommonDirectory(String optionValue) {
+		ConsoleLogger.printLog("Common output directory: " + optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_COMMON, optionValue);
+	}
+
+	public void setProxyDirectory(String optionValue) {
+		ConsoleLogger.printLog("Proxy output directory: " + optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, optionValue);
+	}
+
+	public void setStubtDirectory(String optionValue) {
+		ConsoleLogger.printLog("Stub output directory: " + optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_STUBS, optionValue);
+	}
+
+	public void setSkeletonDirectory(String optionValue) {
+		ConsoleLogger.printLog("Skeleton output directory: " + optionValue);
+		pref.setPreference(PreferenceConstants.P_OUTPUT_SKELETON, optionValue);
+	}
+
+	public void setLogLevel(String optionValue) {
+		if(PreferenceConstants.LOGLEVEL_QUIET.equals(optionValue)) {
+			pref.setPreference(PreferenceConstants.P_LOGOUTPUT, "false");
+			ConsoleLogger.enableLogging(false);
+			ConsoleLogger.enableErrorLogging(false);
+		}
+		if(PreferenceConstants.LOGLEVEL_VERBOSE.equals(optionValue)) {
+			pref.setPreference(PreferenceConstants.P_LOGOUTPUT, "true");
+			ConsoleLogger.enableErrorLogging(true);
+			ConsoleLogger.enableLogging(true);
+		}
+	}
+
+	public void setEnumPrefix(String optionValue) { 
+		pref.setPreference(PreferenceConstants.P_ENUMPREFIX, optionValue);
+		ConsoleLogger.printLog("Enum prefix: " + optionValue);
+	}
+
+	public void setCreateSkeletonCode() {
+		pref.setPreference(PreferenceConstants.P_GENERATESKELETON, "true");
+		ConsoleLogger.printLog("Skeleton code will be created");
+	}
+
+	public void setSkeletonPostfix(String optionValue) {
+		String postfix = (optionValue == null ? "Default" : optionValue);
+		pref.setPreference(PreferenceConstants.P_SKELETONPOSTFIX, postfix);
+		ConsoleLogger.printLog("Skeleton postfix: " + postfix);
+	}
 }

@@ -1,0 +1,219 @@
+=== Example 04: PhoneBook
+
+This slightly more complex example illustrates the application of some Franca features in combination with CommonAPI:
+
+- explicit named arrays and inline arrays
+- selective broadcasts
+- polymorphic structs
+
+Concerning arrays please note the following points:
+
+- In Franca there are two ways to define arrays: explicitly named (array myArray of UInt8) or implicit without defining a new name for the array (UInt8 []).
+- The implicit definition of multidimensional arrays is not possible at the moment (like UInt8 [][]), but multidimensional arrays can be defined with explicit names.
+- In CommonAPI arrays are implemented and generated as std::vector.
+
+A common problem in the specification of interfaces between user frontends and services which contain large data sets is, that the clients usually need only extracts from the database. That means that only a filtered excerpt from the database has to be transmitted via IPC to the client, but probably every client needs a different excerpt. The filter can affect the selection of the elements (element filter), the contents of the elements (content filter) or the number of elements (array window).
+
+The following example shows how different extracts of a central data array can be accessed by several clients via a data filter mechanism and selective broadcasts. As example of a central data array a phone book is selected; the following picture shows the basic content of the example.
+
+image::{imagedir}/E04PhoneBook.png[PhoneBookExample image]
+
+The Franca IDL specification is:
+
+[source,java]
+----
+package commonapi.examples
+
+interface E04PhoneBook {
+	version { major 0 minor 0 }
+
+	<** @description : the phone book itself **>
+	attribute phoneBookStruct [] phoneBook readonly
+
+	<** @description : filter operations **>
+	method setPhoneBookDataFilter {
+		in {
+			elementFilterStruct elementFilter
+			contentFilterStruct [] contentFilter
+		}
+	}
+
+	<** @description : filter result **>
+	broadcast phoneBookDataSet selective {
+		out {
+			phoneBookDataElementMap [] phoneBookDataSet
+		}
+	}
+
+	<** @description : Data types of the phone book itself **>
+	enumeration phoneNumberEnum {
+		WORK
+		HOME
+		MOBILE1
+		MOBILE2
+	}
+
+	map phoneNumberMap {
+		phoneNumberEnum to String
+	}
+
+	struct phoneBookStruct {
+		String name
+		String forename
+		String organisation
+		String address
+		String email
+		phoneNumberMap phoneNumber
+	}
+
+	<** @description : Data types for the filter operations **>
+
+	struct elementFilterStruct {
+		Boolean addName
+		Boolean addForename
+		Boolean addOrganisation
+		Boolean addAddress
+		Boolean addEmail
+		Boolean addPhoneNumber
+	}
+
+	struct contentFilterStruct {
+		phoneBookDataElementEnum element
+		String expression
+	}
+
+	<** @description : Data types for the result of the phone book filter **>
+	enumeration phoneBookDataElementEnum {
+		NAME
+		FORENAME
+		ORGANISATION
+		ADDRESS
+		EMAIL
+		PHONENUMBER
+	}
+
+	struct phoneBookDataElement polymorphic {
+	}
+
+	struct phoneBookDataElementString extends phoneBookDataElement {
+		String content
+	}
+
+	struct phoneBookDataElementPhoneNumber extends phoneBookDataElement {
+		phoneNumberMap content
+	}
+
+	map phoneBookDataElementMap {
+		phoneBookDataElementEnum to phoneBookDataElement
+	}
+}
+----
+
+The phone book itself is modeled as an attribute which is an array of the structure +phoneBookStruct+. Here the phone book is +readonly+, that means that the whole content can be accessed only via subscription and the getter function. A special difficulty is the phone number, because there are several kinds of phone numbers allowed (home, mobile, ...). Therefore the element +phoneNumber+ in +phoneBookStruct+ is a map with an enumeration key and a value of type string for the number. The client can set a filter to the phone book data (in the example only content filter and element filter, but other filters are conceivable) via the method +setPhoneBookDataFilter+ and gets the data back via the selective broadcast +phoneBookDataSet+. Since the content of the data set depends on the filter, the elements of the client specific data set are specified as maps where the key is the type of the element (name, forename, ...) and the value is the content of the element. The content can be of the type String or of the user defined type phoneNumberMap. Therefore the value is defined as polymorphic struct which can be a String or a phoneNumberMap.
+
+In the following we consider only some interesting implementation details, for the complete implementation please see the source code.
+
+The interesting part of the service is the implementation of the set function for the data filter. At the moment only the element filter is implemented, but the implementation of the other filters can be added analogously.
+
+- Each client is identified via its client ID (+ClientId+); the implementation of client ID class allows the usage of client ID objects as key in a map (see the specification).
+- The data sets of the filtered data for the clients are stored in a map with the client ID as key; in this example the filtered data are sent back to the client directly in the filter set function. Please note, that +firePhoneBookDataSetSelective+ sends the data to only one receiver.
+- The value of the key has to be the right type (+phoneNumberMap+ for phoneNumbers and Strings for the rest).
+
+[source,{cppstr}]
+----
+void E04PhoneBookStubImpl::setPhoneBookDataFilter(
+    		const std::shared_ptr<CommonAPI::ClientId> _client,
+    		E04PhoneBook::elementFilterStruct _elementFilter,
+    		std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
+    		setPhoneBookDataFilterReply_t _reply) {
+
+    std::shared_ptr < CommonAPI::ClientIdList > clientList =
+            getSubscribersForPhoneBookDataSetSelective();
+    
+    std::vector < E04PhoneBook::phoneBookDataElementMap > lPhoneBookDataSet;
+
+    phoneBookClientData.erase(_client);
+
+    std::vector<E04PhoneBook::phoneBookStruct>::const_iterator it0;
+    for (it0 = getPhoneBookAttribute().begin(); it0 != getPhoneBookAttribute().end(); it0++) {
+
+        E04PhoneBook::phoneBookDataElementMap lPhoneBookDataElement;
+
+        if (_elementFilter.getAddName()) {
+        	std::shared_ptr<E04PhoneBook::phoneBookDataElementString> name = 
+        		std::make_shared<E04PhoneBook::phoneBookDataElementString>();
+            name->setContent(it0->getName());
+            lPhoneBookDataElement[E04PhoneBook::phoneBookDataElementEnum::NAME] = name;
+        }
+
+		/*  ... Similar for all other elements */ 
+
+        lPhoneBookDataSet.push_back(lPhoneBookDataElement);
+    }
+
+    phoneBookClientData[_client] = lPhoneBookDataSet;
+
+    const std::shared_ptr<CommonAPI::ClientIdList> receivers(new CommonAPI::ClientIdList);
+    receivers->insert(_client);
+    
+    firePhoneBookDataSetSelective(lPhoneBookDataSet, receivers);
+
+    receivers->erase(_client);
+
+    _reply();
+}
+----
+
+On client side we create two proxies which shall set different filters and get different data sets. With CommonAPI 2.x we needed two different factories for these two proxies; this can be achieved by now by creating a new Connection ID for the second proxy. Each proxy has to subscribe to phoneBookDataSet, but gets different contents depending on the filter. The whole phoneBookData can be obtained via the standard get function.
+
+[source,{cppstr}]
+----
+int main() {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+
+    const std::string &domain = "local";
+    const std::string &instance = "commonapi.examples.PhoneBook";
+
+    std::shared_ptr < E04PhoneBookProxyDefault > myProxyA =
+    	runtime->buildProxy < E04PhoneBookProxy > (domain, instance);
+    
+    while (!myProxyA->isAvailable()) { usleep(10); }
+
+    const CommonAPI::ConnectionId_t otherConnectionId = "42";
+
+    std::shared_ptr < E04PhoneBookProxyDefault > myProxyB =
+    	runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnectionId);
+    
+    while (!myProxyB->isAvailable()) { usleep(10); }
+
+    myProxyA->getPhoneBookDataSetSelectiveEvent().subscribe([&](
+    	const std::vector<E04PhoneBook::phoneBookDataElementMap>& phoneBookDataSet) {
+        	printFilterResult(phoneBookDataSet, "A");});
+
+    myProxyB->getPhoneBookDataSetSelectiveEvent().subscribe([&](
+    	const std::vector<E04PhoneBook::phoneBookDataElementMap>& phoneBookDataSet) {
+            printFilterResult(phoneBookDataSet, "B");});
+
+    CommonAPI::CallStatus myCallStatus;
+    std::vector<E04PhoneBook::phoneBookStruct> myValue;
+
+    myProxyA->getPhoneBookAttribute().getValue(myCallStatus, myValue);
+    printPhoneBook (myValue);
+
+    E04PhoneBook::elementFilterStruct lElementFilterA =
+    	{true, true, false, false, false, false};
+    std::vector<E04PhoneBook::contentFilterStruct> lContentFilterA =
+		{ {E04PhoneBook::phoneBookDataElementEnum::NAME, "*"}};
+    myProxyA->setPhoneBookDataFilter(lElementFilterA, lContentFilterA, myCallStatus);
+
+    E04PhoneBook::elementFilterStruct lElementFilterB =
+    	{true, false, false, false, false, true};
+    std::vector<E04PhoneBook::contentFilterStruct> lContentFilterB =
+    	{ {E04PhoneBook::phoneBookDataElementEnum::NAME, "*"}};
+    myProxyB->setPhoneBookDataFilter(lElementFilterB, lContentFilterB, myCallStatus);
+
+    while (true) { std::this_thread::sleep_for(std::chrono::seconds(5)); }
+    return 0;
+}
+----
+

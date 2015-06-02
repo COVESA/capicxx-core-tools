@@ -1,0 +1,394 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- Schema file written by PDE -->
+<schema targetNamespace="org.genivi.commonapi.console" xmlns="http://www.w3.org/2001/XMLSchema">
+<annotation>
+      <appinfo>
+         <meta.schema plugin="org.genivi.commonapi.console" id="options" name="CommonAPI Console Options"/>
+      </appinfo>
+      <documentation>
+         This extension point allows plug-ins to declaratively register console options which can be referenced by the org.genivi.commonapi.console.commands and org.genivi.commonapi.console.optionGroups extension points. It maintains information regarding the short-name of the option, the long-name, if any exists, a flag indicating if an argument is required for this option, and a self-documenting description of the option.
+      </documentation>
+   </annotation>
+
+   <element name="extension">
+      <annotation>
+         <appinfo>
+            <meta.element />
+         </appinfo>
+      </annotation>
+      <complexType>
+         <choice minOccurs="1" maxOccurs="unbounded">
+            <element ref="option"/>
+         </choice>
+         <attribute name="point" type="string" use="required">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="id" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="name" type="string">
+            <annotation>
+               <documentation>
+
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="option">
+      <annotation>
+         <documentation>
+            This element represents a console option.
+         </documentation>
+      </annotation>
+      <complexType>
+         <attribute name="id" type="string" use="required">
+            <annotation>
+               <documentation>
+                  An unique identifier for this option.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="shortName" type="string" use="required">
+            <annotation>
+               <documentation>
+                  Short representation of the option. The following command line options may not be used:
+&lt;ul&gt;
+&lt;li&gt;-ID,--COMMAND_ID (option handling is case sensitive, thus -id,--command_id can be used)&lt;/li&gt;
+&lt;li&gt;All Eclipse command line parameters&lt;/li&gt;
+&lt;/ul&gt;
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="longName" type="string">
+            <annotation>
+               <documentation>
+                  Long representation of the option. The following command line options may not be used:
+&lt;ul&gt;
+&lt;li&gt;-ID,--COMMAND_ID (option handling is case sensitive, thus -id,--command_id can be used)&lt;/li&gt;
+&lt;li&gt;All Eclipse command line parameters&lt;/li&gt;
+&lt;/ul&gt;
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="description" type="string" use="required">
+            <annotation>
+               <documentation>
+                  Describes the function of the option.
+               </documentation>
+               <appinfo>
+                  <meta.attribute translatable="true"/>
+               </appinfo>
+            </annotation>
+         </attribute>
+         <attribute name="required" type="boolean" use="required">
+            <annotation>
+               <documentation>
+                  Specifies whether this Option is mandatory.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="argName" type="string">
+            <annotation>
+               <documentation>
+                  The display name for the argument value.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="argCount" use="required">
+            <annotation>
+               <documentation>
+                  The number of argument values.
+               </documentation>
+            </annotation>
+            <simpleType>
+               <restriction base="string">
+                  <enumeration value="0">
+                  </enumeration>
+                  <enumeration value="1">
+                  </enumeration>
+                  <enumeration value="2">
+                  </enumeration>
+                  <enumeration value="3">
+                  </enumeration>
+                  <enumeration value="4">
+                  </enumeration>
+                  <enumeration value="5">
+                  </enumeration>
+                  <enumeration value="6">
+                  </enumeration>
+                  <enumeration value="7">
+                  </enumeration>
+                  <enumeration value="8">
+                  </enumeration>
+                  <enumeration value="9">
+                  </enumeration>
+                  <enumeration value="10">
+                  </enumeration>
+                  <enumeration value="11">
+                  </enumeration>
+                  <enumeration value="12">
+                  </enumeration>
+                  <enumeration value="13">
+                  </enumeration>
+                  <enumeration value="14">
+                  </enumeration>
+                  <enumeration value="15">
+                  </enumeration>
+                  <enumeration value="16">
+                  </enumeration>
+                  <enumeration value="17">
+                  </enumeration>
+                  <enumeration value="18">
+                  </enumeration>
+                  <enumeration value="19">
+                  </enumeration>
+                  <enumeration value="20">
+                  </enumeration>
+                  <enumeration value="21">
+                  </enumeration>
+                  <enumeration value="22">
+                  </enumeration>
+                  <enumeration value="23">
+                  </enumeration>
+                  <enumeration value="24">
+                  </enumeration>
+                  <enumeration value="25">
+                  </enumeration>
+                  <enumeration value="26">
+                  </enumeration>
+                  <enumeration value="27">
+                  </enumeration>
+                  <enumeration value="28">
+                  </enumeration>
+                  <enumeration value="29">
+                  </enumeration>
+                  <enumeration value="30">
+                  </enumeration>
+                  <enumeration value="31">
+                  </enumeration>
+                  <enumeration value="32">
+                  </enumeration>
+                  <enumeration value="33">
+                  </enumeration>
+                  <enumeration value="34">
+                  </enumeration>
+                  <enumeration value="35">
+                  </enumeration>
+                  <enumeration value="36">
+                  </enumeration>
+                  <enumeration value="37">
+                  </enumeration>
+                  <enumeration value="38">
+                  </enumeration>
+                  <enumeration value="39">
+                  </enumeration>
+                  <enumeration value="40">
+                  </enumeration>
+                  <enumeration value="41">
+                  </enumeration>
+                  <enumeration value="42">
+                  </enumeration>
+                  <enumeration value="43">
+                  </enumeration>
+                  <enumeration value="44">
+                  </enumeration>
+                  <enumeration value="45">
+                  </enumeration>
+                  <enumeration value="46">
+                  </enumeration>
+                  <enumeration value="47">
+                  </enumeration>
+                  <enumeration value="48">
+                  </enumeration>
+                  <enumeration value="49">
+                  </enumeration>
+                  <enumeration value="50">
+                  </enumeration>
+                  <enumeration value="51">
+                  </enumeration>
+                  <enumeration value="52">
+                  </enumeration>
+                  <enumeration value="53">
+                  </enumeration>
+                  <enumeration value="54">
+                  </enumeration>
+                  <enumeration value="55">
+                  </enumeration>
+                  <enumeration value="56">
+                  </enumeration>
+                  <enumeration value="57">
+                  </enumeration>
+                  <enumeration value="58">
+                  </enumeration>
+                  <enumeration value="59">
+                  </enumeration>
+                  <enumeration value="60">
+                  </enumeration>
+                  <enumeration value="61">
+                  </enumeration>
+                  <enumeration value="62">
+                  </enumeration>
+                  <enumeration value="63">
+                  </enumeration>
+                  <enumeration value="64">
+                  </enumeration>
+                  <enumeration value="65">
+                  </enumeration>
+                  <enumeration value="66">
+                  </enumeration>
+                  <enumeration value="67">
+                  </enumeration>
+                  <enumeration value="68">
+                  </enumeration>
+                  <enumeration value="69">
+                  </enumeration>
+                  <enumeration value="70">
+                  </enumeration>
+                  <enumeration value="71">
+                  </enumeration>
+                  <enumeration value="72">
+                  </enumeration>
+                  <enumeration value="73">
+                  </enumeration>
+                  <enumeration value="74">
+                  </enumeration>
+                  <enumeration value="75">
+                  </enumeration>
+                  <enumeration value="76">
+                  </enumeration>
+                  <enumeration value="77">
+                  </enumeration>
+                  <enumeration value="78">
+                  </enumeration>
+                  <enumeration value="79">
+                  </enumeration>
+                  <enumeration value="80">
+                  </enumeration>
+                  <enumeration value="81">
+                  </enumeration>
+                  <enumeration value="82">
+                  </enumeration>
+                  <enumeration value="83">
+                  </enumeration>
+                  <enumeration value="84">
+                  </enumeration>
+                  <enumeration value="85">
+                  </enumeration>
+                  <enumeration value="86">
+                  </enumeration>
+                  <enumeration value="87">
+                  </enumeration>
+                  <enumeration value="88">
+                  </enumeration>
+                  <enumeration value="89">
+                  </enumeration>
+                  <enumeration value="90">
+                  </enumeration>
+                  <enumeration value="91">
+                  </enumeration>
+                  <enumeration value="92">
+                  </enumeration>
+                  <enumeration value="93">
+                  </enumeration>
+                  <enumeration value="94">
+                  </enumeration>
+                  <enumeration value="95">
+                  </enumeration>
+                  <enumeration value="96">
+                  </enumeration>
+                  <enumeration value="97">
+                  </enumeration>
+                  <enumeration value="98">
+                  </enumeration>
+                  <enumeration value="99">
+                  </enumeration>
+                  <enumeration value="100">
+                  </enumeration>
+               </restriction>
+            </simpleType>
+         </attribute>
+         <attribute name="hasOptionalArg" type="boolean" use="required">
+            <annotation>
+               <documentation>
+                  Specifies whether the Option can have an optional argument.
+               </documentation>
+            </annotation>
+         </attribute>
+         <attribute name="valueSeparator" type="string">
+            <annotation>
+               <documentation>
+                  The value separator. For example if the argument value was a Java property, the value separator would be &apos;=&apos;.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <element name="optionId">
+      <annotation>
+         <documentation>
+            This element can refer to an option which was contributed by the org.genivi.commonapi.console.options extension point.
+         </documentation>
+      </annotation>
+      <complexType>
+         <attribute name="optionId" type="string" use="required">
+            <annotation>
+               <documentation>
+                  The unique identifier of the option which was contributed by the org.genivi.commonapi.console.options extension point.
+               </documentation>
+            </annotation>
+         </attribute>
+      </complexType>
+   </element>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="since"/>
+      </appinfo>
+      <documentation>
+         [Enter the first release in which this extension point appears.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="examples"/>
+      </appinfo>
+      <documentation>
+         [Enter extension point usage example here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="apiinfo"/>
+      </appinfo>
+      <documentation>
+         [Enter API information here.]
+      </documentation>
+   </annotation>
+
+   <annotation>
+      <appinfo>
+         <meta.section type="implementation"/>
+      </appinfo>
+      <documentation>
+         [Enter information about supplied implementation of this extension point.]
+      </documentation>
+   </annotation>
+
+
+</schema>

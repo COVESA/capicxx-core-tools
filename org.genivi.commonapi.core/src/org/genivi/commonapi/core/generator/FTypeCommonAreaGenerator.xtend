@@ -15,9 +15,9 @@ import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
 import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
-import org.franca.core.franca.FUnionType
-import org.genivi.commonapi.core.deployment.DeploymentInterfacePropertyAccessor
 import org.franca.core.franca.FTypedElement
+import org.franca.core.franca.FUnionType
+import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 class FTypeCommonAreaGenerator {
     @Inject private extension FrancaGeneratorExtensions
@@ -45,14 +45,6 @@ class FTypeCommonAreaGenerator {
         return fType as FUnionType
     }
 
-    def generateTypeWriters(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        «FOR type: fTypes.types»
-            «IF type.isFEnumerationType»
-                «generateStreamImplementation(type.getFEnumerationType, type.elementName, fTypes, fTypes.elementName, deploymentAccessor)»
-            «ENDIF»
-        «ENDFOR»
-    '''
-
     def private List<String> getNamespaceAsList(FModel fModel) {
         newArrayList(fModel.name.split("\\."))
     }
@@ -63,50 +55,18 @@ class FTypeCommonAreaGenerator {
         return (fModelElement.eContainer as FModelElement).model
     }
 
-    def private getWithNamespace(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName) {
-        parent.model.namespaceAsList.join("::") + "::" + fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)
-    }
-
-    def private generateStreamImplementation(FEnumerationType fEnumerationType, String enumerationName, FModelElement parent, String parentName, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
-        template<>
-        struct BasicTypeWriter<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
-            inline static void writeType (CommonAPI::TypeOutputStream& typeStream) {
-                typeStream.write«fEnumerationType.generateTypeOutput(deploymentAccessor)»Type();
-            }
-        };
-
-        template<>
-        struct InputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
-            static void beginReadVector(InputStream& inputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
-                inputStream.beginRead«fEnumerationType.generateTypeOutput(deploymentAccessor)»Vector();
-            }
-        };
-
-        template <>
-        struct OutputStreamVectorHelper<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»> {
-            static void beginWriteVector(OutputStream& outputStream, const std::vector<«fEnumerationType.getWithNamespace(enumerationName, parent, parentName)»>& vectorValue) {
-                outputStream.beginWrite«fEnumerationType.generateTypeOutput(deploymentAccessor)»Vector(vectorValue.size());
-            }
-        };
-    '''
-
-    def private generateTypeOutput(FEnumerationType fEnumerationType, DeploymentInterfacePropertyAccessor deploymentAccessor) {
-        FTypeGenerator::generateComments(fEnumerationType, false)
-        return fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName.split("_").get(0).toUpperCase.replace("NT", "nt") + "Enum"
-    }
-
     def generateVariantComparators(FTypeCollection fTypes) '''
         «FOR type: fTypes.types»
             «IF type.isFUnionType»
               «FOR base : type.getFUnionType.baseList»
-                    «generateComparatorImplementation(type.getFUnionType, type.elementName, base, fTypes, fTypes.elementName)»
+                    «generateComparatorImplementation(type.getFUnionType, base)»
                 «ENDFOR»
             «ENDIF»
         «ENDFOR»
     '''
 
     def private getClassNamespaceWithName(FTypedElement type, String name, FModelElement parent, String parentName) {
-        var reference = type.getTypeName(parent)
+        var reference = type.getTypeName(parent, false)
         if (parent != null && parent != type) {
             reference = parentName + '::' + reference
         }
@@ -115,23 +75,25 @@ class FTypeCommonAreaGenerator {
 
 
 
-    def private List<String> getElementTypeNames(FUnionType fUnion, String unionName, FModelElement parent, String parentName) {
+    def private List<String> getElementTypeNames(FUnionType fUnion) {
         var names = new ArrayList<String>
         var rev = fUnion.elements
         var iter = rev.iterator
+        val parent = (fUnion.eContainer as FTypeCollection)
+        
         while (iter.hasNext) {
             var item = iter.next
             var lName = "";
             if (item.type.derived != null) {
-                lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.elementName, parent, parentName)
+                lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.elementName, parent, parent.name)
             } else {
-               lName = item.getTypeName(fUnion)
+               lName = item.getTypeName(fUnion, false)
             }            
             names.add(lName)
         }
 
         if (fUnion.base != null) {
-            for (base : fUnion.base.getElementTypeNames(fUnion.base.elementName, parent, parentName)) {
+            for (base : fUnion.base.elementTypeNames) {
                 names.add(base);
             }
         }
@@ -146,9 +108,9 @@ class FTypeCommonAreaGenerator {
             if (counter > 1) {
                 ret = ret + " else ";
             }
-            ret = ret + "if (rhs.getValueType() == " + counter + ") { \n" +
-            "    " + item + " a = lhs.get<" + item + ">(); \n" +
-            "    " + item + " b = rhs.get<" + item + ">(); \n" +
+            ret = ret + "if (_rhs.getValueType() == " + counter + ") { \n" +
+            "    " + item + " a = _lhs.get<" + item + ">(); \n" +
+            "    " + item + " b = _rhs.get<" + item + ">(); \n" +
             "    " + "return (a == b); \n" +
             "}"
             counter = counter + 1;
@@ -156,33 +118,38 @@ class FTypeCommonAreaGenerator {
         return ret
     }
 
-    def private generateComparatorImplementation(FUnionType fUnionType, String unionName, FUnionType base, FModelElement parent, String parentName) '''
+    def private generateComparatorImplementation(FUnionType _derived, FUnionType _base) '''
+        «val unionTypeName = _derived.getElementName(null, true)»
+        «val unionBaseTypeName = _base.getElementName(null, true)»
+        «val unionTypeContainerName = (_derived.eContainer as FTypeCollection).getTypeCollectionName(null)»
+        «val unionBaseTypeContainerName = (_base.eContainer as FTypeCollection).getTypeCollectionName(null)»
+        
         inline bool operator==(
-                const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& rhs) {
-            if (lhs.getValueType() == rhs.getValueType()) {
-                «var list = base.getElementTypeNames(unionName, parent, parentName)»
+                const «unionTypeContainerName»::«unionTypeName» &_lhs,
+                const «unionBaseTypeContainerName»::«unionBaseTypeName» &_rhs) {
+            if (_lhs.getValueType() == _rhs.getValueType()) {
+                «var list = _base.elementTypeNames»
                 «list.generateVariantComnparatorIf»
             }
             return false;
         }
 
         inline bool operator==(
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& rhs) {
-            return rhs == lhs;
+                const «unionBaseTypeContainerName»::«unionBaseTypeName» &_lhs,
+                const «unionTypeContainerName»::«unionTypeName» &_rhs) {
+            return _rhs == _lhs;
         }
 
         inline bool operator!=(
-                const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& rhs) {
-            return lhs != rhs;
+                const «unionTypeContainerName»::«unionTypeName» &_lhs,
+                const «unionBaseTypeContainerName»::«unionBaseTypeName» &_rhs) {
+            return !(_lhs == _rhs);
         }
 
         inline bool operator!=(
-                const «parent.model.namespaceAsList.join("::") + "::" + base.getClassNamespaceWithName(base.elementName, parent, parentName)»& lhs,
-                const «parent.model.namespaceAsList.join("::") + "::" + fUnionType.getClassNamespaceWithName(unionName, parent, parentName)»& rhs) {
-            return lhs != rhs;
+                const «unionBaseTypeContainerName»::«unionBaseTypeName» &_lhs,
+                const «unionTypeContainerName»::«unionTypeName» &_rhs) {
+            return !(_rhs == _lhs);
         }
     '''
 
@@ -198,11 +165,11 @@ class FTypeCommonAreaGenerator {
         return baseList
     }
 
-    def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.elementName, fTypes, fTypes.elementName)»'''
+    def getFQN(FType type, FTypeCollection fTypes) '''«fTypes.versionPrefix»«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(type.elementName, fTypes, fTypes.elementName)»'''
 
-    def getFQN(FType type, String name, FTypeCollection fTypes) '''«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(name, fTypes, fTypes.elementName)»'''
+    def getFQN(FType type, String name, FTypeCollection fTypes) '''«fTypes.versionPrefix»«fTypes.model.namespaceAsList.join("::")»::«type.getClassNamespaceWithName(name, fTypes, fTypes.elementName)»'''
 
-    def generateHash (FType type, String name, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+    def generateHash (FType type, String name, FTypeCollection fTypes, PropertyAccessor deploymentAccessor) '''
     //Hash for «name»
     template<>
     struct hash<«type.getFQN(name, fTypes)»> {
@@ -212,7 +179,7 @@ class FTypeCommonAreaGenerator {
     };
     '''
 
-    def generateHash (FType type, FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+    def generateHash (FType type, FTypeCollection fTypes, PropertyAccessor deploymentAccessor) '''
     //Hash for «type.elementName»
     template<>
     struct hash<«type.getFQN(fTypes)»> {
@@ -222,7 +189,7 @@ class FTypeCommonAreaGenerator {
     };
     '''
 
-    def generateHashers(FTypeCollection fTypes, DeploymentInterfacePropertyAccessor deploymentAccessor) '''
+    def generateHashers(FTypeCollection fTypes, PropertyAccessor deploymentAccessor) '''
         «FOR type: fTypes.types»
             «IF type.isFEnumerationType»
                 «type.generateHash(fTypes, deploymentAccessor)»

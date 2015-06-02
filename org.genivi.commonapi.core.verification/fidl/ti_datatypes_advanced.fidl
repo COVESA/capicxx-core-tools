@@ -1,0 +1,70 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.datatypes.advanced
+
+interface TestInterface {
+    version { major 1 minor 0 }
+    
+    attribute tArray aArray
+    attribute tEnumeration aEnumeration
+    attribute tStruct aStruct
+    attribute tUnion aUnion
+    attribute tMap aMap
+    attribute tTypedef aTypedef
+
+    method fTest {
+        in {
+            tArray tArrayIn
+            tEnumeration tEnumerationIn
+            tStruct tStructIn
+            tUnion tUnionIn
+            tMap tMapIn
+            tTypedef tTypedefIn
+            }
+        out {
+            tArray tArrayOut
+            tEnumeration tEnumerationOut
+            tStruct tStructOut
+            tUnion tUnionOut
+            tMap tMapOut
+            tTypedef tTypedefOut
+            }
+    }
+
+    broadcast bTest {
+        out {
+            tArray tArrayOut
+            tEnumeration tEnumerationOut
+            tStruct tStructOut
+            tUnion tUnionOut
+            tMap tMapOut
+            tTypedef tTypedefOut
+        }
+    }
+
+    array tArray of String
+
+    enumeration tEnumeration {
+        VALUE1= "0"
+        VALUE2= "123"
+    }
+
+    struct tStruct {
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+    }
+
+    union tUnion {
+        Boolean booleanMember
+        UInt8 uint8Member
+        String stringMember
+    }
+
+    map tMap {
+        UInt8 to String
+    }
+
+    typedef tTypedef is UInt8
+}

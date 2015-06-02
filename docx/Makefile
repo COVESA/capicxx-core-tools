@@ -10,15 +10,7 @@ commonapi_version=$(PROJECT_VERSION)
 
 all: doc
 
-doc: readme_html spec_html spec_pdf tut_html tut_pdf test_html test_pdf
-
-readme_html: docgendir
-	mkdir -p $(htmldocgendir)
-	asciidoc \
-		-a version=$(commonapi_version) \
-		-a tabsize=4 \
-		-o $(htmldocgendir)/readme.html \
-		../README
+doc: spec_html spec_pdf ug_html ug_pdf test_html test_pdf
 
 spec_html: docgendir
 	mkdir -p $(htmldocgendir)
@@ -30,8 +22,8 @@ spec_html: docgendir
 		-a version=$(commonapi_version) \
 		-a cppstr=cpp \
 		-a tabsize=4 \
-		-o $(htmldocgendir)/CommonAPISpecification.html \
-		CommonAPISpecification
+		-o $(htmldocgendir)/CommonAPICppSpecification.html \
+		CommonAPICppSpecification
 
 spec_pdf: docgendir
 	mkdir -p $(pdfdocgendir)
@@ -46,9 +38,9 @@ spec_pdf: docgendir
 		--dblatex-opts "-P latex.output.revhistory=0" \
 		--icons \
 		-D $(pdfdocgendir) \
-		CommonAPISpecification
+		CommonAPICppSpecification
 
-tut_html: docgendir
+ug_html: docgendir
 	mkdir -p $(htmldocgendir)
 	asciidoc -a revdate=$(datestring) \
 				-a icons \
@@ -58,10 +50,10 @@ tut_html: docgendir
 				-a cppstr=cpp \
 				-a tabsize=4 \
 				-b html \
-				-o $(htmldocgendir)/Tutorial.html \
-				Tutorial
+				-o $(htmldocgendir)/CommonAPICppUserGuide.html \
+				CommonAPICppUserGuide
 
-tut_pdf: docgendir
+ug_pdf: docgendir
 	mkdir -p $(pdfdocgendir)
 	a2x \
 		-a revdate=$(datestring) \
@@ -74,7 +66,7 @@ tut_pdf: docgendir
 		--dblatex-opts "-P latex.output.revhistory=0 -P imagedata.default.scale=maxwidth=10cm,maxheight=8cm" \
 		--icons \
 		-D $(pdfdocgendir) \
-		Tutorial
+		CommonAPICppUserGuide
 
 test_html: docgendir
 	mkdir -p $(htmldocgendir)/tests

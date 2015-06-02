@@ -1,0 +1,23 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.communication
+
+interface TestInterface {
+	version { major 1 minor 0 }
+	
+	attribute UInt8 testAttribute
+	
+	attribute UInt8 testA readonly
+	attribute UInt8 testB noSubscriptions
+	attribute UInt8 testC readonly noSubscriptions 
+
+	method testMethod {
+	    in {
+	        UInt8 x
+	    }
+	    out {
+	        UInt8 y
+	    }
+	}
+}
