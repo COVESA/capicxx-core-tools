@@ -17,13 +17,18 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <cassert>
+#include <chrono>
+#include <future>
+
+#ifdef WIN32
+#include <WinSock2.h>
+#else
 #include <poll.h>
 #include <unistd.h>
 #include <sys/eventfd.h>
-#include <cassert>
-#include <chrono>
 #include <sys/time.h>
-#include <future>
+#endif
 
 const long maxTimeout = 10;
 
@@ -39,7 +44,15 @@ class VerificationMainLoop {
 
     explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context) :
             context_(context), currentMinimalTimeoutInterval_(TIMEOUT_INFINITE), running_(false), breakLoop_(false), dispatchWatchesTooLong(false) {
+#ifdef WIN32
+		WSAEVENT wsaEvent = WSACreateEvent();
+
+		if (wsaEvent != WSA_INVALID_EVENT) {
+			wakeFd_.fd = PtrToInt(wsaEvent);
+		}
+#else
         wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
+#endif
         wakeFd_.events = POLLIN;
 
         assert(wakeFd_.fd != -1);
@@ -68,7 +81,11 @@ class VerificationMainLoop {
         context_->unsubscribeForTimeouts(timeoutSourceListenerSubscription_);
         context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
+#ifdef WIN32
+		WSACloseEvent(IntToPtr(wakeFd_.fd));
+#else
         close(wakeFd_.fd);
+#endif
 
         delete stopPromise;
     }
@@ -157,8 +174,10 @@ class VerificationMainLoop {
             int64_t dispatchTimeout = TIMEOUT_INFINITE;
             if(dispatchSourceIterator->second->prepare(dispatchTimeout)) {
                 sourcesToDispatch_.insert(*dispatchSourceIterator);
-            } else if (dispatchTimeout < currentMinimalTimeoutInterval_) {
-                currentMinimalTimeoutInterval_ = dispatchTimeout;
+            } else if (dispatchTimeout != -1 || currentMinimalTimeoutInterval_ == TIMEOUT_INFINITE) {
+            	if (dispatchTimeout < currentMinimalTimeoutInterval_) {
+            		currentMinimalTimeoutInterval_ = dispatchTimeout;
+            	}
             }
         }
 
@@ -184,7 +203,17 @@ class VerificationMainLoop {
             (*fileDescriptor).revents = 0;
         }
 
+#if WIN32
+		INT currentMinimalTimeoutIntervalWin32_ = 1;
+		size_t numReadyFileDescriptors = ::WSAPoll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), currentMinimalTimeoutIntervalWin32_);
+
+		if (numReadyFileDescriptors == SOCKET_ERROR) {
+			int iError = WSAGetLastError();
+			//printf("WSAPoll failed with error: %ld\n", iError);
+		}
+#else
         size_t numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), currentMinimalTimeoutInterval_);
+#endif
 
         // If no FileDescriptors are ready, poll returned because of a timeout that has expired.
         // The only case in which this is not the reason is when the timeout handed in "prepare"
@@ -246,8 +275,13 @@ class VerificationMainLoop {
     bool dispatchWatchesTooLong;
 
     void wakeup() {
+#ifdef WIN32
+		HANDLE h = IntToPtr(wakeFd_.fd);
+		SetEvent(h);
+#else
         int64_t wake = 1;
         ::write(wakeFd_.fd, &wake, sizeof(int64_t));
+#endif
     }
 
     void dispatchTimeouts() {
@@ -264,7 +298,7 @@ class VerificationMainLoop {
                         watchIterator != watchesToDispatch_.end();
                         watchIterator++) {
             Watch* watch = watchIterator->second;
-            const unsigned int flags = 7;
+            const unsigned int flags = watch->getAssociatedFileDescriptor().events;
             watch->dispatch(flags);
         }
     }
@@ -366,8 +400,13 @@ class VerificationMainLoop {
     }
 
     void acknowledgeWakeup() {
+#ifdef WIN32
+		HANDLE h = IntToPtr(wakeFd_.fd);
+		ResetEvent(h);
+#else
         int64_t buffer;
         while (::read(wakeFd_.fd, &buffer, sizeof(int64_t)) == sizeof(buffer));
+#endif
     }
 
     std::shared_ptr<MainLoopContext> context_;

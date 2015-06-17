@@ -75,7 +75,7 @@ class FTypeGenerator {
     
     def private static findNextBreak(String text) {
         var breakIndex = text.substring(0, CommentLineLength).lastIndexOf(" ");
-        if (breakIndex > -1) {
+        if (breakIndex > 0) {
             return breakIndex;
         } else {
                 return Math.min(CommentLineLength, text.length);
@@ -102,7 +102,7 @@ class FTypeGenerator {
     }
         
 	// TODO: Does this code offer additional functionality compared to breaktext ?
-     def static breaktext_(String text, int annotation) {
+     def static breaktext_(String text, FAnnotationType annotation) {
         var ret = ""
         var temptext = ""       
 		
@@ -455,14 +455,43 @@ class FTypeGenerator {
         «val baseTypeName = _enumeration.getBaseType(backingType)»
 
         struct «_enumeration.name» : «baseTypeName» {
+            enum Literal : «backingType» {
+                «FOR enumerator : _enumeration.enumerators»
+                «enumPrefix»«enumerator.elementName» = «enumerator.value.enumeratorValue»«IF enumerator != _enumeration.enumerators.last»,«ENDIF»
+                «ENDFOR»
+            };
+            
             «_enumeration.name»() = default;
-            «_enumeration.name»(const «backingType» &_value) 
-                : «baseTypeName»(_value) {}
-            «FOR enumerator : _enumeration.enumerators»
-            	«generateComments(enumerator, false)»
-            	static const «backingType» «enumPrefix»«enumerator.elementName» = «enumerator.value.enumeratorValue»;
-            «ENDFOR»
+            «_enumeration.name»(const Literal &_value) 
+                : «baseTypeName»(static_cast<«IF _enumeration.base == null»«backingType»«ELSE»«baseTypeName»::Literal«ENDIF»>(_value)) {}
+            «_enumeration.generateBaseTypeAssignmentOperator(_accessor)»
+
+            inline bool operator==(const «_enumeration.name» &_other) const { return (value_ == _other.value_); }
+            inline bool operator!=(const «_enumeration.name» &_other) const { return (value_ != _other.value_); }
+            inline bool operator<=(const «_enumeration.name» &_other) const { return (value_ <= _other.value_); }
+            inline bool operator>=(const «_enumeration.name» &_other) const { return (value_ >= _other.value_); }
+            inline bool operator<(const «_enumeration.name» &_other) const { return (value_ < _other.value_); }
+            inline bool operator>(const «_enumeration.name» &_other) const { return (value_ > _other.value_); }
+            
+            inline bool operator==(const Literal &_value) const { return (value_ == static_cast<«backingType»>(_value)); }
+            inline bool operator!=(const Literal &_value) const { return (value_ != static_cast<«backingType»>(_value)); }
+            inline bool operator<=(const Literal &_value) const { return (value_ <= static_cast<«backingType»>(_value)); }
+            inline bool operator>=(const Literal &_value) const { return (value_ >= static_cast<«backingType»>(_value)); }
+            inline bool operator<(const Literal &_value) const { return (value_ < static_cast<«backingType»>(_value)); }
+            inline bool operator>(const Literal &_value) const { return (value_ > static_cast<«backingType»>(_value)); }
         };
+    '''
+    
+    def generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, PropertyAccessor _accessor) '''
+        «IF _enumeration.base != null»
+            «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
+            «val baseTypeName = _enumeration.getBaseType(backingType)»
+            «_enumeration.name» &operator=(const «baseTypeName»::Literal &_value) {
+                value_ = static_cast<«backingType»>(_value);
+                return (*this);
+            }
+            «_enumeration.base.generateBaseTypeAssignmentOperator(_accessor)»
+        «ENDIF»
     '''
 
     def dispatch generateFTypeDeclaration(FUnionType fUnionType, PropertyAccessor deploymentAccessor) '''
@@ -471,14 +500,16 @@ class FTypeGenerator {
     '''
 
     def private String getElementNames(FUnionType fUnion) {
-        var names = "";
+        var names = ""
         if (fUnion.base != null) {
-            names = fUnion.base.getElementNames
+            names += fUnion.base.getElementNames
+            if (names != "") {
+                names += ", "
+            }
         }
-        if (names != "") {
-            names = ", " + names
-        }
-        names = fUnion.elements.map[getTypeName(fUnion, false)].join(", ") + names
+        
+        names += fUnion.elements.map[getTypeName(fUnion, false)].join(", ")
+        
         return names
     }
 
@@ -499,15 +530,6 @@ class FTypeGenerator {
     def dispatch generateFTypeImplementation(FArrayType fArrayType, FModelElement parent, PropertyAccessor _accessor) ''''''
     def dispatch generateFTypeImplementation(FMapType fMap, FModelElement parent, PropertyAccessor _accessor) ''''''
     def dispatch generateFTypeImplementation(FEnumerationType _enumeration, FModelElement _parent, PropertyAccessor _accessor) '''
-		#ifndef WIN32
-		«FOR enumerator : _enumeration.enumerators»
-			«IF _parent != null && _parent != _enumeration»
-				const «_enumeration.getBackingType(_accessor).primitiveTypeName» «_parent.elementName»::«_enumeration.name»::«enumPrefix + enumerator.elementName»;
-			«ELSE»
-				const «_enumeration.getBackingType(_accessor).primitiveTypeName» «_enumeration.name»::«enumPrefix + enumerator.elementName»;
-			«ENDIF»
-		«ENDFOR»
-		#endif
 	'''
 
     def dispatch generateFTypeImplementation(FStructType fStructType, FModelElement parent, PropertyAccessor _accessor) '''
@@ -694,15 +716,6 @@ class FTypeGenerator {
 
     def private getConstReferenceVariable(FField destination, FModelElement source) {
         "const " + destination.getTypeName(source, false) + " &_" + destination.elementName
-    }
-
-    def private List<FField> getAllElements(FStructType fStructType) {
-        if (fStructType.base == null)
-            return new LinkedList(fStructType.elements)
-
-        val elements = fStructType.base.allElements
-        elements.addAll(fStructType.elements)
-        return elements
     }
 
 	//TODO: used?

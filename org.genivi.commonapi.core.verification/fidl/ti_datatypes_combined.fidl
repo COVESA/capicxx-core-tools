@@ -67,7 +67,7 @@ interface TestInterface {
     union tUnionL1 {
         tEnum enumMember
         tArray arrayMember
-        tStruct structMember
+        //tStruct structMember
         tUnion unionMember
         tMap mapMember
     }

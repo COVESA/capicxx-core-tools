@@ -7,7 +7,7 @@
 
 #include "E06UnionsStubImpl.h"
 
-#include "../src-gen/commonapi/examples/CommonTypes.hpp"
+#include "commonapi/examples/CommonTypes.hpp"
 
 using namespace commonapi::examples;
 

@@ -7,6 +7,7 @@ package org.genivi.commonapi.core;
 import org.franca.core.franca.FInterface;
 import org.franca.core.franca.FMethod;
 import org.franca.core.franca.FEnumerationType;
+import org.franca.core.franca.FAttribute;
 import org.franca.deploymodel.core.FDeployedInterface;
 
 /**
@@ -50,6 +51,10 @@ public class DeploymentInterfacePropertyAccessor
 	}
 	
 	public Integer getTimeout (FMethod obj) {
+		return target.getInteger(obj, "Timeout");
+	}
+	
+	public Integer getTimeout (FAttribute obj) {
 		return target.getInteger(obj, "Timeout");
 	}
 	

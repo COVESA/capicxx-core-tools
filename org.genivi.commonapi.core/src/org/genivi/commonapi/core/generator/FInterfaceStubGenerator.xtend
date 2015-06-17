@@ -15,10 +15,16 @@ import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FInterface
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.genivi.commonapi.core.preferences.FPreferences
+import java.util.HashMap
+import org.franca.core.franca.FMethod
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
+
+    var HashMap<String, Integer> counterMap;
+    var HashMap<FMethod, String> methodreplyMap;
+
 
     def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, IResource modelid) {
         fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(modelid))
@@ -164,11 +170,13 @@ class FInterfaceStubGenerator {
               public virtual «fInterface.base.getTypeCollectionName(fInterface)»Stub«ENDIF»
         {
         public:
-            «FOR method: fInterface.methods»
-                «IF !method.isFireAndForget»
-                    typedef std::function<void («method.generateStubReplySignature()»)> «method.elementName»Reply_t;
-                «ENDIF»
-	       	«ENDFOR»
+        «{counterMap = new HashMap<String, Integer>();""}»
+        «{methodreplyMap = new HashMap<FMethod, String>();""}»
+        «FOR method: fInterface.methods»
+            «IF !method.isFireAndForget»
+	            «generateMethodReplyDeclarations(method, fInterface, counterMap, methodreplyMap)»
+            «ENDIF»
+	    «ENDFOR»
         
             virtual ~«fInterface.stubClassName»() {}
             virtual const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
@@ -182,7 +190,7 @@ class FInterfaceStubGenerator {
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
                 /// This is the method that will be called on remote calls on the method «method.elementName».
-                virtual void «method.elementName»(«method.generateStubSignature») = 0;
+                virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap.get(method))») = 0;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
@@ -222,6 +230,17 @@ class FInterfaceStubGenerator {
 
         #endif // «fInterface.defineName»_STUB_HPP_
     '''
+
+    def private generateMethodReplyDeclarations(FMethod fMethod, FInterface fInterface, HashMap<String, Integer> counterMap, HashMap<FMethod, String> methodreplyMap) '''
+		«IF !(counterMap.containsKey(fMethod.elementName))»
+			«{counterMap.put(fMethod.elementName, 0);  methodreplyMap.put(fMethod, fMethod.elementName);""}»
+			    typedef std::function<void («fMethod.generateStubReplySignature()»)>«fMethod.elementName»Reply_t;
+		«ELSE»
+			«{counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1);  methodreplyMap.put(fMethod, fMethod.elementName + counterMap.get(fMethod.elementName));""}»
+			    typedef std::function<void («fMethod.generateStubReplySignature()»)>«methodreplyMap.get(fMethod)»Reply_t;
+		«ENDIF»
+    '''
+
 
     def private generateStubDefaultHeader(FInterface fInterface, IResource modelid) '''
         «generateCommonApiLicenseHeader(fInterface, modelid)»
@@ -271,7 +290,7 @@ class FInterfaceStubGenerator {
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                virtual void «method.elementName»(«method.generateStubSignature»);
+                virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))»);
             «ENDFOR»
 
           	«FOR broadcast : fInterface.broadcasts»
@@ -429,7 +448,7 @@ class FInterfaceStubGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
-            void «fInterface.stubDefaultClassName»::«method.elementName»(«method.generateStubSignature») {
+            void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))») {
                 «IF !method.isFireAndForget»
                     «method.generateDummyArgumentDefinitions»
                     _reply(«method.generateDummyArgumentList»);

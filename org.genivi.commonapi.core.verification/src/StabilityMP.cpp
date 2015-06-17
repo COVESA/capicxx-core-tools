@@ -10,8 +10,13 @@
 #include "v1_0/commonapi/stability/mp/ControlInterfaceProxy.hpp"
 #include "stub/StabControlStub.h"
 #include "stub/StabilityMPStub.h"
+
+#ifdef WIN32
+#include <Windows.h>
+#else
 #include <unistd.h>
 #include <sys/wait.h>
+#endif
 
 using namespace v1_0::commonapi::stability::mp;
 
@@ -31,7 +36,13 @@ const int MAX_WAIT = 10000;
 
 const int N_TEST_PROXY_PROCESSES = 3;
 const int N_CHILDREN = 2 + 2 * N_TEST_PROXY_PROCESSES; // needs to be large enough to cover for all created processes
+
+#ifdef WIN32
+HANDLE childpids[N_CHILDREN];
+#else
 pid_t childpids[N_CHILDREN];
+#endif
+
 bool idChild;
 bool controlServiceRegistered = false;
 std::shared_ptr<CommonAPI::Runtime> runtime_;
@@ -134,7 +145,7 @@ public:
 				success_ = true;
 				break;
 			}
-			usleep(10000);
+			usleep(20000);
 		}
 	}
 	void pollForUnavailability(void) {
@@ -514,7 +525,7 @@ TEST_F(Stability, ProxyCreation_ProxyFirst) {
 		child->state = DEAD;
 	}
 
-
+	usleep(1 * 1000 * 1000);
 }
 
 TEST_F(Stability, ProxyCreation_ServerFirst) {
@@ -601,6 +612,8 @@ TEST_F(Stability, ProxyCreation_ServerFirst) {
 		child->next_cmd = KILL_YOURSELF;
 		child->state = DEAD;
 	}
+
+	usleep(1 * 1000 * 1000);
 }
 
 int main(int argc, char ** argv)
@@ -609,7 +622,12 @@ int main(int argc, char ** argv)
 	/* forking is best done before the google test environment is set up */
 	bool isChild = false;
 	for (int i = 0; i < N_CHILDREN; i++) {
+#ifdef WIN32
+		// TODO!!!
+		HANDLE child = 0;
+#else
 		pid_t child = fork();
+#endif
 		if (child == 0) {
 			isChild = true;
 			break;

@@ -4,7 +4,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include <iostream>
+
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #include <CommonAPI/CommonAPI.hpp>
 #include <v1_0/commonapi/examples/E02AttributesProxy.hpp>
@@ -25,14 +28,19 @@ void recv_cb_s(const CommonAPI::CallStatus& callStatus, const CommonTypes::a1Str
 }
 
 int main() {
+    CommonAPI::Runtime::setProperty("LogContext", "E02C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E02Attributes");
+
     std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
 
     std::string domain = "local";
-    std::string instance = "commonapi.examples.Attributes";
+	std::string instance = "commonapi.examples.Attributes"; 
+	std::string connection = "client-sample";
 
     std::shared_ptr<CommonAPI::DefaultAttributeProxyHelper<E02AttributesProxy, AttributeCacheExtension>::class_t> myProxy =
-    		runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttributeCacheExtension>(domain, instance);
+	runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttributeCacheExtension>(domain, instance, connection);
 
+    std::cout << "Waiting for service to become available." << std::endl;
     while (!myProxy->isAvailable()) {
         usleep(10);
     }

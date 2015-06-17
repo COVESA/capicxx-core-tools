@@ -9,7 +9,14 @@ cmake_minimum_required(VERSION 2.8)
 set(PRJ_NAME E07Mainloop)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
+
+if (MSVC)
+# Visual C++ is not always sure whether he is really C++
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_CRT_SECURE_NO_WARNINGS /EHsc /wd\\\"4503\\\"")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_CRT_SECURE_NO_WARNINGS /wd\\\"4503\\\"")
+else()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -O0 -std=c++0x -D_GLIBCXX_USE_NANOSLEEP -DLINUX")
+endif()
 
 message(STATUS "Compiler options: ${CMAKE_CXX_FLAGS}") 
 
@@ -23,11 +30,11 @@ OPTION(USE_INSTALLED_COMMONAPI "Set to OFF to use the local (build tree) version
 message(STATUS "USE_INSTALLED_COMMONAPI is set to value: ${USE_INSTALLED_COMMONAPI}")
 
 if ("${USE_INSTALLED_COMMONAPI}" STREQUAL "ON")
-    FIND_PACKAGE(CommonAPI REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
-    FIND_PACKAGE(CommonAPI-DBus REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI 3.1.2 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.2 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
 else()
-    FIND_PACKAGE(CommonAPI REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
-    FIND_PACKAGE(CommonAPI-DBus REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI 3.1.2 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.2 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
 endif()
 
 message(STATUS "CommonAPI_CONSIDERED_CONFIGS: ${CommonAPI_CONSIDERED_CONFIGS}")
@@ -37,21 +44,53 @@ message(STATUS "COMMONAPI_DBUS_INCLUDE_DIRS: ${COMMONAPI_DBUS_INCLUDE_DIRS}")
 
 # CommonAPI
 include(FindPkgConfig)
-pkg_check_modules (DBUS "dbus-1 >= 1.4")
+###############################################################################
+# find DBus by using the 'pkg-config' tool
+if (MSVC)
+	#Not beautiful, but it works
+	if (DBus_DIR)
+		if (DBus_BUILD_DIR)
+			set(DBus_INCLUDE_DIRS "${DBus_DIR};${DBus_BUILD_DIR};")
+		else ()
+			message (FATAL_ERROR "DBus_BUILD_DIR not set! Cannot continue.")
+		endif ()
+	else()
+		message (FATAL_ERROR "DBus_DIR not set! Cannot continue.")
+	endif ()
+else()
+	pkg_check_modules(DBus REQUIRED dbus-1>=1.4)
+endif()
 
 # SOME/IP
-find_package (CommonAPI-SomeIP 3.1.1 REQUIRED)
-find_package (vsomeip 1.1.0 REQUIRED)
+find_package (CommonAPI-SomeIP 3.1.2 REQUIRED)
+find_package (vsomeip 1.2.0 REQUIRED)
 
 # GLib
-FIND_PACKAGE(glib-2.0)
-if (GLIB_FOUND)
-   message ( STATUS "Glib found: " ${GLIB_INCLUDE_DIRS} " " ${_GLIB_LIBRARY_DIR} " " ${GLIBCONFIG_INCLUDE_DIR} )
-   include_directories(${GLIB_INCLUDE_DIRS} ${GLIBCONFIG_INCLUDE_DIR})
-   #link_directories(${_GLIB_LIBRARY_DIR})
-else (GLIB_FOUND)
-   message ( WARNING "Glib not found.")
-endif (GLIB_FOUND)
+if (MSVC)
+	if (GLIB_INCLUDE_DIRS)
+		if (GLIBCONFIG_INCLUDE_DIR)
+			if (_GLIB_LIBRARY_DIR)
+				include_directories(${GLIB_INCLUDE_DIRS} ${GLIBCONFIG_INCLUDE_DIR})
+				link_directories(${_GLIB_LIBRARY_DIR})
+			else ()
+				message (FATAL_ERROR "_GLIB_LIBRARY_DIR not set! Cannot continue.")
+			endif ()
+		else()
+			message (FATAL_ERROR "GLIBCONFIG_INCLUDE_DIR not set! Cannot continue.")
+		endif ()
+	else()
+		message (FATAL_ERROR "GLIB_INCLUDE_DIRS not set! Cannot continue.")
+	endif ()
+else()
+	FIND_PACKAGE(glib-2.0)
+	if (GLIB_FOUND)
+	   message ( STATUS "Glib found: " ${GLIB_INCLUDE_DIRS} " " ${_GLIB_LIBRARY_DIR} " " ${GLIBCONFIG_INCLUDE_DIR} )
+	   include_directories(${GLIB_INCLUDE_DIRS} ${GLIBCONFIG_INCLUDE_DIR})
+	   #link_directories(${_GLIB_LIBRARY_DIR})
+	else (GLIB_FOUND)
+	   message ( WARNING "Glib not found.")
+	endif (GLIB_FOUND)
+endif()
 
 # Source Files
 set(PRJ_SRC_PATH src)
@@ -70,6 +109,10 @@ FILE(GLOB PRJ_STUB_IMPL_SRCS ${PRJ_SRC_COMMONAPI_PATH}/*Stub*.cpp)
 set(PRJ_CLIENT_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_CLIENT}.cpp ${PRJ_PROXY_GEN_SRCS})
 set(PRJ_SERVICE_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_SERVICE}.cpp ${PRJ_SRC_PATH}/${PRJ_NAME}StubImpl.cpp ${PRJ_STUB_GEN_SRCS} ${PRJ_STUB_IMPL_SRCS})
 
+# Boost
+find_package( Boost 1.54 COMPONENTS system thread log REQUIRED )
+include_directories( ${Boost_INCLUDE_DIR} )
+
 # DBus library
 FILE(GLOB PRJ_DBUS_LIB_SRCS ${PRJ_SRC_GEN_COMMONAPI_DBUS_PATH}/*cpp)
 
@@ -87,7 +130,7 @@ include_directories(
     ${COMMONAPI_INCLUDE_DIRS}
     ${COMMONAPI_DBUS_INCLUDE_DIRS}
     ${COMMONAPI_SOMEIP_INCLUDE_DIRS}
-    ${DBUS_INCLUDE_DIRS}
+    ${DBus_INCLUDE_DIRS}
     ${VSOMEIP_INCLUDE_DIRS}
 )
 
@@ -96,13 +139,15 @@ link_directories(
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
+	${Boost_LIBRARY_DIR}
 )
 else()
 link_directories(
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
-    ${DBUS_INCLUDE_DIRS}/dbus/.libs
+    ${DBus_INCLUDE_DIRS}/dbus/.libs
+	${Boost_LIBRARY_DIR}
 )
 endif()
 
@@ -117,9 +162,9 @@ add_executable(${PRJ_NAME_SERVICE} ${PRJ_SERVICE_SRCS})
 target_link_libraries(${PRJ_NAME_SERVICE} ${LINK_LIBRARIES})
 
 # Build DBus library
-add_library (${PRJ_NAME}-DBus SHARED ${PRJ_DBUS_LIB_SRCS})
-target_link_libraries(${PRJ_NAME}-DBus CommonAPI-DBus)
+add_library (${PRJ_NAME}-dbus SHARED ${PRJ_DBUS_LIB_SRCS})
+target_link_libraries(${PRJ_NAME}-dbus CommonAPI-DBus)
 
 # Build SOME/IP library
-add_library (${PRJ_NAME}-SomeIP SHARED ${PRJ_SOMEIP_LIB_SRCS})
-target_link_libraries(${PRJ_NAME}-SomeIP CommonAPI-SomeIP)
+add_library (${PRJ_NAME}-someip SHARED ${PRJ_SOMEIP_LIB_SRCS})
+target_link_libraries(${PRJ_NAME}-someip CommonAPI-SomeIP)

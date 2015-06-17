@@ -18,13 +18,21 @@ const static unsigned int maxDeviceNumber = 3;
 const static std::string managerInstanceName = "commonapi.examples.Manager";
 
 int main() {
+	CommonAPI::Runtime::setProperty("LogContext", "E05S");
+	CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
     std::shared_ptr<E05ManagerStubImpl> myService = std::make_shared < E05ManagerStubImpl > (managerInstanceName);
-    const bool serviceRegistered = runtime->registerService("local", managerInstanceName, myService);
 
-    if (!serviceRegistered) {
-        std::cout << "Error: Unable to register service." << std::endl;
-    }
+	bool successfullyRegistered = runtime->registerService("local", managerInstanceName, myService);
+
+	while (!successfullyRegistered) {
+		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		successfullyRegistered = runtime->registerService("local", managerInstanceName, myService);
+	}
+
+	std::cout << "Successfully Registered Service!" << std::endl;
 
     while (true) {
         // Simulate external events

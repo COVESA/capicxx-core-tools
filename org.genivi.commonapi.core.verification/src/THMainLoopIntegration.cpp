@@ -223,7 +223,7 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
         usleep(10000);
     }
 
-    sleep(2);
+    usleep(2);
 
     if (mainLoopForStub_->isRunning()) {
 		std::future<bool> stubStopped = mainLoopForStub_->stop();

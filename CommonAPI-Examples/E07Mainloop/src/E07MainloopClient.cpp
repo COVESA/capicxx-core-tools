@@ -5,10 +5,15 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include <iostream>
+
+#ifndef WIN32
 #include <unistd.h>
+#endif
+
 #include <sstream>
 
 #include <glib.h>
+#include <gio/gio.h>
 
 #include <CommonAPI/CommonAPI.hpp>
 #include <v1_0/commonapi/examples/E07MainloopProxy.hpp>
@@ -114,7 +119,12 @@ static GSourceFuncs standardGLibSourceCallbackFuncs = {
 gboolean gWatchDispatcher ( GIOChannel *source, GIOCondition condition, gpointer userData ) {
 
 	CommonAPI::Watch* watch = static_cast<CommonAPI::Watch*>(userData);
-    watch->dispatch(condition);
+
+#ifdef WIN32
+	condition = static_cast<GIOCondition>(7);
+#endif
+
+	watch->dispatch(condition);
     return true;
 }
 
@@ -124,11 +134,16 @@ gboolean gTimeoutDispatcher ( void* userData ) {
 }
 
 void watchAddedCallback ( CommonAPI::Watch* watch, const CommonAPI::DispatchPriority dispatchPriority ) {
-
 	const pollfd& fileDesc = watch->getAssociatedFileDescriptor();
-    channel = g_io_channel_unix_new(fileDesc.fd);
 
-    GSource* gWatch = g_io_create_watch(channel, static_cast<GIOCondition>(fileDesc.events));
+#ifdef WIN32
+	channel = g_io_channel_win32_new_socket(fileDesc.fd);
+	GSource* gWatch = g_io_create_watch(channel, GIOCondition::G_IO_IN);
+#else
+	channel = g_io_channel_unix_new(fileDesc.fd); 
+	GSource* gWatch = g_io_create_watch(channel, static_cast<GIOCondition>(fileDesc.events));
+#endif
+
     g_source_set_callback(gWatch, reinterpret_cast<GSourceFunc>(&gWatchDispatcher), watch, NULL);
 
     const auto& dependentSources = watch->getDependentDispatchSources();
@@ -141,7 +156,7 @@ void watchAddedCallback ( CommonAPI::Watch* watch, const CommonAPI::DispatchPrio
         g_source_add_child_source(gWatch, gDispatchSource);
 
     }
-    g_source_attach(gWatch, NULL);
+    int source = g_source_attach(gWatch, NULL);
 }
 
 void watchRemovedCallback ( CommonAPI::Watch* watch ) {
@@ -155,6 +170,9 @@ void watchRemovedCallback ( CommonAPI::Watch* watch ) {
 }
 
 int main() {
+	CommonAPI::Runtime::setProperty("LogContext", "E07C");
+	CommonAPI::Runtime::setProperty("LibraryBase", "E07Mainloop");
+
     std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
 
     std::string domain = "local";
@@ -167,11 +185,16 @@ int main() {
 	std::function<void(CommonAPI::Watch*)> f_watchRemovedCallback = watchRemovedCallback;
 	mainloopContext->subscribeForWatches(f_watchAddedCallback, f_watchRemovedCallback);
 
-    std::shared_ptr<E07MainloopProxyDefault> myProxy = runtime->buildProxy<E07MainloopProxy>(domain,
+    std::shared_ptr<E07MainloopProxy<>> myProxy = runtime->buildProxy<E07MainloopProxy>(domain,
     		instance, mainloopContext);
 
     std::cout << "Checking availability" << std::flush;
-    static constexpr bool mayBlock = false;
+    static 
+		#ifndef WIN32
+			constexpr
+		#endif
+	bool mayBlock = false;
+		
     int count = 0;
     while (!myProxy->isAvailable()) {
     	if (count % 10 == 0)

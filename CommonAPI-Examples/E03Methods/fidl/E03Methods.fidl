@@ -20,9 +20,7 @@ interface E03Methods {
 			Int32 y1
 			String y2
 		}
-		error {
-			stdErrorTypeEnum
-	   	}
+		error stdErrorTypeEnum
 	}
 
 	broadcast myStatus {

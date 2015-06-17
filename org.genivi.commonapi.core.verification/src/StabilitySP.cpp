@@ -22,7 +22,7 @@ const std::string domain = "local";
 const std::string testAddress = "commonapi.stability.sp.TestInterface";
 const std::string COMMONAPI_CONFIG_SUFFIX = ".conf";
 const int MAXSERVERCOUNT = 40;
-const int MAXTHREADCOUNT = 40;
+const int MAXTHREADCOUNT = 8;
 const int MAXMETHODCALLS = 80;
 const int MAXREGLOOPS = 16;
 const int MAXREGCOUNT = 16;
@@ -185,7 +185,7 @@ public:
                 if (previousCount != asyncCounter) {
                     break;
                 }
-                usleep(10000);
+                usleep(10 * 1000);
             }
             if (previousCount == asyncCounter) {
                 break;
@@ -328,7 +328,9 @@ public:
             std::bind(&ProxyThread::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
         CommonAPI::CallStatus callStatus;
-        proxy->getTestAttributeAttribute().getValueAsync(myCallback);
+        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(30 * 1000);
+
+        proxy->getTestAttributeAttribute().getValueAsync(myCallback, callInfo);
         return true;
     }
     bool exerciseSetAttributeAsync(std::shared_ptr<TestInterfaceProxy<>> proxy) {
@@ -340,7 +342,9 @@ public:
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
         }
 
-        proxy->getTestAttributeAttribute().setValueAsync(arrayTestValue, myCallback);
+        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(45 * 1000);
+
+        proxy->getTestAttributeAttribute().setValueAsync(arrayTestValue, myCallback, callInfo);
         return true;
     }
 

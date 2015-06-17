@@ -1,0 +1,50 @@
+/* Copyright (C) 2014 BMW Group
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+ 
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP_deployment_spec.fdepl"
+import "E05Manager.fidl"
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Manager {
+	SomeIpServiceID = 4660
+	SomeIpEventGroups = { 7000, 7001 }
+
+	attribute myDevices {
+		SomeIpGetterID = 7000
+		SomeIpSetterID = 7004
+	}
+
+}
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Device {
+	SomeIpServiceID = 4661
+	SomeIpEventGroups = { 7000, 7001 }
+
+	method doSomething {
+		SomeIpMethodID = 7001
+	}
+
+}
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05SpecialDevice {
+	SomeIpServiceID = 4662
+	SomeIpEventGroups = { 7000, 7001 }
+
+	method doSomethingSpecial {
+		SomeIpMethodID = 7002
+	}
+
+}
+
+define org.genivi.commonapi.someip.deployment for provider Service {
+	instance commonapi.examples.E04PhoneBook {
+		InstanceId = "commonapi.examples.PhoneBook"
+
+		SomeIpInstanceID = 22136
+	
+		SomeIpUnicastAddress = "192.168.0.2"
+        SomeIpReliableUnicastPort = 30500
+        SomeIpUnreliableUnicastPort = 30501
+}
+}

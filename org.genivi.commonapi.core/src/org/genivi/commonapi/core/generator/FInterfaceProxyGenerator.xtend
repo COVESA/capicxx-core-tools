@@ -166,8 +166,8 @@ class FInterfaceProxyGenerator {
             typedef «fInterface.getRelativeNameReference(fInterface)» InterfaceType;
 
             «IF fInterface.base != null»
-                inline static const char* getInterfaceId() {
-                    return(«fInterface.elementName»::getInterfaceId());
+                inline static const char* getInterface() {
+                    return(«fInterface.elementName»::getInterface());
                 }
             «ENDIF»
 

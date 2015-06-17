@@ -1,22 +1,14 @@
 /*
  * Copyright (C) 2015 Bayerische Motoren Werke AG (BMW).
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ * 
+ * Version 1.0
  *
- *
- * CommonAPI C++ SOME/IP deployment for CommonAPI C++ 3.x
- * Version: 1.0
- *
- * Generic deployment specification for CommonAPI 3.x to be used by
- * all CommonAPI code generation tools, e.g.
- *   CommonAPI-Tools
- *   CommonAPI-DBus-Tools
- *   CommonAPI-SOMEIP-Tools
- *   and all other CommonAPI language bindings compatible to CommonAPI C++ 3.x
+ * This is the Franca deployment specification to be used for CommonAPI C++
+ * Core.
  */
 
 specification org.genivi.commonapi.core.deployment {
@@ -42,15 +34,15 @@ specification org.genivi.commonapi.core.deployment {
          * To avoid inconsistencies only domain and instance id can be specified during deployment,
          * while the interface id is fixed by the interface the instance realizes.
          */
-        Domain :     String (default: "local"); // the domain part of the CommonAPI address.
+        Domain :     String (default: "local");  // the domain part of the CommonAPI address.
         InstanceId : String;                     // the instance id of the CommonAPI address.
 
         /*
-         * Define default timeout for all methods awaiting results of an instance in seconds.
-         * 0s means no timeout/waiting forever.
-         * if the timeout elapsed without arrival of a valid result an error will be delivered to the application.
+         * Define default timeout for all methods/getter/setter awaiting results of an instance in ms.
+         * -1 means no timeout/waiting forever.
+         * If the timeout elapsed without arrival of a valid result an error will be delivered to the application.
          */
-        DefaultMethodTimeout : Integer (default:0);
+        DefaultTimeout : Integer (optional);
 
         /*
          * provide properties to register for instance. use "Name=Value" as format.
@@ -61,12 +53,22 @@ specification org.genivi.commonapi.core.deployment {
 
     for methods {
         /*
-         * timeout for method calls in ns.
-         * If timeout is defined with value > 0, then a method call will return with a timeout error
+         * timeout for method calls in ms.
+         * If timeout is defined with a value > -1, then a method call will return with a timeout error
          * in case no result arrived before the timeout elapsed.
-         * 0 means no timeout.
+         * -1 means no timeout.
          */
-        Timeout : Integer (default: 0);
+        Timeout : Integer (optional);
+    }
+    
+    for attributes {
+        /*
+         * timeout for setter/getter calls in ms.
+         * If timeout is defined with value > -1, then the call will return with a timeout error
+         * in case no result arrived before the timeout elapsed.
+         * -1 means no timeout.
+         */
+        Timeout : Integer (optional);
     }
 
     for enumerations {

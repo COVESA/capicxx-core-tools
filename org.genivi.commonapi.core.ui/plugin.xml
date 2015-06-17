@@ -118,4 +118,13 @@
                          objectClass="org.eclipse.core.resources.IFile">
                    </page>
                 </extension>
+                <extension
+                      point="org.eclipse.ui.bindings">
+                   <key
+                         commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+                         contextId="org.eclipse.ui.contexts.window"
+                         schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+                         sequence="Ctrl+Shift+C">
+                   </key>
+                </extension>
 </plugin>

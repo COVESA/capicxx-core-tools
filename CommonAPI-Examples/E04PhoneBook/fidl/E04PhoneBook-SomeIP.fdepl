@@ -1,0 +1,113 @@
+/* Copyright (C) 2014 BMW Group
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP_deployment_spec.fdepl"
+import "E04PhoneBook.fidl"
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E04PhoneBook {
+	SomeIpServiceID = 4660
+	SomeIpEventGroups = { 7000, 7001 }
+
+	attribute phoneBook {
+		SomeIpGetterID = 7000
+	}
+
+	method setPhoneBookDataFilter {
+		SomeIpMethodID = 33000
+	}
+
+	broadcast phoneBookDataSet {
+		SomeIpEventID = 8000
+	}
+
+	enumeration phoneNumberEnum {
+		WORK {
+		}
+		HOME {
+		}
+		MOBILE1 {
+		}
+		MOBILE2 {
+		}
+	}
+
+	struct phoneBookStruct {
+		name {
+		}
+		forename {
+		}
+		organisation {
+		}
+		address {
+		}
+		email {
+		}
+		phoneNumber {
+		}
+	}
+
+	struct elementFilterStruct {
+		addName {
+		}
+		addForename {
+		}
+		addOrganisation {
+		}
+		addAddress {
+		}
+		addEmail {
+		}
+		addPhoneNumber {
+		}
+	}
+
+	struct contentFilterStruct {
+		element {
+		}
+		expression {
+		}
+	}
+
+	enumeration phoneBookDataElementEnum {
+		NAME {
+		}
+		FORENAME {
+		}
+		ORGANISATION {
+		}
+		ADDRESS {
+		}
+		EMAIL {
+		}
+		PHONENUMBER {
+		}
+	}
+
+	struct phoneBookDataElement {
+	}
+
+	struct phoneBookDataElementString {
+		content {
+		}
+	}
+
+	struct phoneBookDataElementPhoneNumber {
+		content {
+		}
+	}
+
+}
+
+define org.genivi.commonapi.someip.deployment for provider Service {
+	instance commonapi.examples.E04PhoneBook {
+		InstanceId = "commonapi.examples.PhoneBook"
+
+		SomeIpInstanceID = 22136
+	
+		SomeIpUnicastAddress = "192.168.0.2"
+        SomeIpReliableUnicastPort = 30491
+        SomeIpUnreliableUnicastPort = 30492
+}
+}

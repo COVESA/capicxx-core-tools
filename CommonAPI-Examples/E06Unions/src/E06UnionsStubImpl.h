@@ -10,7 +10,7 @@
 
 #include <CommonAPI/CommonAPI.hpp>
 
-#include "../src-gen/commonapi/examples/E06UnionsStubDefault.hpp"
+#include "commonapi/examples/E06UnionsStubDefault.hpp"
 
 class E06UnionsStubImpl: public commonapi::examples::E06UnionsStubDefault {
 

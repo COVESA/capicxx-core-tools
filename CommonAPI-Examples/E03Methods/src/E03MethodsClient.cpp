@@ -17,25 +17,28 @@
 using namespace v1_2::commonapi::examples;
 
 void recv_cb(const CommonAPI::CallStatus& callStatus,
-             const E03Methods::fooError& methodError,
+             const E03Methods::stdErrorTypeEnum& methodError,
              const int32_t& y1,
              const std::string& y2) {
     std::cout << "Result of asynchronous call of foo: " << std::endl;
     std::cout << "   callStatus: " << ((callStatus == CommonAPI::CallStatus::SUCCESS) ? "SUCCESS" : "NO_SUCCESS")
                     << std::endl;
     std::cout << "   error: "
-                    << ((methodError.stdErrorTypeEnum == E03Methods::stdErrorTypeEnum::NO_FAULT) ? "NO_FAULT" :
+                    << ((methodError == E03Methods::stdErrorTypeEnum::NO_FAULT) ? "NO_FAULT" :
                                     "MY_FAULT") << std::endl;
     std::cout << "   Output values: y1 = " << y1 << ", y2 = " << y2 << std::endl;
 }
 
 int main() {
+    CommonAPI::Runtime::setProperty("LogContext", "E03C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E03Methods");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     std::string domain = "local";
 	std::string instance = "commonapi.examples.Methods";
 
-    std::shared_ptr<E03MethodsProxy<>> myProxy = runtime->buildProxy < E03MethodsProxy > (domain, instance);
+    std::shared_ptr<E03MethodsProxy<>> myProxy = runtime->buildProxy < E03MethodsProxy > (domain, instance, "client-sample");
 
     while (!myProxy->isAvailable()) {
         usleep(10);
@@ -50,7 +53,7 @@ int main() {
         int32_t inX1 = 5;
         std::string inX2 = "abc";
         CommonAPI::CallStatus callStatus;
-        E03Methods::fooError methodError;
+        E03Methods::stdErrorTypeEnum methodError;
         int32_t outY1;
         std::string outY2;
 
@@ -62,7 +65,7 @@ int main() {
         std::cout << "   callStatus: " << ((callStatus == CommonAPI::CallStatus::SUCCESS) ? "SUCCESS" : "NO_SUCCESS")
                   << std::endl;
         std::cout << "   error: "
-                  << ((methodError.stdErrorTypeEnum == E03Methods::stdErrorTypeEnum::NO_FAULT) ? "NO_FAULT" : "MY_FAULT")
+                  << ((methodError == E03Methods::stdErrorTypeEnum::NO_FAULT) ? "NO_FAULT" : "MY_FAULT")
                   << std::endl;
         std::cout << "   Input values: x1 = " << inX1 << ", x2 = " << inX2 << std::endl;
         std::cout << "   Output values: y1 = " << outY1 << ", y2 = " << outY2 << std::endl;
@@ -72,7 +75,7 @@ int main() {
 
         std::function<
                         void(const CommonAPI::CallStatus&,
-                             const E03Methods::fooError&,
+                             const E03Methods::stdErrorTypeEnum&,
                              const int32_t&,
                              const std::string&)> fcb = recv_cb;
         myProxy->fooAsync(inX1, inX2, recv_cb);

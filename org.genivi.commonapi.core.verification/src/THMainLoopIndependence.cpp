@@ -21,6 +21,7 @@ const std::string instance7 = "my.test.commonapi.address.seven";
 const std::string instance8 = "my.test.commonapi.address.eight";
 const std::string mainloopName1 = "client-sample";
 const std::string mainloopName2 = "service-sample";
+const std::string thirdPartyServiceId = "mainloop-thirdParty";
 
 class PingPongTestStub : public v1_0::commonapi::threading::TestInterfaceStubDefault {
 	virtual void testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
@@ -204,7 +205,7 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     x = 1;
     y = 0;
 
-    std::thread mainLoopRunnerProxy([&]() { threadCtx1_.mainLoop_->runVerification(5, true, true); });
+    std::thread mainLoopRunnerProxy([&]() { threadCtx1_.mainLoop_->runVerification(5000, true, true); });
     mainLoopRunnerProxy.detach();
 
     mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxy_->testMethod(x, callStatus, y); });
@@ -217,7 +218,7 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
     mainLoopThread2_.detach();
 
-    sleep(1);
+    usleep(1000000);
 
     // now the stub mainloop also runs, so the proxy should receive the answer
     ASSERT_EQ(1, y);
@@ -231,10 +232,11 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 */
 TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
 
+    usleep(1000000);
+
     std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
     auto runtime = CommonAPI::Runtime::get();
-    //ASSERT_TRUE(runtime->getServicePublisher()->registerService(stubThirdParty, testAddress6, runtime->createFactory()));
-    ASSERT_TRUE(runtime->registerService(domain, instance6, stubThirdParty));
+    ASSERT_TRUE(runtime->registerService(domain, instance6, stubThirdParty, thirdPartyServiceId));
 
     CommonAPI::CallStatus callStatusProxy1, callStatusProxy2;
 
@@ -266,8 +268,6 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
     // now each proxy should have received the answer to his own request
     ASSERT_EQ(1, y1);
     ASSERT_EQ(2, y2);
-
-    //sleep(1);
 }
 
 int main(int argc, char** argv) {

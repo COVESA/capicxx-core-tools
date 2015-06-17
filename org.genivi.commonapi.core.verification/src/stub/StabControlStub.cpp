@@ -6,7 +6,10 @@
 
 #include <iostream>
 #include "StabControlStub.h"
+
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 namespace v1_0 {
 namespace commonapi {

@@ -152,7 +152,13 @@ endif()
 ##############################################################################
 # verification tests build section
 
+if (MSVC)
+# Visual C++ is not always sure whether he is really C++
+set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION")
+else()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-reorder -Wno-unused-variable -DCOMMONAPI_INTERNAL_COMPILATION")
+endif()
 set(USE_RT "rt")
 
 message("Compiler options: ${CMAKE_CXX_FLAGS}") 
@@ -169,7 +175,11 @@ enable_testing()
 set(CMAKE_CTEST_COMMAND ctest -V)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 
+if (MSVC)
+set(TEST_LINK_LIBRARIES CommonAPI gtest ws2_32)
+else()
 set(TEST_LINK_LIBRARIES CommonAPI gtest)
+endif()
 
 add_executable(RTLoadingRuntime src/RTLoadingRuntime.cpp)
 target_link_libraries(RTLoadingRuntime ${TEST_LINK_LIBRARIES})

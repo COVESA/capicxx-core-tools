@@ -5,7 +5,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #include <map>
 #include <iostream>
@@ -128,19 +130,22 @@ void printFilterResult(const std::vector<E04PhoneBook::phoneBookDataElementMap>&
 }
 
 int main() {
+    CommonAPI::Runtime::setProperty("LogContext", "E04C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E04PhoneBook");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.PhoneBook";
 
-    std::shared_ptr < E04PhoneBookProxyDefault > myProxyA = runtime->buildProxy < E04PhoneBookProxy > (domain, instance);
+    std::shared_ptr < E04PhoneBookProxy<> > myProxyA = runtime->buildProxy < E04PhoneBookProxy > (domain, instance);
     while (!myProxyA->isAvailable()) {
         usleep(10);
     }
 
     const CommonAPI::ConnectionId_t otherConnectionId = "42";
 
-    std::shared_ptr < E04PhoneBookProxyDefault > myProxyB = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnectionId);
+    std::shared_ptr < E04PhoneBookProxy<> > myProxyB = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnectionId);
     while (!myProxyB->isAvailable()) {
         usleep(10);
     }

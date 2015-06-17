@@ -5,7 +5,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include "DTAdvancedStub.h"
+
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 namespace v1_0 {
 namespace commonapi {

@@ -12,23 +12,37 @@
 #include "E06UnionsStubImpl.h"
 
 int main() {
+	CommonAPI::Runtime::setProperty("LogContext", "E06S");
+	CommonAPI::Runtime::setProperty("LibraryBase", "E06Unions");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
-    const std::string &instance = "commonapi.examples.Unions";
+	const std::string &instance = "commonapi.examples.Unions";
+	std::string connection = "service-sample";
+
     std::shared_ptr<E06UnionsStubImpl> myService = std::make_shared<E06UnionsStubImpl>();
 
-    if (runtime->registerService(domain, instance, myService)) {
-        int n = 0;
-		while (true) {
-			std::cout << "Set value " << n << " for union u." << std::endl;
-			myService->setMyValue(n);
-			n++;
-			if (n == 4) {
-				n = 0;
-			}
-			std::this_thread::sleep_for(std::chrono::seconds(2));
+	bool successfullyRegistered = runtime->registerService(domain, instance, myService, connection);
+
+	while (!successfullyRegistered) {
+		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		successfullyRegistered = runtime->registerService(domain, instance, myService);
+	}
+
+	std::cout << "Successfully Registered Service!" << std::endl;
+
+    int n = 0;
+	while (true) {
+		std::cout << "Set value " << n << " for union u." << std::endl;
+		myService->setMyValue(n);
+		n++;
+		if (n == 4) {
+			n = 0;
 		}
-    }
+		std::this_thread::sleep_for(std::chrono::seconds(2));
+	}
+
     return 0;
 }

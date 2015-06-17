@@ -4,15 +4,15 @@
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
+#ifndef WIN32
 #include <unistd.h>
-
+#endif 
 #include <iostream>
 
 #include <CommonAPI/CommonAPI.hpp>
 
-#include "../src-gen/commonapi/examples/CommonTypes.hpp"
-#include "../src-gen/commonapi/examples/E06UnionsProxy.hpp"
+#include "commonapi/examples/CommonTypes.hpp"
+#include "commonapi/examples/E06UnionsProxy.hpp"
 #include "typeUtils.hpp"
 
 using namespace commonapi::examples;
@@ -155,11 +155,16 @@ void recv_msg1(std::shared_ptr<CommonTypes::SettingsStruct> x) {
 
 
 int main() {
+	CommonAPI::Runtime::setProperty("LogContext", "E06C");
+	CommonAPI::Runtime::setProperty("LibraryBase", "E06Unions");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
-    const std::string &instance = "commonapi.examples.Unions";
-    std::shared_ptr<E06UnionsProxyDefault> myProxy = runtime->buildProxy<E06UnionsProxy>(domain, instance);
+	const std::string &instance = "commonapi.examples.Unions";
+	std::string connection = "client-sample";
+
+	std::shared_ptr<E06UnionsProxy<>> myProxy = runtime->buildProxy<E06UnionsProxy>(domain, instance, connection);
 
     while (!myProxy->isAvailable()) {
         usleep(10);

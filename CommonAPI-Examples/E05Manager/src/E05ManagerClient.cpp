@@ -5,7 +5,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#ifndef WIN32
 #include <unistd.h>
+#endif
 
 #include <iostream>
 
@@ -25,11 +27,14 @@ void newDeviceAvailable(const std::string address, const CommonAPI::Availability
 }
 
 int main() {
+	CommonAPI::Runtime::setProperty("LogContext", "E05C");
+	CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.Manager";
-    std::shared_ptr<E05ManagerProxyDefault> myProxy = runtime->buildProxy<E05ManagerProxy>(domain, instance);
+    std::shared_ptr<E05ManagerProxy<>> myProxy = runtime->buildProxy<E05ManagerProxy>(domain, instance);
     while (!myProxy->isAvailable()) {
         usleep(10);
     }

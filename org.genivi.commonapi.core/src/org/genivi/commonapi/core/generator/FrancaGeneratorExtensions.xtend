@@ -15,6 +15,7 @@ import java.util.ArrayList
 import java.util.Collection
 import java.util.HashMap
 import java.util.HashSet
+import java.util.LinkedList
 import java.util.List
 import java.util.Map
 import java.util.Set
@@ -30,16 +31,19 @@ import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FBroadcast
+import org.franca.core.franca.FConstantDef
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FEnumerator
 import org.franca.core.franca.FExpression
 import org.franca.core.franca.FField
+import org.franca.core.franca.FInitializerExpression
 import org.franca.core.franca.FIntegerConstant
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FQualifiedElementRef
 import org.franca.core.franca.FStringConstant
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FType
@@ -60,9 +64,6 @@ import org.osgi.framework.FrameworkUtil
 import static com.google.common.base.Preconditions.*
 
 import static extension java.lang.Integer.*
-import org.franca.core.franca.FConstantDef
-import org.franca.core.franca.FQualifiedElementRef
-import org.franca.core.franca.FInitializerExpression
 
 class FrancaGeneratorExtensions {
 	
@@ -409,6 +410,23 @@ class FrancaGeneratorExtensions {
         	if (signature != "")
         		signature = signature + ", ";
         	signature = signature + fMethod.elementName + "Reply_t _reply";
+        }
+        
+        return signature
+    }
+
+    def generateOverloadedStubSignature(FMethod fMethod, String methodName) {
+        var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
+
+        if (!fMethod.inArgs.empty)
+            signature = signature + ', '
+
+        signature = signature + fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
+        
+        if (!fMethod.isFireAndForget) {
+        	if (signature != "")
+        		signature = signature + ", ";
+        	signature = signature + methodName + "Reply_t _reply";
         }
         
         return signature
@@ -979,7 +997,6 @@ class FrancaGeneratorExtensions {
 		// collect all predefined enum values
 		for (literal : _enumeration.enumerators) {
 			if (literal.value != null) {
-				System.out.println(literal.value)
 				predefineEnumValues.add(literal.value.enumeratorValue)
 			}
 		}
@@ -1064,8 +1081,8 @@ class FrancaGeneratorExtensions {
 	def String generateCases(FStructType fStructType, FModelElement parent, boolean qualified) {
 		var String itsCases = "case ";
 			
-		if (parent != null)
-			itsCases = itsCases + parent.elementName + "::"
+		//if (parent != null)
+		//	itsCases = itsCases + parent.elementName + "::"
 					
 		if (qualified) {
 			 itsCases = itsCases 
@@ -1611,10 +1628,10 @@ class FrancaGeneratorExtensions {
         var EObject container = _me.eContainer
         while (container != null && container != _until) {
             if (container instanceof FModel) {
-                name = container.name + "::" + name
+                name = container.containerName + "::" + name
             }
             if (container instanceof FModelElement) {
-                name = container.name + "::" + name
+                name = container.containerName + "::" + name
             }
             container = container.eContainer
         }
@@ -1698,4 +1715,23 @@ class FrancaGeneratorExtensions {
     def String getEnumPrefix(){
   			FPreferences::instance.getPreference(PreferenceConstants::P_ENUMPREFIX, "")
     }
+    
+    def List<FField> getAllElements(FStructType _struct) {
+        if (_struct.base == null)
+            return new LinkedList(_struct.elements)
+
+        val elements = _struct.base.allElements
+        elements.addAll(_struct.elements)
+        return elements
+    }
+    
+    def List<FField> getAllElements(FUnionType _union) {
+        if (_union.base == null)
+            return new LinkedList(_union.elements)
+
+        val elements = _union.base.allElements
+        elements.addAll(_union.elements)
+        return elements
+    }
+    
 }

@@ -12,6 +12,9 @@
 #include "E04PhoneBookStubImpl.h"
 
 int main() {
+    CommonAPI::Runtime::setProperty("LogContext", "E04S");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E04PhoneBook");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
@@ -19,7 +22,16 @@ int main() {
     std::shared_ptr<E04PhoneBookStubImpl> myService = std::make_shared<E04PhoneBookStubImpl>();
     myService->setPhoneBookAttribute(myService->createTestPhoneBook());
 
-    runtime->registerService(domain, instance, myService);
+	bool successfullyRegistered = runtime->registerService(domain, instance, myService);
+
+	while (!successfullyRegistered) {
+		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		successfullyRegistered = runtime->registerService(domain, instance, myService);
+	}
+
+	std::cout << "Successfully Registered Service!" << std::endl;
+
     while (true) {
         std::cout << "Waiting for calls... (Abort with CTRL+C)" << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(2));
