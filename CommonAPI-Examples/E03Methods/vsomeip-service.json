@@ -43,12 +43,6 @@
 							"is_field" : "false",
 							"is_reliable" : "false",
 							"update-cycle" : 2000
-						},
-						{
-							"event" : "0x80F3",
-							"is_field" : "true",
-							"is_reliable" : "false",
-							"update-cycle" : 0
 						}
 					],
 					"eventgroups" :
@@ -56,10 +50,6 @@
 						{
 							"eventgroup" : "0x80F2",
 							"events" : [ "0x80F2" ]
-						},
-						{
-							"eventgroup" : "0x80F3",
-							"events" : [ "0x80F3" ]
 						}
 					]
 				}

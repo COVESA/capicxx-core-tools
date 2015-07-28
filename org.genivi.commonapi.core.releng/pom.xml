@@ -22,7 +22,7 @@
     <parent>
         <groupId>commonapi</groupId>
         <artifactId>org.genivi.commonapi.releng</artifactId>
-        <version>3.1.2-SNAPSHOT</version>
+        <version>3.1.3-SNAPSHOT</version>
         <relativePath>../org.genivi.commonapi.releng</relativePath>
     </parent>
 </project>

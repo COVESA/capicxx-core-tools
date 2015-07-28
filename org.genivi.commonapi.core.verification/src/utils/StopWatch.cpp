@@ -9,6 +9,9 @@
 #include <cassert>
 #include <ctime>
 
+#ifdef WIN32
+	#include <chrono>
+#endif
 
 #define USEC_PER_SEC  1000000ULL
 #define NSEC_PER_USEC 1000ULL
@@ -28,10 +31,14 @@ StopWatch::usec_t StopWatch::getTotalElapsedSeconds() const {
 }
 
 StopWatch::usec_t StopWatch::now() {
+#ifdef WIN32
+	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+#else
 	struct timespec ts;
 
 	assert(!clock_gettime(CLOCK_MONOTONIC, &ts));
 
 	return (usec_t) ts.tv_sec * USEC_PER_SEC + (usec_t) ts.tv_nsec / NSEC_PER_USEC;
+#endif
 }
 

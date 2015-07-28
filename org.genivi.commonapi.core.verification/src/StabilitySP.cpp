@@ -1,5 +1,4 @@
 /* Copyright (C) 2015 BMW Group
- * Author: JP Ikaheimonen (jp_ikaheimonen@mentor.com)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -105,6 +104,7 @@ public:
     std::shared_ptr<TestInterfaceProxy<>> proxy_[MAXSERVERCOUNT];
     // callback for asynchronous attribute functions.
     void recvValue(const CommonAPI::CallStatus& callStatus, TestInterface::tArray arrayResultValue) {
+        std::lock_guard<std::mutex> lock(recvValue_mutex_);
         EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
         asyncCounter++;
 
@@ -114,13 +114,27 @@ public:
         for (unsigned int messageindex = 0; messageindex < MESSAGESIZE; messageindex++) {
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
         }
+        arrayTestValue.shrink_to_fit();
 
         EXPECT_EQ(arrayTestValue, arrayResultValue);
-
-   }
+        ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+        if(arrayTestValue.size() == arrayResultValue.size()) {
+            for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
+              EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+            }
+        }
+    }
     // callback for attribute subscriptions.
     void recvSubscribedValue(TestInterface::tArray arrayResultValue) {
+        std::lock_guard<std::mutex> lock(recvSubscribedValue_mutex_);
+
+        // The following may happen because of the initial response
+        if (arrayResultValue.size() == 0)
+            return;
+
         asyncCounter++;
+//        std::cout << "asyncCounter<" << this << ">: " << asyncCounter << std::endl;
+
         TestInterface::tArray arrayTestValue;
 
         // check the contents of the attribute.
@@ -130,7 +144,15 @@ public:
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
         }
 
+        arrayTestValue.shrink_to_fit();
+
         EXPECT_EQ(arrayTestValue, arrayResultValue);
+        ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+        if(arrayTestValue.size() == arrayResultValue.size()) {
+            for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
+              EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+            }
+        }
     }
 
     // helper function for creating proxies.
@@ -146,6 +168,10 @@ public:
             for (unsigned int wait = 0; !proxy_[proxycount]->isAvailable() && wait < 100; ++wait) {
                 usleep(10000);
             }
+
+            if (!proxy_[proxycount]->isAvailable())
+                std::cout << testAddress + std::to_string(proxycount) << std::endl;
+
             ASSERT_TRUE(proxy_[proxycount]->isAvailable());
         }
     }
@@ -185,7 +211,7 @@ public:
                 if (previousCount != asyncCounter) {
                     break;
                 }
-                usleep(10 * 1000);
+                usleep(10000);
             }
             if (previousCount == asyncCounter) {
                 break;
@@ -196,7 +222,6 @@ public:
     }
 
     void runSetSubscribedAttributes(unsigned int id) {
-
         unsigned char message1 = id;
         unsigned char message2 = message1 + MAXTHREADCOUNT;
         unsigned char message = message1;
@@ -295,6 +320,7 @@ public:
     bool exerciseSetSubscribedAttribute(std::shared_ptr<TestInterfaceProxy<>> proxy, unsigned char message_number) {
         TestInterface::tArray arrayTestValue;
         TestInterface::tArray arrayResultValue;
+
         arrayTestValue.push_back(message_number);
         for (unsigned int messageindex = 0; messageindex < MESSAGESIZE; messageindex++) {
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
@@ -328,7 +354,7 @@ public:
             std::bind(&ProxyThread::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
         CommonAPI::CallStatus callStatus;
-        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(30 * 1000);
+        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(50 * 1000);
 
         proxy->getTestAttributeAttribute().getValueAsync(myCallback, callInfo);
         return true;
@@ -342,7 +368,7 @@ public:
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
         }
 
-        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(45 * 1000);
+        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(100 * 1000);
 
         proxy->getTestAttributeAttribute().setValueAsync(arrayTestValue, myCallback, callInfo);
         return true;
@@ -350,6 +376,8 @@ public:
 
     std::thread *thread_ = 0;
     bool success_ = true;
+    std::mutex recvValue_mutex_;
+    std::mutex recvSubscribedValue_mutex_;
 };
 /**
 * @test Create a number of services and proxies and send messages through them.
@@ -370,17 +398,20 @@ TEST_F(StabilitySP, MultipleMethodCalls) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
         ASSERT_TRUE(serviceRegistered_);
     }
+
     ProxyThread * proxyrunners[MAXTHREADCOUNT];
     for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
         proxyrunners[threadcount] = new ProxyThread();
         std::thread * thread = new std::thread(std::bind(&ProxyThread::runMethodCalls, proxyrunners[threadcount]));
         proxyrunners[threadcount]->setThread(thread);
     }
+
     for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
         proxyrunners[threadcount]->getThread()->join();
         delete proxyrunners[threadcount]->getThread();
         proxyrunners[threadcount]->setThread(0);
     }
+
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
         serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
         ASSERT_TRUE(serviceRegistered_);
@@ -576,9 +607,9 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
         ASSERT_TRUE(serviceRegistered_);
     }
     TestInterface::tArray arrayTestValue;
-
+    arrayTestValue.push_back(0);
     for (unsigned int messageindex = 0; messageindex < MESSAGESIZE; messageindex++) {
-    arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
+        arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
     }
     testMultiRegisterStub_->setTestValues(arrayTestValue);
 
@@ -594,8 +625,14 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
         proxyrunners[threadcount]->setThread(0);
     }
 
+    arrayTestValue.clear();
+    testMultiRegisterStub_->setTestValues(arrayTestValue);
     // sleep here a while to let the subscriptions sink in
     usleep(100000);
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        proxyrunners[threadcount]->asyncCounter = 0;
+    }
 
     for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
         std::thread * thread = new std::thread(std::bind(&ProxyThread::runSetSubscribedAttributes, proxyrunners[threadcount], threadcount));
@@ -617,5 +654,3 @@ int main(int argc, char** argv) {
     ::testing::AddGlobalTestEnvironment(new Environment());
     return RUN_ALL_TESTS();
 }
-
-

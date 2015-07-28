@@ -86,6 +86,15 @@
             </option>
             <option
                   argCount="1"
+                  description="Switch on/off validation of the fidl file"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.validation"
+                  longName="validation"
+                  required="false"
+                  shortName="val">
+            </option>
+            <option
+                  argCount="1"
                   description="The file path to the license text that will be added to each generated file"
                   hasOptionalArg="false"
                   id="org.genivi.commonapi.core.cli.option.license"

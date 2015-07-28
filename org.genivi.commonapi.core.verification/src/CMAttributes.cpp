@@ -61,9 +61,9 @@ protected:
         bool proxyAvailable = false;
 
         std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
+            std::lock_guard<std::mutex> lock(availabilityMutex);
             testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
             testProxy_->isAvailableBlocking();
-            std::lock_guard<std::mutex> lock(availabilityMutex);
             ASSERT_TRUE((bool)testProxy_);
             proxyAvailable = true;
             cv.notify_one();

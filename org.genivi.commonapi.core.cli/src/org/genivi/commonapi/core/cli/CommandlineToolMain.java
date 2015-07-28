@@ -64,7 +64,9 @@ public class CommandlineToolMain
 	protected ValidatorCore		 	validator;
 	private int validationErrorCount;
 	protected String SCOPE = "Core validation: ";
-
+	private boolean isValidation = true;
+	public static final int ERROR_STATE = 1;
+	
 	private ValidationMessageAcceptor cliMessageAcceptor = new AbstractValidationMessageAcceptor() {
 
 		@Override
@@ -201,19 +203,22 @@ public class CommandlineToolMain
 			URI uri = URI.createFileURI(file);
 			Resource resource = rsset.createResource(uri);
 			validationErrorCount = 0;
-			validate(resource);
+			if(isValidation) {
+				validate(resource);
+			}	
 			if(validationErrorCount == 0) {
 				ConsoleLogger.printLog("Generating code for " + file);
 				try {
 					francaGenerator.doGenerate(resource, fsa);
 				}
 				catch (Exception e) {
-					ConsoleLogger.printErrorLog("Failed to generate code !");
-					ConsoleLogger.printErrorLog(e.getMessage());
+					System.err.println("Failed to generate code for " + file );
+					System.exit(ERROR_STATE);
 				}	
 			}
 			else {
-				ConsoleLogger.printErrorLog(file + " contains errors !");
+				ConsoleLogger.printErrorLog(file + " contains validation errors !");
+				System.exit(ERROR_STATE);
 			}
 		}
 	}
@@ -229,7 +234,6 @@ public class CommandlineToolMain
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
-
 			ConsoleLogger.printLog("validating...");
 
 			// check for (internal )resource validation errors
@@ -428,4 +432,11 @@ public class CommandlineToolMain
 		pref.setPreference(PreferenceConstants.P_SKELETONPOSTFIX, postfix);
 		ConsoleLogger.printLog("Skeleton postfix: " + postfix);
 	}
+	
+	public void enableValidation(String optionValue) {
+		if(optionValue.equals("no") || optionValue.equals("off")) {
+			ConsoleLogger.printLog("Validation is off");
+			isValidation = false;
+		}
+ 	}
 }

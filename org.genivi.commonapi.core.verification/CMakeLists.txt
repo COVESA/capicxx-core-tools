@@ -90,30 +90,38 @@ message("UPPER_CMAKE_BUILD_TYPE: ${UPPER_CMAKE_BUILD_TYPE}")
 if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
     get_property(GLUECODE_LIB_PATH_NAME_DBUS TARGET ${CMAKE_GLUECODE_DBUS_NAME} PROPERTY IMPORTED_LOCATION_${UPPER_CMAKE_BUILD_TYPE})
     message("GLUECODE_LIB_PATH_NAME_DBUS value: ${GLUECODE_LIB_PATH_NAME_DBUS}")
-    # Strip the trailing .0.0.0 from the path as otherwise libCommonAPI won't load the .so
-    string(LENGTH ${GLUECODE_LIB_PATH_NAME_DBUS} GLUECODE_LIB_PATH_NAME_DBUS_LENGTH)
-    math(EXPR GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_ADJUSTED '${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH}-6')
-    string(SUBSTRING ${GLUECODE_LIB_PATH_NAME_DBUS}
-        0 ${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_ADJUSTED}
-        GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_CLEAN
-    )
-    # GLUECODE_SO_DBUS is used in commonapi4dbus.ini.in file
-    SET(GLUECODE_SO_DBUS ${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_CLEAN})
+	if (MSVC)
+		SET(GLUECODE_SO_DBUS ${GLUECODE_LIB_PATH_NAME_DBUS})
+	else()
+		# Strip the trailing .0.0.0 from the path as otherwise libCommonAPI won't load the .so
+		string(LENGTH ${GLUECODE_LIB_PATH_NAME_DBUS} GLUECODE_LIB_PATH_NAME_DBUS_LENGTH)
+		math(EXPR GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_ADJUSTED '${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH}-6')
+		string(SUBSTRING ${GLUECODE_LIB_PATH_NAME_DBUS}
+			0 ${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_ADJUSTED}
+			GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_CLEAN
+		)
+		# GLUECODE_SO_DBUS is used in commonapi4dbus.ini.in file
+		SET(GLUECODE_SO_DBUS ${GLUECODE_LIB_PATH_NAME_DBUS_LENGTH_CLEAN})
+	endif()
 endif()
 
 # libSomeIPGlue
 if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
     get_property(GLUECODE_LIB_PATH_NAME_SOMEIP TARGET ${CMAKE_GLUECODE_SOMEIP_NAME} PROPERTY IMPORTED_LOCATION_${UPPER_CMAKE_BUILD_TYPE})
     message("GLUECODE_LIB_PATH_NAME_SOMEIP value: ${GLUECODE_LIB_PATH_NAME_SOMEIP}")
-    # Strip the trailing .0.0.0 from the path as otherwise libCommonAPI won't load the .so
-    string(LENGTH ${GLUECODE_LIB_PATH_NAME_SOMEIP} GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH)
-    math(EXPR GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_ADJUSTED '${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH}-6')
-    string(SUBSTRING ${GLUECODE_LIB_PATH_NAME_SOMEIP}
-        0 ${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_ADJUSTED}
-        GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_CLEAN
-    )
-    # GLUECODE_SO_SOMEIP is used in commonapi4dbus.ini.in file
-    SET(GLUECODE_SO_SOMEIP ${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_CLEAN})
+	if (MSVC)
+		SET(GLUECODE_SO_SOMEIP ${GLUECODE_LIB_PATH_NAME_SOMEIP})
+	else()
+		# Strip the trailing .0.0.0 from the path as otherwise libCommonAPI won't load the .so
+		string(LENGTH ${GLUECODE_LIB_PATH_NAME_SOMEIP} GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH)
+		math(EXPR GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_ADJUSTED '${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH}-6')
+		string(SUBSTRING ${GLUECODE_LIB_PATH_NAME_SOMEIP}
+			0 ${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_ADJUSTED}
+			GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_CLEAN
+		)
+		# GLUECODE_SO_SOMEIP is used in commonapi4dbus.ini.in file
+		SET(GLUECODE_SO_SOMEIP ${GLUECODE_LIB_PATH_NAME_SOMEIP_LENGTH_CLEAN})
+	endif()
 endif()
 
 ##############################################################################
@@ -143,6 +151,12 @@ if ("${BUILD_SHARED_LIBS}" STREQUAL "ON")
     set(BUILD_SHARED_LIBS OFF)
     set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 1)
 endif()
+
+# ...but visual studio needs a shared CRT for gtest, otherwise the linker won't work correctly with the testcases.
+if (MSVC)
+	set(gtest_force_shared_crt ON)
+endif()
+
 add_subdirectory($ENV{GTEST_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/gtest EXCLUDE_FROM_ALL)
 if ("${BUILD_SHARED_LIBS_AUTOMATIC_OFF}" STREQUAL "1")
     set(BUILD_SHARED_LIBS ON)
@@ -154,12 +168,13 @@ endif()
 
 if (MSVC)
 # Visual C++ is not always sure whether he is really C++
-set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION")
+set(USE_RT "")
 else()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wno-reorder -Wno-unused-variable -DCOMMONAPI_INTERNAL_COMPILATION")
-endif()
 set(USE_RT "rt")
+endif()
 
 message("Compiler options: ${CMAKE_CXX_FLAGS}") 
 
@@ -203,7 +218,8 @@ target_link_libraries(CMAttributes ${TEST_LINK_LIBRARIES})
 
 add_executable(CMAttributeSubscription
     src/CMAttributeSubscription.cpp
-    src-gen/v1_0/commonapi/communication/TestInterfaceStubDefault.cpp)
+    src-gen/v1_0/commonapi/communication/TestInterfaceStubDefault.cpp
+    src-gen/v1_0/commonapi/communication/DaemonStubDefault.cpp)
 target_link_libraries(CMAttributeSubscription ${TEST_LINK_LIBRARIES})
 
 add_executable(DTPrimitive
@@ -226,12 +242,12 @@ add_executable(DTDerived
     src-gen/v1_0/commonapi/datatypes/derived/TestInterface.cpp)
 target_link_libraries(DTDerived ${TEST_LINK_LIBRARIES})
 
-#add_executable(DTCombined
-#    src/DTCombined.cpp
-#    src/stub/DTCombinedStub.cpp
-#    src-gen/v1_0/commonapi/datatypes/combined/TestInterface.cpp
-#    src-gen/v1_0/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
-#target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
+add_executable(DTCombined
+    src/DTCombined.cpp
+    src/stub/DTCombinedStub.cpp
+    src-gen/v1_0/commonapi/datatypes/combined/TestInterface.cpp
+    src-gen/v1_0/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
+target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
 
 add_executable(THMainLoopIntegration
     src/THMainLoopIntegration.cpp 
@@ -243,6 +259,11 @@ add_executable(THMainLoopIndependence
     src/THMainLoopIndependence.cpp
     src-gen/v1_0/commonapi/threading/TestInterfaceStubDefault.cpp)
 target_link_libraries(THMainLoopIndependence ${TEST_LINK_LIBRARIES})
+
+add_executable(THMainLoopTwoThreads
+    src/THMainLoopTwoThreads.cpp
+    src-gen/v1_0/commonapi/threading/TestInterfaceStubDefault.cpp)
+target_link_libraries(THMainLoopTwoThreads ${TEST_LINK_LIBRARIES})
 
 add_executable(PFPrimitive
     src/PFPrimitive.cpp
@@ -265,14 +286,6 @@ add_executable(StabilitySP
     src-gen/v1_0/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
 target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
 
-add_executable(StabilityMP
-    src/StabilityMP.cpp
-    src/stub/StabControlStub.cpp
-    src/stub/StabilityMPStub.cpp
-    src-gen/v1_0/commonapi/stability/mp/ControlInterfaceStubDefault.cpp
-    src-gen/v1_0/commonapi/stability/mp/TestInterfaceStubDefault.cpp)
-target_link_libraries(StabilityMP ${TEST_LINK_LIBRARIES})
-
 add_dependencies(RTLoadingRuntime gtest)
 add_dependencies(RTBuildProxiesAndStubs gtest)
 add_dependencies(CMMethodCalls gtest)
@@ -281,13 +294,13 @@ add_dependencies(CMAttributeSubscription gtest)
 add_dependencies(DTPrimitive gtest)
 add_dependencies(DTAdvanced gtest)
 add_dependencies(DTDerived gtest)
-#add_dependencies(DTCombined gtest)
+add_dependencies(DTCombined gtest)
 add_dependencies(THMainLoopIntegration gtest)
 add_dependencies(THMainLoopIndependence gtest)
+add_dependencies(THMainLoopTwoThreads gtest)
 add_dependencies(PFPrimitive gtest)
 add_dependencies(PFComplex gtest)
 add_dependencies(StabilitySP gtest)
-add_dependencies(StabilityMP gtest)
 
 add_dependencies(check RTLoadingRuntime)
 add_dependencies(check RTBuildProxiesAndStubs)
@@ -297,13 +310,13 @@ add_dependencies(check CMAttributeSubscription)
 add_dependencies(check DTPrimitive)
 add_dependencies(check DTAdvanced)
 add_dependencies(check DTDerived)
-#add_dependencies(check DTCombined)
+add_dependencies(check DTCombined)
 add_dependencies(check THMainLoopIntegration)
 add_dependencies(check THMainLoopIndependence)
+add_dependencies(check THMainLoopTwoThreads)
 add_dependencies(check PFPrimitive)
 add_dependencies(check PFComplex)
 add_dependencies(check StabilitySP)
-add_dependencies(check StabilityMP)
 
 # Tests for DBus
 if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
@@ -329,20 +342,20 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
     set_property(TEST DTAdvancedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME DTDerivedDBus COMMAND DTDerived)
     set_property(TEST DTDerivedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
-    #add_test(NAME DTCombinedDBus COMMAND DTCombined)
-    #set_property(TEST DTCombinedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+    add_test(NAME DTCombinedDBus COMMAND DTCombined)
+    set_property(TEST DTCombinedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME THMainLoopIntegrationDBus COMMAND THMainLoopIntegration)
     set_property(TEST THMainLoopIntegrationDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME THMainLoopIndependenceDBus COMMAND THMainLoopIndependence)
     set_property(TEST THMainLoopIndependenceDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+    add_test(NAME THMainLoopTwoThreadsDBus COMMAND THMainLoopTwoThreads)
+    set_property(TEST THMainLoopTwoThreadsDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME PFPrimitiveDBus COMMAND PFPrimitive)
     set_property(TEST PFPrimitiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME PFComplexDBus COMMAND PFComplex)
     set_property(TEST PFComplexDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     add_test(NAME StabilitySPDBus COMMAND StabilitySP)
     set_property(TEST StabilitySPDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
-    add_test(NAME StabilityMPDBus COMMAND StabilityMP)
-    set_property(TEST StabilityMPDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
 endif()
 
 # Tests for SomeIP
@@ -371,20 +384,20 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
     set_property(TEST DTAdvancedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME DTDerivedSomeIP COMMAND DTDerived)
     set_property(TEST DTDerivedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
-    #add_test(NAME DTCombinedSomeIP COMMAND DTCombined)
-    #set_property(TEST DTCombinedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+    add_test(NAME DTCombinedSomeIP COMMAND DTCombined)
+    set_property(TEST DTCombinedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME THMainLoopIntegrationSomeIP COMMAND THMainLoopIntegration)
     set_property(TEST THMainLoopIntegrationSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME THMainLoopIndependenceSomeIP COMMAND THMainLoopIndependence)
     set_property(TEST THMainLoopIndependenceSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+    add_test(NAME THMainLoopTwoThreadsSomeIP COMMAND THMainLoopTwoThreads)
+    set_property(TEST THMainLoopTwoThreadsSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME PFPrimitiveSomeIP COMMAND PFPrimitive)
     set_property(TEST PFPrimitiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME PFComplexSomeIP COMMAND PFComplex)
     set_property(TEST PFComplexSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     add_test(NAME StabilitySPSomeIP COMMAND StabilitySP)
     set_property(TEST StabilitySPSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
-    add_test(NAME StabilityMPSomeIP COMMAND StabilityMP)
-    set_property(TEST StabilityMPSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
 endif()
 
 ##############################################################################

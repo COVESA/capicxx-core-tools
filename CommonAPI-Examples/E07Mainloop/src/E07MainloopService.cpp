@@ -72,7 +72,7 @@ gboolean gWatchDispatcher ( GIOChannel *source, GIOCondition condition, gpointer
 	CommonAPI::Watch* watch = static_cast<CommonAPI::Watch*>(userData);
 
 #ifdef WIN32
-	condition = static_cast<GIOCondition>(7);
+	condition = static_cast<GIOCondition>(POLLIN);
 #endif
 
 	watch->dispatch(condition);

@@ -19,10 +19,12 @@ int main() {
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.PhoneBook";
+    const std::string &connection = "service-sample";
+
     std::shared_ptr<E04PhoneBookStubImpl> myService = std::make_shared<E04PhoneBookStubImpl>();
     myService->setPhoneBookAttribute(myService->createTestPhoneBook());
 
-	bool successfullyRegistered = runtime->registerService(domain, instance, myService);
+	bool successfullyRegistered = runtime->registerService(domain, instance, myService, connection);
 
 	while (!successfullyRegistered) {
 		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;

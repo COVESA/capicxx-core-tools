@@ -5,11 +5,10 @@
 package org.genivi.commonapi.core;
 
 import java.util.List;
-
 import org.franca.core.franca.FInterface;
-import org.franca.deploymodel.core.FDeployedProvider;
-import org.franca.deploymodel.dsl.fDeploy.FDInterfaceInstance;
 import org.franca.deploymodel.dsl.fDeploy.FDProvider;
+import org.franca.deploymodel.dsl.fDeploy.FDInterfaceInstance;
+import org.franca.deploymodel.core.FDeployedProvider;
 
 /**
  * Accessor for deployment properties for 'org.genivi.commonapi.core.deployment' specification
@@ -35,8 +34,8 @@ public class DeploymentProviderPropertyAccessor
 		return target.getString(obj, "InstanceId");
 	}
 	
-	public Integer getDefaultMethodTimeout (FDInterfaceInstance obj) {
-		return target.getInteger(obj, "DefaultMethodTimeout");
+	public Integer getDefaultTimeout (FDInterfaceInstance obj) {
+		return target.getInteger(obj, "DefaultTimeout");
 	}
 	
 	public List<String> getPreregisteredProperties (FDInterfaceInstance obj) {

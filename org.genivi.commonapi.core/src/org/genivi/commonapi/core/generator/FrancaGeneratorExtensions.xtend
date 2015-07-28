@@ -54,6 +54,10 @@ import org.franca.core.franca.FTypedElement
 import org.franca.core.franca.FUnionType
 import org.franca.core.franca.FVersion
 import org.franca.core.franca.FrancaFactory
+import org.franca.deploymodel.dsl.fDeploy.FDInterface
+import org.franca.deploymodel.dsl.fDeploy.FDModel
+import org.franca.deploymodel.dsl.fDeploy.FDTypes
+import org.franca.deploymodel.dsl.fDeploy.FDProvider
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.deployment.PropertyAccessor.DefaultEnumBackingType
 import org.genivi.commonapi.core.deployment.PropertyAccessor.EnumBackingType
@@ -64,6 +68,7 @@ import org.osgi.framework.FrameworkUtil
 import static com.google.common.base.Preconditions.*
 
 import static extension java.lang.Integer.*
+
 
 class FrancaGeneratorExtensions {
 	
@@ -323,6 +328,10 @@ class FrancaGeneratorExtensions {
     def getStubClassName(FInterface fInterface) {
         fInterface.elementName + 'Stub'
     }
+    
+    def getStubFullClassName(FInterface fInterface) {
+    	fInterface.getFullName + 'Stub'
+    }
 
     def hasAttributes(FInterface fInterface) {
         !fInterface.attributes.empty
@@ -382,7 +391,7 @@ class FrancaGeneratorExtensions {
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
 
-        signature = signature + 'CommonAPI::CallStatus &_status'
+        signature = signature + 'CommonAPI::CallStatus &_internalCallStatus'
 
         if (fMethod.hasError)
             signature = signature + ', ' + fMethod.getErrorNameReference(fMethod.eContainer) + ' &_error'
@@ -721,6 +730,7 @@ class FrancaGeneratorExtensions {
         for (outArg : fMethod.outArgs) {
             mangledName = mangledName + outArg.type.mangledName
         }
+		mangledName = mangledName + fMethod.errorEnum?.name
 
         return baseName + mangledName.int16Hash
     }
@@ -1466,6 +1476,14 @@ class FrancaGeneratorExtensions {
 		].join(',\n')
 	}
 	
+    def generateSomeIPBaseInstantiations(FInterface _interface) {
+		val Set<FInterface> baseInterfaces = getBaseInterfaces(_interface)
+		return baseInterfaces.map[
+					getTypeCollectionName(_interface) +
+					"SomeIPProxy(_address, _connection)"		
+		].join(',\n')
+	}	
+	
 	def String generateBaseRemoteHandlerConstructorsCalls(FInterface _interface) {
 		val Set<FInterface> baseInterfaces = getBaseInterfaces(_interface)
 		var String itsCalls = ""
@@ -1645,7 +1663,7 @@ class FrancaGeneratorExtensions {
             var EObject container = _me
             while (container != null) {
                 if (container instanceof FTypeCollection) {
-                    prefix = (container as FTypeCollection).versionPrefix
+                    prefix = container.versionPrefix
                 }
                 val containerName = getContainerName(container)
                 if (containerName != null && containerName != "") {
@@ -1734,4 +1752,89 @@ class FrancaGeneratorExtensions {
         return elements
     }
     
+	/**
+	 * Get all interfaces from the deployment model that have a specification that contains 
+	 * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
+	 * @return the list of FDInterfaces
+	 */
+	def List<FDInterface> getFDInterfaces(FDModel fdmodel, String selector) {
+		var List<FDInterface> fdinterfaces = new ArrayList<FDInterface>() 
+		
+		for(depl : fdmodel.getDeployments()) {
+			if (depl instanceof FDInterface) {
+				var specname = depl.spec.name
+				if(specname.contains(selector)) {
+				fdinterfaces.add(depl);
+				}
+			}
+		}
+		return fdinterfaces;
+	}	  
+	
+  	/**
+	 * Get all type collections from the deployment model that have a specification that contains 
+	 * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
+	 * @return the list of FDTypes
+	 */
+	def List<FDTypes> getFDTypesList(FDModel fdmodel, String selector) {
+		var List<FDTypes> fdTypes = new ArrayList<FDTypes>() 
+		
+		for(depl : fdmodel.getDeployments()) {
+			if (depl instanceof FDTypes) {
+				var specname = depl.spec?.name
+				if(specname.contains(selector)) {
+				fdTypes.add(depl);
+				}
+			}
+		}
+		return fdTypes;
+	}	
+	
+  	/**
+	 * Get all providers from the deployment model that have a specification that contains 
+	 * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
+	 * @return the list of FDTypes
+	 */
+	def List<FDProvider> getFDProviders(FDModel fdmodel, String selector) {
+		var List<FDProvider> fdProviders = new ArrayList<FDProvider>() 
+		
+		for(depl : fdmodel.getDeployments()) {
+			if (depl instanceof FDProvider) {
+				var specname = depl.spec?.name
+				if(specname != null && specname.contains(selector)) {
+				fdProviders.add(depl);
+				}
+			}
+		}
+		return fdProviders;
+	}	
+	
+	/**
+	 * Copy deployment attributes into the destination deployment 
+	 */
+	def mergeDeployments(FDInterface source, FDInterface destination) {
+		
+		if(source.target.equals(destination.target)) {
+			if(source.attributes.size > 0) {
+				if( destination.attributes.size == 0) {
+					// e.g: attribute timeout
+				destination.attributes.addAll(source.attributes)
+				}
+			}			
+			if(source.methods.size > 0) { 
+				destination.methods.addAll(source.methods)
+			}			
+			// e.g: EnumBackingType
+			if(source.types.size > 0) {
+				destination.types.addAll(source.types)
+			}
+//    		Not used so far:
+//			if(source.broadcasts != null) {
+//				destination.broadcasts.addAll(source.broadcasts)
+//			}
+		} else {
+			throw new IllegalArgumentException("Cannot merge deployments for different interfaces \n(" + source.target + " != " + destination.target + ")!");
+		}
+	}	
+
 }

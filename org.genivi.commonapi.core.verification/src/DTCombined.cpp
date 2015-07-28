@@ -26,21 +26,6 @@ const std::string connectionIdClient = "client-sample";
 
 using namespace v1_0::commonapi::datatypes::combined;
 
-class DTCombinedStub : public TestInterfaceStubDefault {
-
-public:
-    DTCombinedStub() {};
-    virtual ~DTCombinedStub() {};
-
-    void fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
-            TestInterface::tStructL3 tStructL3In,
-            TestInterface::tStructL3& tStructL3Out) {
-
-        tStructL3Out = tStructL3In;
-    }
-
-};
-
 class Environment: public ::testing::Environment {
 public:
     virtual ~Environment() {
@@ -66,9 +51,9 @@ protected:
         bool proxyAvailable = false;
 
         std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
+            std::lock_guard<std::mutex> lock(availabilityMutex);
             testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::combined::TestInterfaceProxy>(domain, testAddress, connectionIdClient);
             testProxy_->isAvailableBlocking();
-            std::lock_guard<std::mutex> lock(availabilityMutex);
             ASSERT_TRUE((bool)testProxy_);
             proxyAvailable = true;
             cv.notify_one();
@@ -118,7 +103,7 @@ TEST_F(DTCombined, SendAndReceive) {
     TestInterface::tUnion unionTV0 = true;
     TestInterface::tUnion unionTV1 = (uint8_t)42;
     TestInterface::tUnion unionTV2 = std::string("Hello World");
-    TestInterface::tUnion unionTV3 = TestInterface::tEnum::VALUE1;
+    TestInterface::tUnion unionTV3 = static_cast<TestInterface::tEnum>(TestInterface::tEnum::VALUE1);
     TestInterface::tMap mapTV0 = {{1, "Hello"}, {2, "World"}};
     TestInterface::tMap mapTV1 = {{123, "ABC"}, {456, "DEF"}};
 

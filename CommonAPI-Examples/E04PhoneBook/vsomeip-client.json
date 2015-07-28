@@ -1,0 +1,30 @@
+{
+	"unicast" : "10.10.46.59",
+	"netmask" : "255.255.255.0",
+	"logging" : 
+	{
+		"level" : "debug",
+		"console" : "true",
+		"file" : { "enable" : "true", "path" : "/var/log/vsomeip.log" },
+		"dlt" : "true"
+	},
+	"applications" :
+	[
+		{
+			"name" : "client-sample",
+			"id" : "0x1343"
+		},
+		{
+			"name" : "other-client-sample",
+			"id" : "0x1344"
+		}
+	],
+	"routing" : "client-sample",
+	"service-discovery" :
+	{
+		"enable" : "true",
+		"multicast" : "224.244.224.245",
+		"port" : "30490",
+		"protocol" : "udp"
+	}
+}

@@ -16,20 +16,20 @@ using namespace v1_0::commonapi::examples;
 static unsigned int cnt = 0; // counter for simulating external events
 const static unsigned int maxDeviceNumber = 3;
 const static std::string managerInstanceName = "commonapi.examples.Manager";
+const std::string connectionIdService = "service-sample";
 
 int main() {
-	CommonAPI::Runtime::setProperty("LogContext", "E05S");
-	CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
-
+    CommonAPI::Runtime::setProperty("LogContext", "E05S");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
     std::shared_ptr<E05ManagerStubImpl> myService = std::make_shared < E05ManagerStubImpl > (managerInstanceName);
 
-	bool successfullyRegistered = runtime->registerService("local", managerInstanceName, myService);
+	bool successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
 
 	while (!successfullyRegistered) {
 		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		successfullyRegistered = runtime->registerService("local", managerInstanceName, myService);
+		successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
 	}
 
 	std::cout << "Successfully Registered Service!" << std::endl;

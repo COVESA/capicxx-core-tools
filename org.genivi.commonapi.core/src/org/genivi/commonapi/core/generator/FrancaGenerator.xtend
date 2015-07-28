@@ -29,7 +29,6 @@ import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FUnionType
-import org.franca.deploymodel.core.FDModelExtender
 import org.franca.deploymodel.core.FDeployedInterface
 import org.franca.deploymodel.core.FDeployedTypeCollection
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
@@ -41,6 +40,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 import static com.google.common.base.Preconditions.*
 import org.franca.deploymodel.dsl.fDeploy.FDModel
+import org.franca.deploymodel.core.FDModelExtender
 
 class FrancaGenerator implements IGenerator
 {
@@ -60,6 +60,7 @@ class FrancaGenerator implements IGenerator
         var List<FDTypes> deployedTypeCollections
         var List<FDProvider> deployedProviders
         var IResource res = null
+        val String CORE_SPECIFICATION_TYPE = "core.deployment"
 
 		// load the model from a fidl file
         if(input.URI.fileExtension.equals(francaPersistenceManager.fileExtension))
@@ -74,11 +75,20 @@ class FrancaGenerator implements IGenerator
         	var model = fDeployManager.loadModel(input.URI, input.URI);
             if(model instanceof FDModel) {
             	val fModelExtender = new FDModelExtender(model);
-            	checkArgument(fModelExtender.getFDInterfaces().size > 0, "No Interfaces were deployed, nothing to generate.")
-            	fModel = fModelExtender.getFDInterfaces().get(0).target.model
-            	deployedInterfaces = fModelExtender.getFDInterfaces()
-            	deployedTypeCollections = fModelExtender.getFDTypesList()
-            	deployedProviders = fModelExtender.getFDProviders()            	
+            	var fdinterfaces = fModelExtender.getFDInterfaces()
+            	// we need at least one FDInterface to access the model !
+            	if(fdinterfaces.size > 0) {
+            		fModel = fdinterfaces.get(0).target.model     
+            	} else {
+            		// empty deployment !
+            		// try to load the fidl file from the imports of the fdpl
+            		fModel = fDeployManager.getModelFromFdepl(model, input.URI)
+            	}
+            	checkArgument(fModel != null, "\nFailed to load the model from fdepl file,\ncannot generate code.")
+            	// read deployment information             	
+            	deployedInterfaces = getFDInterfaces(model, CORE_SPECIFICATION_TYPE)
+            	deployedTypeCollections = getFDTypesList(model, CORE_SPECIFICATION_TYPE)
+            	deployedProviders = getFDProviders(model, CORE_SPECIFICATION_TYPE)
             } else if(model instanceof FModel) {
             	fModel = model
             	deployedInterfaces = new LinkedList<FDInterface>()
@@ -129,11 +139,11 @@ class FrancaGenerator implements IGenerator
         val generateTypeCollections = fModel.typeCollections.toSet
         generateTypeCollections.addAll(allFTypeTypeCollections)
 
-        val generateInterfaces = fModel.allReferencedFInterfaces.toSet
-        generateInterfaces.addAll(allFTypeFInterfaces)
+        val interfacesToGenerate = fModel.allReferencedFInterfaces.toSet
+        interfacesToGenerate.addAll(allFTypeFInterfaces)
 
 		val defaultDeploymentAccessor = new PropertyAccessor() 
-		generateInterfaces.forEach [
+		interfacesToGenerate.forEach [
             val currentInterface = it
             var PropertyAccessor deploymentAccessor
             if (deployedInterfaces != null && deployedInterfaces.exists[it.target == currentInterface])
@@ -145,7 +155,7 @@ class FrancaGenerator implements IGenerator
             {
                 deploymentAccessor = defaultDeploymentAccessor
             }
-            generate(it, fileSystemAccess, deploymentAccessor, res)
+            generateInterface(it, fileSystemAccess, deploymentAccessor, res)
         ]
         
         generateTypeCollections.forEach [

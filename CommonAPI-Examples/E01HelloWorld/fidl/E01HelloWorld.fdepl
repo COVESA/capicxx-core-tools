@@ -29,6 +29,6 @@ define org.genivi.commonapi.someip.deployment for provider Service {
 	
 		SomeIpUnicastAddress = "192.168.0.2"
 		SomeIpReliableUnicastPort = 30499
-		SomeIpUneliableUnicastPort = 30499
+		SomeIpUnreliableUnicastPort = 30499
 	}
 }

@@ -32,7 +32,33 @@
 					"service" : "0x1234",
 					"instance" : "0x5678",
 					"reliable" : { "port" : "30509", "enable-magic-cookies" : "false" },
-					"unreliable" : "31000"
+					"unreliable" : "31000",
+					"events" : 
+					[
+						{
+							"event" : "0x80F2",
+							"is_field" : "false",
+							"is_reliable" : "false",
+							"update-cycle" : 0
+						},
+						{
+							"event" : "0x80F3",
+							"is_field" : "true",
+							"is_reliable" : "false",
+							"update-cycle" : 0
+						}
+					],
+					"eventgroups" :
+					[
+						{
+							"eventgroup" : "0x80F2",
+							"events" : [ "0x80F2" ]
+						},
+						{
+							"eventgroup" : "0x80F3",
+							"events" : [ "0x80F3" ]
+						}
+					]
 				}
 			]
 		}

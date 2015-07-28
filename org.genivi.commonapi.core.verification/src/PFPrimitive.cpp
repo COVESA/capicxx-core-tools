@@ -1,7 +1,5 @@
 /* Copyright (C) 2014 BMW Group
- * Copyright (C) 2015 Mentor Graphics
  * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * Author: Felix Scherzinger (felix_scherzinger@mentor.com)
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -114,7 +112,7 @@ protected:
 * 	- Using double payload every cycle, starting with 1 end with maxPrimitiveArraySize
 * 	- Doing primitiveLoopSize loops to build the mean time
 */
-TEST_F(PFPrimitive, DISABLED_Ping_Pong_Primitive_Synchronous) {
+TEST_F(PFPrimitive, Ping_Pong_Primitive_Synchronous) {
 	CommonAPI::CallStatus callStatus;
 
 	watch_.reset();

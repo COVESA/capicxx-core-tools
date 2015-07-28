@@ -401,8 +401,8 @@ class FInterfaceStubGenerator {
             void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«typeName» _value) {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 «IF attribute.isObservable»
-                    if (valueChanged && stubAdapter_ != NULL) {
-                        «IF fInterface.base != null»CommonAPI::Stub<«fInterface.stubAdapterClassName», «fInterface.stubRemoteEventClassName»>::«ENDIF»stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                   if (valueChanged && «fInterface.stubCommonAPIClassName»::stubAdapter_ != NULL) {
+                        «fInterface.stubCommonAPIClassName»::stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
                     }
                 «ENDIF»
             }
@@ -461,8 +461,8 @@ class FInterfaceStubGenerator {
             «FTypeGenerator::generateComments(broadcast, false)»
             «IF broadcast.selective»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, false)») {
-                	assert(stubAdapter_ !=NULL);
-                    stubAdapter_->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
+                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                    «fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
                 }
                 void «fInterface.stubDefaultClassName»::«broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) {
                     // No operation in default
@@ -472,14 +472,14 @@ class FInterfaceStubGenerator {
                     return true;
                 }
                 std::shared_ptr<CommonAPI::ClientIdList> const «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassSubscribersMethodName»() {
-                	assert(stubAdapter_ !=NULL);
-                    return(stubAdapter_->«broadcast.stubAdapterClassSubscribersMethodName»());
+                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                    return(«fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassSubscribersMethodName»());
                 }
 
             «ELSE»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
-                	assert(stubAdapter_ !=NULL);
-                    stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                    «fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
                 }
             «ENDIF»
         «ENDFOR»
@@ -488,22 +488,22 @@ class FInterfaceStubGenerator {
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»> _stub) {
                 autoInstanceCounter_++;
                 std::stringstream ss;
-                ss << stubAdapter_->getAddress().getInstance() << ".i" << autoInstanceCounter_;
+                ss << «fInterface.stubCommonAPIClassName»::stubAdapter_->getAddress().getInstance() << ".i" << autoInstanceCounter_;
                 std::string instance = ss.str();
-                assert(stubAdapter_ !=NULL);
-                return stubAdapter_->«managed.stubRegisterManagedName»(_stub, instance);
+                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubRegisterManagedName»(_stub, instance);
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedMethodImpl» {
-            	assert(stubAdapter_ !=NULL);
-                return stubAdapter_->«managed.stubRegisterManagedName»(_stub, _instance);
+            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubRegisterManagedName»(_stub, _instance);
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubDeregisterManagedName»(const std::string &_instance) {
-            	assert(stubAdapter_ !=NULL);
-                return stubAdapter_->«managed.stubDeregisterManagedName»(_instance);
+            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubDeregisterManagedName»(_instance);
             }
             std::set<std::string>& «fInterface.stubDefaultClassName»::«managed.stubManagedSetGetterName»() {
-            	assert(stubAdapter_ !=NULL);
-                return stubAdapter_->«managed.stubManagedSetGetterName»();
+            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
+                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubManagedSetGetterName»();
             }
         «ENDFOR»
 

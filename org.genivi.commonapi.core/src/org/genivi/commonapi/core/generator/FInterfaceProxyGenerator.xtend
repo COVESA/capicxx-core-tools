@@ -423,14 +423,17 @@ class FInterfaceProxyGenerator {
     def private generateSyncVariableList(FMethod fMethod) {
         val syncVariableList = new ArrayList(fMethod.inArgs.map['_' + elementName])
 
-        syncVariableList.add('_status')
+        syncVariableList.add('_internalCallStatus')
 
         if (fMethod.hasError)
             syncVariableList.add('_error')
 
         syncVariableList.addAll(fMethod.outArgs.map['_' + elementName])
         
-        return syncVariableList.join(', ') + ", _info"
+        if (!fMethod.isFireAndForget)
+            return syncVariableList.join(', ') + ", _info"
+        else
+            return syncVariableList.join(', ')
     }
 
     def private generateASyncVariableList(FMethod fMethod) {

@@ -143,9 +143,15 @@ protected:
         mainLoopThread1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
         mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
-        usleep(200000);
+		for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
+			usleep(10000);
+		}
 
-        ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
+		for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
+			usleep(10000);
+		}
+
+		ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
         ASSERT_TRUE(threadCtx2_.proxy_->isAvailable());
 
         if (threadCtx1_.mainLoop_->isRunning()) {
@@ -165,17 +171,14 @@ protected:
     	threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance6);
     	threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance7);
     	threadCtx2_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance8);
-        usleep(2000);
-        threadCtx1_.mainLoop_->stop();
-        threadCtx2_.mainLoop_->stop();
 
         if (threadCtx1_.mainLoop_->isRunning()) {
         	std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-        	threadCtx1MainStopped.get();
+        	//threadCtx1MainStopped.get();
         }
         if (threadCtx2_.mainLoop_->isRunning()) {
         	std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-        	threadCtx2MainStopped.get();
+        	//threadCtx2MainStopped.get();
         }
 
         if(mainLoopThread1_.joinable()) {
@@ -184,6 +187,8 @@ protected:
         if(mainLoopThread2_.joinable()) {
             mainLoopThread2_.join();
         }
+
+        usleep(20000);
     }
 
     MainLoopThreadContext threadCtx1_, threadCtx2_;
@@ -231,9 +236,6 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 * 	- now each proxy should have received the answer to his own request
 */
 TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
-
-    usleep(1000000);
-
     std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
     auto runtime = CommonAPI::Runtime::get();
     ASSERT_TRUE(runtime->registerService(domain, instance6, stubThirdParty, thirdPartyServiceId));

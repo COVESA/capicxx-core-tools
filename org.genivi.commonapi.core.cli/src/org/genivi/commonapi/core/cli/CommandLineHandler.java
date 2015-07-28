@@ -108,6 +108,11 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 					cliTool.setEnumPrefix(parsedArguments.getOptionValue("pre"));
 				}
 
+				// Switch on/off validation
+				if(parsedArguments.hasOption("val")) {
+					cliTool.enableValidation(parsedArguments.getOptionValue("val"));
+				}
+				
 				// finally invoke the generator.
 				// the remaining arguments are assumed to be files !
 				cliTool.generateCore(files);

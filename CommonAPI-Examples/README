@@ -6,24 +6,45 @@ The examples provide a more or less generic CMake file for building the executab
 
 ----
 $ cd build
-$ cmake -D USE_INSTALLED_COMMONAPI=ON/OFF ..
+$ cmake -DUSE_INSTALLED_COMMONAPI=ON/OFF ..
 $ make
 ----
 
-Set USE_INSTALLED_COMMONAPI to ON if you use an installed version of CommonAPI; set it to OFF if you use working copy.
+Set +USE_INSTALLED_COMMONAPI+ to +ON+ if you use an installed version of CommonAPI; set it to +OFF+ if you use the working copy.
+
+In case you are using the D-Bus binding and you have not installed the patched D-Bus library (_libdbus_) it might be necessary to set a D-Bus specific option:
+
+----
+cmake -DUSE_INSTALLED_COMMONAPI=OFF -DUSE_INSTALLED_DBUS=OFF ..
+----
+
+Please read also the chapters in the user guide about the configuration files. One possibility to specify the path to the CommonAPI configuration file is to set the environment variable:
+
+----
+export COMMONAPI_CONFIG=<path to CommonAPI-Examples>/E01HelloWorld/commonapi4dbus.ini
+----
+
+If do not specify any configuration file it is assumed that you want to use the D-Bus binding. Other environment variables you might need are:
+
+* +LD_LIBRARY_PATH+ should contain the path to the _libdbus_ if you use the D-Bus binding with an uninstalled _libdbus_ and should contain the path to your gluecode libraries, e.g. +LD_LIBRARY_PATH=<path to libdbus>/dbus-1.8.20/dbus/.libs:<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/build+
+
+* +VSOMEIP_CONFIGURATION_FILE+ should contain the path to your vsomeip configuration file if you are using the SOME/IP binding, e.g. +VSOMEIP_CONFIGURATION_FILE=<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/vsomeip-local.json+
 
 Here are some hints if you want to configure your eclipse project for the CMake build:
 
 - Install the CMakeEd plug-in which provides an editor for CMake files (http://cmakeed.sourceforge.net/eclipse/).
-- Create a build directory (eg /build) directly in the project directory.
+- Create a build directory (e.g. /build) directly in the project directory.
 - Select the projects properties, then C/C++ build and set the Build Command to your make call:
+
 ----
 make -C ${ProjDirPath}/build VERBOSE=1
 ----
 
-The Build Directory must be empty. Create a make target (eg via Window->Show View->Make Target). Set the build command to:
+The build directory must be empty. Create a make target (e.g. via _Window->Show View->Make Target_). Set the build command to:
 
 ----
-cmake -E chdir build/ cmake ..
+cmake -E chdir build/ cmake <options> ..
 ----
+
+The above described environment variables you could specify in the _Run Configuration_ of your executable files (cleint and service). 
 

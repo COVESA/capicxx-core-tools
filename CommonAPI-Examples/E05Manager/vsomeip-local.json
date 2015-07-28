@@ -1,0 +1,83 @@
+{
+	"unicast" : "127.0.0.1",
+	"logging" :
+	{
+		"level" : "debug",
+		"console" : "true",
+		"file" : { "enable" : "false", "path" : "/var/log/vsomeip.log" },
+		"dlt" : "false"
+	},
+	"applications" : 
+	[
+		{
+			"name" : "client-sample",
+			"id" : "0x1343"
+		},
+		{
+			"name" : "service-sample",
+			"id" : "0x1277"
+		}
+	],
+	"servicegroups" :
+	[
+		{
+			"name" : "default",
+			"delays" :
+			{
+				"initial" : { "minimum" : "10", "maximum" : "100" },
+				"repetition-base" : "200",
+				"repetition-max" : "3",
+				"cyclic-offer" : "2000",
+				"cyclic-request" : "2001"
+			},
+			"services" :
+			[
+				{
+					"service" : "0x1234",
+					"instance" : "0x03e8",
+					"unreliable" : "30499",
+					"events" : 
+					[
+						{
+							"event" : "0x80e8",
+							"is_field" : "true"
+						}
+					],
+					"eventgroups" : 
+					[
+						{
+							"eventgroup" : "0x4555",
+							"events" : 
+							[
+								"0x80e8"
+							]
+						}
+					]
+				},
+				{
+					"service" : "0x1235",
+					"instance" : "0x07d0",
+					"unreliable" : "30500"
+				},
+				{
+					"service" : "0x1235",
+					"instance" : "0x07d1",
+					"unreliable" : "30501"
+				},
+				{
+					"service" : "0x1236",
+					"instance" : "0x0bb8",
+					"unreliable" : "30600"
+				}
+			]
+		}
+	],
+	"routing" : "client-sample",
+	"service-discovery" :
+	{
+		"enable" : "true",
+		"multicast" : "224.244.224.245",
+		"port" : "30490",
+		"protocol" : "udp"
+	}
+}

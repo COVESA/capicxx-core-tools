@@ -316,7 +316,7 @@ public class GenerationCommand extends AbstractHandler {
 			System.err.println("Failed to get property for " + resource.getName());
 		}  
 		
-		// Set defaults in the case, where nothing was specified from the user.
+		// Set defaults from the preference store in the case, where the value was not specified in the properties.
 		if(outputFolderCommon == null) {
 			outputFolderCommon = store.getString(PreferenceConstants.P_OUTPUT_COMMON);			
 		}
@@ -339,13 +339,13 @@ public class GenerationCommand extends AbstractHandler {
 			licenseHeader = store.getString(PreferenceConstants.P_LICENSE);			
 		}
 		if(generateProxy == null) {
-			generateProxy = "true";	
+			generateProxy = store.getString(PreferenceConstants.P_GENERATEPROXY);
 		}
 		if(generatStub == null) {
-			generatStub = "true";		
+			generatStub = store.getString(PreferenceConstants.P_GENERATESTUB);
 		}
 		if(generatSkeleton == null) {
-			generatSkeleton = "false";		
+			generatSkeleton = store.getString(PreferenceConstants.P_GENERATESKELETON);
 		}
 		
 		// finally, store the properties for the code generator

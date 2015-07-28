@@ -21,7 +21,7 @@ class FInterfaceGenerator {
     @Inject private extension FTypeCommonAreaGenerator
     @Inject private extension FrancaGeneratorExtensions
 
-    def generate(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
+    def generateInterface(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
         fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateHeader(modelid, deploymentAccessor))
 
         if (fInterface.hasSourceFile)

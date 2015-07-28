@@ -11,15 +11,19 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
 	SomeIpEventGroups = { 7000, 7001 }
 
 	attribute phoneBook {
-		SomeIpGetterID = 7000
+		SomeIpGetterID = 33000
+		SomeIpSetterID = 33001
+		SomeIpNotifierID = 8000
+		SomeIpEventGroups = { 7000 }
 	}
 
 	method setPhoneBookDataFilter {
-		SomeIpMethodID = 33000
+		SomeIpMethodID = 33002
 	}
 
 	broadcast phoneBookDataSet {
-		SomeIpEventID = 8000
+		SomeIpEventID = 8001
+		SomeIpEventGroups = { 7001 }
 	}
 
 	enumeration phoneNumberEnum {

@@ -140,7 +140,7 @@ public class PropertyAccessor {
 	public Integer getDefaultMethodTimeout (FDInterfaceInstance obj) {
 		try {
 			if (type_ == DeploymentType.PROVIDER)
-				return provider_.getDefaultMethodTimeout(obj);
+				return provider_.getDefaultTimeout(obj);
 		}
 		catch (java.lang.NullPointerException e) {}
 		return null;

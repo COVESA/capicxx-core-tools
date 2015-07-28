@@ -137,30 +137,40 @@ int main() {
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.PhoneBook";
+    const std::string &connection = "client-sample";
 
-    std::shared_ptr < E04PhoneBookProxy<> > myProxyA = runtime->buildProxy < E04PhoneBookProxy > (domain, instance);
+    std::shared_ptr < E04PhoneBookProxy<> > myProxyA = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, connection);
     while (!myProxyA->isAvailable()) {
         usleep(10);
     }
+    std::cout << "Service for Proxy A is available!" << std::endl;
 
-    const CommonAPI::ConnectionId_t otherConnectionId = "42";
-
-    std::shared_ptr < E04PhoneBookProxy<> > myProxyB = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnectionId);
+    const CommonAPI::ConnectionId_t otherConnection = "other-client-sample";
+    std::shared_ptr < E04PhoneBookProxy<> > myProxyB = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnection);
     while (!myProxyB->isAvailable()) {
         usleep(10);
     }
+    std::cout << "Service for Proxy B is available!" << std::endl;
 
     // Subscribe A to broadcast
     myProxyA->getPhoneBookDataSetSelectiveEvent().subscribe(
                     [&](const std::vector<E04PhoneBook::phoneBookDataElementMap>& phoneBookDataSet) {
+                        std::cout << "-- A --" << std::endl;
                         printFilterResult(phoneBookDataSet, "A");
+                        std::cout << "-------" << std::endl;
                     });
+
+    std::cout << "Subscribed A" << std::endl;
 
     // Subscribe B to broadcast
     myProxyB->getPhoneBookDataSetSelectiveEvent().subscribe(
                     [&](const std::vector<E04PhoneBook::phoneBookDataElementMap>& phoneBookDataSet) {
+                        std::cout << "-- B --" << std::endl;
                         printFilterResult(phoneBookDataSet, "B");
+                        std::cout << "-------" << std::endl;
                     });
+
+    std::cout << "Subscribed B" << std::endl;
 
     // Get actual phoneBook from service
     CommonAPI::CallStatus myCallStatus;

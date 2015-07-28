@@ -207,7 +207,7 @@ class FTypeGenerator {
             «type.generateFTypeDeclaration(deploymentAccessor)»
         «ENDFOR»
         «IF fTypeCollection instanceof FInterface»
-            «FOR method : (fTypeCollection as FInterface).methodsWithError»
+            «FOR method : fTypeCollection.methodsWithError»
                 «generateComments(method, false)»
                 «method.errors.generateDeclaration(method.errors, deploymentAccessor)»
             «ENDFOR»
@@ -244,7 +244,7 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FTypeDef fTypeDef, PropertyAccessor deploymentAccessor) '''
         «generateComments(fTypeDef, false)»
-        typedef «fTypeDef.actualType.getElementType(null, true)» «fTypeDef.elementName»;
+        typedef «fTypeDef.actualType.getElementType(fTypeDef, false)» «fTypeDef.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, PropertyAccessor deploymentAccessor) '''
@@ -577,7 +577,7 @@ class FTypeGenerator {
     }
 
     def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if (!fInterface.attributes.filter[array].nullOrEmpty) {
+    	if (!fInterface.attributes.filter[array].nullOrEmpty) {
             libraryHeaders.add('vector')
         }
         if (!fInterface.methods.map[inArgs.filter[array]].nullOrEmpty) {
@@ -594,6 +594,7 @@ class FTypeGenerator {
         fInterface.methods.forEach[
             inArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
             outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
+            errorEnum?.addRequiredHeaders(generatedHeaders, libraryHeaders)
         ]
         fInterface.managedInterfaces.forEach[
             generatedHeaders.add(stubHeaderPath)
@@ -682,9 +683,8 @@ class FTypeGenerator {
 
     def private generateHasher(FMapType fMap) {
         if (fMap.keyType.derived instanceof FEnumerationType)  {
-            return ''', CommonAPI::EnumHasher<«fMap.keyType.getElementType(null, true)»>'''
+            return ''', CommonAPI::EnumHasher<«fMap.keyType.derived.getFullName»>'''
         }
-
         return ""
     }
 
@@ -692,8 +692,10 @@ class FTypeGenerator {
         if (fMap.keyType.polymorphic) {
             return "std::shared_ptr<" + fMap.keyType.getElementType(null, true) + ">"
         }
-        else {
-            return fMap.keyType.getElementType(null, true)
+        if(fMap.keyType.derived != null) {
+            return fMap.keyType.derived.getFullName
+        } else {
+        	return fMap.keyType.getElementType(null, true)
         }
     }
 
@@ -701,8 +703,10 @@ class FTypeGenerator {
         if (fMap.valueType.polymorphic) {
             return "std::shared_ptr<" + fMap.valueType.getElementType(null, true) + ">"
         }
-        else {
-            return fMap.valueType.getElementType(null, true)
+        if(fMap.valueType.derived != null) {
+        	return fMap.valueType.derived.getFullName
+        } else {
+        	return fMap.valueType.getElementType(null, true)
         }
     }
 

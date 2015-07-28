@@ -45,18 +45,18 @@ class VerificationMainLoop {
     explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context) :
             context_(context), currentMinimalTimeoutInterval_(TIMEOUT_INFINITE), running_(false), breakLoop_(false), dispatchWatchesTooLong(false) {
 #ifdef WIN32
-		WSAEVENT wsaEvent = WSACreateEvent();
+		wsaEvents_.push_back(WSACreateEvent());
 
-		if (wsaEvent != WSA_INVALID_EVENT) {
-			wakeFd_.fd = PtrToInt(wsaEvent);
+		if (wsaEvents_[0] == WSA_INVALID_EVENT) {
+			printf("Invalid Event Created!");
 		}
 #else
-        wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
+		wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
+		wakeFd_.events = POLLIN;
+		assert(wakeFd_.fd != -1);
+		registerFileDescriptor(wakeFd_);
 #endif
-        wakeFd_.events = POLLIN;
 
-        assert(wakeFd_.fd != -1);
-        registerFileDescriptor(wakeFd_);
 
         dispatchSourceListenerSubscription_ = context_->subscribeForDispatchSources(
                 std::bind(&CommonAPI::VerificationMainLoop::registerDispatchSource, this, std::placeholders::_1, std::placeholders::_2),
@@ -74,15 +74,16 @@ class VerificationMainLoop {
     }
 
     ~VerificationMainLoop() {
-        deregisterFileDescriptor(wakeFd_);
-
+#ifndef WIN32
+		deregisterFileDescriptor(wakeFd_);
+#endif
         context_->unsubscribeForDispatchSources(dispatchSourceListenerSubscription_);
         context_->unsubscribeForWatches(watchListenerSubscription_);
         context_->unsubscribeForTimeouts(timeoutSourceListenerSubscription_);
         context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
 #ifdef WIN32
-		WSACloseEvent(IntToPtr(wakeFd_.fd));
+		WSACloseEvent(wsaEvents_[0]);
 #else
         close(wakeFd_.fd);
 #endif
@@ -199,17 +200,34 @@ class VerificationMainLoop {
     }
 
     void poll() {
-        for (auto fileDescriptor = managedFileDescriptors_.begin() + 1; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
-            (*fileDescriptor).revents = 0;
-        }
+#ifdef WIN32
+		int managedFileDescriptorOffset = 0;
+#else
+		int managedFileDescriptorOffset = 1;
+#endif
+
+		for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
+			(*fileDescriptor).revents = 0;
+		}
 
 #if WIN32
-		INT currentMinimalTimeoutIntervalWin32_ = 1;
-		size_t numReadyFileDescriptors = ::WSAPoll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), currentMinimalTimeoutIntervalWin32_);
+		size_t numReadyFileDescriptors = 0;
 
-		if (numReadyFileDescriptors == SOCKET_ERROR) {
-			int iError = WSAGetLastError();
-			//printf("WSAPoll failed with error: %ld\n", iError);
+		int errorCode = WSAWaitForMultipleEvents(wsaEvents_.size(), wsaEvents_.data(), FALSE, currentMinimalTimeoutInterval_, FALSE);
+
+		if (errorCode == WSA_WAIT_IO_COMPLETION) {
+			printf("WSAWaitForMultipleEvents failed with error: WSA_WAIT_IO_COMPLETION");
+		}
+		else if (errorCode == WSA_WAIT_FAILED) {
+			printf("WSAWaitForMultipleEvents failed with error: %ld\n", WSAGetLastError());
+		}
+		else {
+			for (uint32_t i = 0; i < managedFileDescriptors_.size(); i++) {
+				if (WaitForSingleObjectEx(wsaEvents_[i + 1], 0, true) != WAIT_TIMEOUT) {
+					numReadyFileDescriptors++;
+					managedFileDescriptors_[i].revents = POLLIN;
+				}
+			}
 		}
 #else
         size_t numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), currentMinimalTimeoutInterval_);
@@ -233,14 +251,23 @@ class VerificationMainLoop {
             }
         }
 
-        if (wakeFd_.revents) {
-            acknowledgeWakeup();
-        }
+#ifdef WIN32
+		acknowledgeWakeup();
+#else
+		if (managedFileDescriptors_[0].revents) {
+			acknowledgeWakeup();
+		}
+#endif
     }
 
     bool check() {
-        //The first file descriptor always is the loop's wakeup-descriptor. All others need to be linked to a watch.
-        for (auto fileDescriptor = managedFileDescriptors_.begin() + 1; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
+		//The first file descriptor always is the loop's wakeup-descriptor (but not for windows anymore). All others need to be linked to a watch.
+#ifdef WIN32
+		int managedFileDescriptorOffset = 0;
+#else
+		int managedFileDescriptorOffset = 1;
+#endif
+		for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
             for (auto registeredWatchIterator = registeredWatches_.begin();
                         registeredWatchIterator != registeredWatches_.end();
                         registeredWatchIterator++) {
@@ -276,11 +303,14 @@ class VerificationMainLoop {
 
     void wakeup() {
 #ifdef WIN32
-		HANDLE h = IntToPtr(wakeFd_.fd);
-		SetEvent(h);
+		if (!WSASetEvent(wsaEvents_[0]))
+		{
+			printf("SetEvent failed (%d)\n", GetLastError());
+			return;
+		}
 #else
         int64_t wake = 1;
-        ::write(wakeFd_.fd, &wake, sizeof(int64_t));
+        ::write(managedFileDescriptors_[0].fd, &wake, sizeof(int64_t));
 #endif
     }
 
@@ -350,6 +380,24 @@ class VerificationMainLoop {
         }
     }
 
+#ifdef WIN32
+	void registerEvent(
+		const HANDLE& wsaEvent) {
+		wsaEvents_.push_back(wsaEvent);
+	}
+
+	void unregisterEvent(
+		const HANDLE& wsaEvent) {
+		for (auto it = wsaEvents_.begin();
+			it != wsaEvents_.end(); it++) {
+			if ((*it) == wsaEvent) {
+				wsaEvents_.erase(it);
+				break;
+			}
+		}
+	}
+#endif
+
     void registerDispatchSource(DispatchSource* dispatchSource, const DispatchPriority dispatchPriority) {
         registeredDispatchSources_.insert( {dispatchPriority, dispatchSource} );
     }
@@ -369,16 +417,26 @@ class VerificationMainLoop {
 
     void registerWatch(Watch* watch, const DispatchPriority dispatchPriority) {
         registerFileDescriptor(watch->getAssociatedFileDescriptor());
+
+#ifdef WIN32
+		registerEvent(watch->getAssociatedEvent());
+#endif
+
         registeredWatches_.insert( { dispatchPriority, {watch->getAssociatedFileDescriptor().fd, watch} } );
     }
 
     void deregisterWatch(Watch* watch) {
+#ifdef WIN32
+		unregisterEvent(watch->getAssociatedEvent());
+#endif
+
         for(auto watchIterator = registeredWatches_.begin();
                 watchIterator != registeredWatches_.end();
                 watchIterator++) {
 
             if(watchIterator->second.second == watch) {
                 registeredWatches_.erase(watchIterator);
+				break;
             }
         }
     }
@@ -401,11 +459,16 @@ class VerificationMainLoop {
 
     void acknowledgeWakeup() {
 #ifdef WIN32
-		HANDLE h = IntToPtr(wakeFd_.fd);
-		ResetEvent(h);
+		for (unsigned int i = 0; i < wsaEvents_.size(); i++) {
+			if (!WSAResetEvent(wsaEvents_[i]))
+			{
+				printf("ResetEvent failed (%d)\n", GetLastError());
+				return;
+			}
+		}
 #else
         int64_t buffer;
-        while (::read(wakeFd_.fd, &buffer, sizeof(int64_t)) == sizeof(buffer));
+        while (::read(managedFileDescriptors_[0].fd, &buffer, sizeof(int64_t)) == sizeof(buffer));
 #endif
     }
 
@@ -430,7 +493,11 @@ class VerificationMainLoop {
     bool breakLoop_;
     bool running_;
 
-    pollfd wakeFd_;
+#ifdef WIN32
+	std::vector<HANDLE> wsaEvents_;
+#else
+	pollfd wakeFd_;
+#endif
 
     std::promise<bool>* stopPromise;
 };

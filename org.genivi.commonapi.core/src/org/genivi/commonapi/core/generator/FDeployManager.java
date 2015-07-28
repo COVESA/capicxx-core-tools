@@ -11,8 +11,11 @@ import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.franca.core.dsl.FrancaImportsProvider;
+import org.franca.core.franca.FModel;
 import org.franca.core.utils.ImportsProvider;
 import org.franca.deploymodel.dsl.FDeployImportsProvider;
+import org.franca.deploymodel.dsl.fDeploy.FDModel;
+import org.franca.deploymodel.dsl.fDeploy.Import;
 
 /**
  * The FDeployManager loads models from fdepl files and from fidl files that are imported in a fdepl file.
@@ -57,11 +60,12 @@ public class FDeployManager {
 			// add this pair to URI converter so that others can get the URI by its relative path
 			resourceSet.getURIConverter().getURIMap().put(uri, absURI);
 		}
-		
 		// load root model
 		Resource resource = null;
 		try {
 			resource = resourceSet.getResource(absURI, true);
+			// Set the isLoaded flag to false in order to force reloading of fdepl or imported fidl files
+			resource.unload();
 			resource.load(Collections.EMPTY_MAP);
 		} catch (Exception e) {
 			// Don't show an error message here, because code may be generated from an included fidl file.
@@ -73,16 +77,17 @@ public class FDeployManager {
 		// load all its imports recursively
 		for (Iterator<String> it = fileHandlerRegistry.get(absURI.fileExtension()).importsIterator(model); it.hasNext();) {
 			String importURIStr = it.next();
-			URI importURI = URI.createURI(importURIStr);
-			URI resolvedURI = importURI.resolve(absURI);
-			
-			// add this pair to URI converter so that others can get the URI by its relative path
-			resourceSet.getURIConverter().getURIMap().put(importURI, resolvedURI);
-			//System.out.println("trying to load model " + resolvedURI);
-			model = loadModel(resolvedURI, root);
-			if(model == null) {
-				// something went wrong with this import, go on with the next one
-				continue;
+			if(importURIStr != null) {
+				URI importURI = URI.createURI(importURIStr);
+				URI resolvedURI = importURI.resolve(absURI);
+				// add this pair to URI converter so that others can get the URI by its relative path
+				resourceSet.getURIConverter().getURIMap().put(importURI, resolvedURI);
+				//System.out.println("trying to load model " + resolvedURI);
+				EObject localModel = loadModel(resolvedURI, root);
+				if(localModel == null) {
+					// something went wrong with this import, go on with the next one
+					continue;
+				}
 			}
 		}
 		return  model;
@@ -93,6 +98,33 @@ public class FDeployManager {
 	 */
 	public static String fileExtension() {
 		return fileExtension;
+	}	
+	
+	/**
+	 * Load the model from fdepl that has an fidl file import
+	 * @param fdmodel - the deployment model from fdepl 
+	 * @param input - the fdepl uri
+	 * @return the model defined in the fidl file import
+	 */
+	public FModel getModelFromFdepl(FDModel fdmodel, URI input) {
+		for(Import fdimport : fdmodel.getImports()) {
+			String uriString = fdimport.getImportURI();
+			if (uriString.endsWith("fidl")) {
+				URI newUri = URI.createURI(uriString);
+				URI fidlUri = newUri.resolve(input);
+				// load model
+				Resource resource = null;
+				try {
+					resource = resourceSet.getResource(fidlUri, true);
+					resource.load(Collections.EMPTY_MAP);
+				} catch (Exception e) {
+					// failed to  load model from fidl
+					return null;
+				}
+				return (FModel) resource.getContents().get(0);
+			}
+		}
+		return null;
 	}	
 	
 	

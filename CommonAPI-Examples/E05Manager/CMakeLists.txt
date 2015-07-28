@@ -1,6 +1,4 @@
-# Copyright (C) 2014, 2015 BMW Group
-# Author: Manfred Bathelt (manfred.bathelt@bmw.de)
-# Author: Juergen Gehring (juergen.gehring@bmw.de)
+# Copyright (C) 2015 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
@@ -16,7 +14,7 @@ if (MSVC)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_CRT_SECURE_NO_WARNINGS /EHsc /wd\\\"4503\\\"")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D_CRT_SECURE_NO_WARNINGS /wd\\\"4503\\\"")
 else()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -O0 -std=c++0x -D_GLIBCXX_USE_NANOSLEEP")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -Wall -O0 -std=c++0x -D_GLIBCXX_USE_NANOSLEEP -DLINUX")
 endif()
 
 message(STATUS "Compiler options: ${CMAKE_CXX_FLAGS}") 
@@ -31,11 +29,11 @@ OPTION(USE_INSTALLED_COMMONAPI "Set to OFF to use the local (build tree) version
 message(STATUS "USE_INSTALLED_COMMONAPI is set to value: ${USE_INSTALLED_COMMONAPI}")
 
 if ("${USE_INSTALLED_COMMONAPI}" STREQUAL "ON")
-    FIND_PACKAGE(CommonAPI 3.1.2 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.2 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI 3.1.3 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.3 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
 else()
-    FIND_PACKAGE(CommonAPI 3.1.2 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.2 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI 3.1.3 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.3 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
 endif()
 
 message(STATUS "CommonAPI_CONSIDERED_CONFIGS: ${CommonAPI_CONSIDERED_CONFIGS}")
@@ -48,23 +46,23 @@ include(FindPkgConfig)
 ###############################################################################
 # find DBus by using the 'pkg-config' tool
 if (MSVC)
-	#Not beautiful, but it works
-	if (DBus_DIR)
-		if (DBus_BUILD_DIR)
-			set(DBus_INCLUDE_DIRS "${DBus_DIR};${DBus_BUILD_DIR};")
-		else ()
-			message (FATAL_ERROR "DBus_BUILD_DIR not set! Cannot continue.")
-		endif ()
-	else()
-		message (FATAL_ERROR "DBus_DIR not set! Cannot continue.")
-	endif ()
+    #Not beautiful, but it works
+    if (DBus_DIR)
+        if (DBus_BUILD_DIR)
+            set(DBus_INCLUDE_DIRS "${DBus_DIR};${DBus_BUILD_DIR};")
+        else ()
+            message (FATAL_ERROR "DBus_BUILD_DIR not set! Cannot continue.")
+        endif ()
+    else()
+        message (FATAL_ERROR "DBus_DIR not set! Cannot continue.")
+    endif ()
 else()
-	pkg_check_modules(DBus REQUIRED dbus-1>=1.4)
+    pkg_check_modules(DBus REQUIRED dbus-1>=1.4)
 endif()
 
 # SOME/IP
-find_package (CommonAPI-SomeIP 3.1.2 REQUIRED)
-find_package (vsomeip 1.2.0 REQUIRED)
+find_package (CommonAPI-SomeIP 3.1.3 REQUIRED)
+find_package (vsomeip 1.3.0 REQUIRED)
 
 # Source Files
 set(PRJ_SRC_PATH src)
@@ -81,7 +79,7 @@ FILE(GLOB PRJ_PROXY_GEN_SRCS ${PRJ_SRC_GEN_COMMONAPI_PATH}/*Proxy.cpp)
 FILE(GLOB PRJ_STUB_GEN_SRCS ${PRJ_SRC_GEN_COMMONAPI_PATH}/*Stub*.cpp)
 FILE(GLOB PRJ_STUB_IMPL_SRCS ${PRJ_SRC_PATH}/*Stub*.cpp)
 set(PRJ_CLIENT_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_CLIENT}.cpp ${PRJ_PROXY_GEN_SRCS})
-set(PRJ_SERVICE_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_SERVICE}.cpp ${PRJ_STUB_GEN_SRCS} ${PRJ_STUB_IMPL_SRCS} ${PRJ_TYPES_GEN_SRCS})
+set(PRJ_SERVICE_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_SERVICE}.cpp ${PRJ_SRC_PATH}/${PRJ_NAME}StubImpl.cpp ${PRJ_STUB_GEN_SRCS} ${PRJ_STUB_IMPL_SRCS})
 
 # Boost
 find_package( Boost 1.54 COMPONENTS system thread log REQUIRED )
@@ -99,7 +97,7 @@ message(STATUS "USE_INSTALLED_DBUS is set to value: ${USE_INSTALLED_DBUS}")
 
 include_directories(
     src-gen/core
-	src-gen/dbus
+    src-gen/dbus
     src-gen/someip
     ${COMMONAPI_INCLUDE_DIRS}
     ${COMMONAPI_DBUS_INCLUDE_DIRS}
@@ -113,7 +111,7 @@ link_directories(
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
-	${Boost_LIBRARY_DIR}
+    ${Boost_LIBRARY_DIR}
 )
 else()
 link_directories(
@@ -125,7 +123,7 @@ link_directories(
 )
 endif()
 
-set(LINK_LIBRARIES -Wl,--no-as-needed CommonAPI-DBus -Wl,--as-needed CommonAPI ${DBUS_LIBRARIES})
+set(LINK_LIBRARIES -Wl,--as-needed CommonAPI)
 
 # Build Client
 add_executable(${PRJ_NAME_CLIENT} ${PRJ_CLIENT_SRCS})
@@ -140,5 +138,5 @@ add_library (${PRJ_NAME}-dbus SHARED ${PRJ_DBUS_LIB_SRCS})
 target_link_libraries(${PRJ_NAME}-dbus CommonAPI-DBus)
 
 # Build SOME/IP library
-#add_library (${PRJ_NAME}-someip SHARED ${PRJ_SOMEIP_LIB_SRCS})
-#target_link_libraries(${PRJ_NAME}-someip CommonAPI-SomeIP)
+add_library (${PRJ_NAME}-someip SHARED ${PRJ_SOMEIP_LIB_SRCS})
+target_link_libraries(${PRJ_NAME}-someip CommonAPI-SomeIP)

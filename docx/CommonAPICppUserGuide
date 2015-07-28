@@ -80,6 +80,10 @@ CommonAPI was developed for GENIVI and will run on most Linux platforms. Additio
 - Do not use earlier versions of Eclipse as Luna; it could work but there is no warranty.
 - The build tool chain for the code generators is Maven; make sure that at least Maven 3 is available. If you use eclipse make sure that the maven plug-in is installed.
 
+=== Dependencies
+.CommonAPI-Dependencies
+image::{imagedir}/CommonAPI-Dependencies.png[CommonAPI Dependencies]
+
 === Compile Runtime 
 
 ==== Command-line

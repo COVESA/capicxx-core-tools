@@ -86,7 +86,7 @@ public enum CommandExecuter
     private final String       HELP_ID_TEXT_MESSAGE                        = "%s: %s";
     private final String       HELP_WRONG_ID_MESSAGE                       = HELP_ID_TEXT_MESSAGE + "%nID does not match: %s";
     private final String       HELP_SEVERAL_COMMANDS_MESSAGE               = "Several console commands are compatible to this set of parameters. Add ID option to select the desired one.%n";
-    private final String       EXECUTE_COMMAND_MESSAGE                     = "Excuting %s...%n" ;
+    private final String       EXECUTE_COMMAND_MESSAGE                     = "Executing %s...%n" ;
     private final String       LAUNCHER_NAME;
     private final Option       ID_OPTION;
 

@@ -34,7 +34,9 @@ int main() {
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.Manager";
-    std::shared_ptr<E05ManagerProxy<>> myProxy = runtime->buildProxy<E05ManagerProxy>(domain, instance);
+    const std::string connectionIdClient = "client-sample";
+
+    std::shared_ptr<E05ManagerProxy<>> myProxy = runtime->buildProxy<E05ManagerProxy>(domain, instance, connectionIdClient);
     while (!myProxy->isAvailable()) {
         usleep(10);
     }
