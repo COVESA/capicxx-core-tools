@@ -308,7 +308,7 @@ class FInterfaceStubGenerator {
             «ENDFOR»
 
             «FOR managed : fInterface.managedInterfaces»
-                bool «managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»>);
+                bool «managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.getStubFullClassName»>);
                 «managed.stubRegisterManagedMethod»;
                 bool «managed.stubDeregisterManagedName»(const std::string&);
                 std::set<std::string>& «managed.stubManagedSetGetterName»();
@@ -485,7 +485,7 @@ class FInterfaceStubGenerator {
         «ENDFOR»
 
         «FOR managed : fInterface.managedInterfaces»
-            bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubClassName»> _stub) {
+            bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubFullClassName»> _stub) {
                 autoInstanceCounter_++;
                 std::stringstream ss;
                 ss << «fInterface.stubCommonAPIClassName»::stubAdapter_->getAddress().getInstance() << ".i" << autoInstanceCounter_;

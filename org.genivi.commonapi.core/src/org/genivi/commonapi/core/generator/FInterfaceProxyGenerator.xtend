@@ -270,7 +270,7 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
                 «IF fInterface.base != null»
-                «fInterface.base.proxyClassName»<_AttributeExtensions...>(delegate),
+                «fInterface.base.getFullName()»Proxy<_AttributeExtensions...>(delegate),
                 «ENDIF»
                 _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...,
                 delegate_(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)) {

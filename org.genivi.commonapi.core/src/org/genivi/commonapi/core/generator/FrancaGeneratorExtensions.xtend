@@ -1435,11 +1435,11 @@ class FrancaGeneratorExtensions {
     }
 
     def stubRegisterManagedMethod(FInterface fInterface) {
-        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '>, const std::string&)'
+        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.getStubFullClassName + '>, const std::string&)'
     }
 
     def stubRegisterManagedMethodImpl(FInterface fInterface) {
-        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.stubClassName + '> _stub, const std::string &_instance)'
+        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.getStubFullClassName + '> _stub, const std::string &_instance)'
     }    
 
     def stubDeregisterManagedName(FInterface fInterface) {
@@ -1763,7 +1763,7 @@ class FrancaGeneratorExtensions {
 		for(depl : fdmodel.getDeployments()) {
 			if (depl instanceof FDInterface) {
 				var specname = depl.spec.name
-				if(specname.contains(selector)) {
+				if(specname != null && specname.contains(selector)) {
 				fdinterfaces.add(depl);
 				}
 			}
@@ -1782,7 +1782,7 @@ class FrancaGeneratorExtensions {
 		for(depl : fdmodel.getDeployments()) {
 			if (depl instanceof FDTypes) {
 				var specname = depl.spec?.name
-				if(specname.contains(selector)) {
+				if(specname != null && specname.contains(selector)) {
 				fdTypes.add(depl);
 				}
 			}
@@ -1837,4 +1837,103 @@ class FrancaGeneratorExtensions {
 		}
 	}	
 
+    def public getAllReferencedFInterfaces(FModel fModel)
+    {
+        val referencedFInterfaces = fModel.interfaces.toSet
+        fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
+        fModel.interfaces.forEach[managedInterfaces.forEach[addFInterfaceTree(referencedFInterfaces)]]
+        return referencedFInterfaces
+    }
+
+    def public void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences)
+    {
+        if(!fInterfaceReferences.contains(fInterface))
+        {
+            fInterfaceReferences.add(fInterface)
+            fInterface.base?.addFInterfaceTree(fInterfaceReferences)
+        }
+    }
+
+    def public getAllReferencedFTypes(FModel fModel)
+    {
+        val referencedFTypes = new HashSet<FType>
+
+        fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]
+
+        fModel.interfaces.forEach [
+            attributes.forEach[type.addDerivedFTypeTree(referencedFTypes)]
+            types.forEach[addFTypeDerivedTree(referencedFTypes)]
+            methods.forEach [
+                inArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
+                outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
+            ]
+            broadcasts.forEach [
+                outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
+            ]
+        ]
+
+        return referencedFTypes
+    }
+
+    def public void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences)
+    {
+        fTypeRef.derived?.addFTypeDerivedTree(fTypeReferences)
+    }
+
+    def public dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fTypeDef))
+        {
+            fTypeReferences.add(fTypeDef)
+            fTypeDef.actualType.addDerivedFTypeTree(fTypeReferences)
+        }
+    }
+
+    def public dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fArrayType))
+        {
+            fTypeReferences.add(fArrayType)
+            fArrayType.elementType?.addDerivedFTypeTree(fTypeReferences)
+        }
+    }
+
+    def public dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fMapType))
+        {
+            fTypeReferences.add(fMapType)
+            fMapType.keyType.addDerivedFTypeTree(fTypeReferences)
+            fMapType.valueType.addDerivedFTypeTree(fTypeReferences)
+        }
+    }
+
+    def public dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fStructType))
+        {
+            fTypeReferences.add(fStructType)
+            fStructType.base?.addFTypeDerivedTree(fTypeReferences)
+            fStructType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
+        }
+    }
+
+    def public dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fEnumerationType))
+        {
+            fTypeReferences.add(fEnumerationType)
+            fEnumerationType.base?.addFTypeDerivedTree(fTypeReferences)
+        }
+    }
+
+    def public dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences)
+    {
+        if(!fTypeReferences.contains(fUnionType))
+        {
+            fTypeReferences.add(fUnionType)
+            fUnionType.base?.addFTypeDerivedTree(fTypeReferences)
+            fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
+        }
+    }
 }
