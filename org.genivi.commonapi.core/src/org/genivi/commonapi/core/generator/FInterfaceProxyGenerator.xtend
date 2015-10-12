@@ -157,8 +157,8 @@ class FInterfaceProxyGenerator {
         class «fInterface.proxyClassName»
             : virtual public «fInterface.elementName», 
               virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base != null»
-              virtual public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
-              public _AttributeExtensions... {
+              public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
+              virtual public _AttributeExtensions... {
         public:
             «fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate);
             ~«fInterface.proxyClassName»();
