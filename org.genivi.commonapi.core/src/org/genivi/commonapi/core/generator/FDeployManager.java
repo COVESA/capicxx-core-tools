@@ -61,6 +61,17 @@ public class FDeployManager {
 	 * @return the root model or null in case of an error.
 	 */
 	public EObject loadModel(URI uri, URI root) {
+		
+		// Check if this file is already loaded
+		if(deploymentModels.keySet().contains(uri.toString())) {
+			//System.out.println("aborting: " + uri.toString() + " root: " + root.toString());
+			return null;
+		}
+		if(fidlModels.keySet().contains(uri.toString())) {
+			//System.out.println("aborting: " + uri.toString() + " root: " + root.toString());
+			return null;
+		}
+		
 		// resolve the input uri, in case it is a relative path
 		URI absURI = uri.resolve(root);
 		if (!uri.equals(absURI)) {
@@ -76,7 +87,7 @@ public class FDeployManager {
 			// fdepl/fidl files
 			resource.unload();
 			resource.load(Collections.EMPTY_MAP);
-			//System.out.println("Load resource: " + resource.toString());
+			//System.out.println("loaded: " + resource.toString() + " root: " + root.toString());
 		} catch (Exception e) {
 			// Don't show an error message here, because code may be generated
 			// from an included fidl file.
@@ -96,7 +107,7 @@ public class FDeployManager {
 				// by its relative path
 				resourceSet.getURIConverter().getURIMap()
 						.put(importURI, resolvedURI);
-				String uriName = resolvedURI.lastSegment();
+				String uriName = resolvedURI.toString();
 				//System.out.println("Load model from import " + uriName);
 				EObject importModel = loadModel(resolvedURI, root);
 				if (importModel != null) {
