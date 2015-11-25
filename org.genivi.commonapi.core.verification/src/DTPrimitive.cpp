@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
-#include "v1_0/commonapi/datatypes/primitive/TestInterfaceProxy.hpp"
+#include "v1/commonapi/datatypes/primitive/TestInterfaceProxy.hpp"
 #include "stub/DTPrimitiveStub.h"
 
 const std::string domain = "local";
@@ -69,6 +69,15 @@ protected:
 
     void TearDown() {
         ASSERT_TRUE(runtime_->unregisterService(domain, v1_0::commonapi::datatypes::primitive::DTPrimitiveStub::StubInterface::getInterface(), testAddress));
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     bool received_;
@@ -99,7 +108,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     uint64_t uint64TestValue = +4000000000000000004;
     int64_t int64TestValue = -5000000005;
     bool booleanTestValue = true;
-    float floatTestValue = 1.01;
+    float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
     //ByteBuffer byteBufferTestValue
@@ -180,7 +189,7 @@ TEST_F(DTPrimitive, AttributeSet) {
     uint64_t uint64TestValue = +4000000000000000004;
     int64_t int64TestValue = -5000000005;
     bool booleanTestValue = true;
-    float floatTestValue = 1.01;
+    float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
     //ByteBuffer byteBufferTestValue
@@ -267,7 +276,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
     uint64_t uint64TestValue = +4000000000000000004;
     int64_t int64TestValue = -5000000005;
     bool booleanTestValue = true;
-    float floatTestValue = 1.01;
+    float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
     //ByteBuffer byteBufferTestValue
@@ -346,6 +355,33 @@ TEST_F(DTPrimitive, BroadcastReceive) {
 
     usleep(100000);
     ASSERT_TRUE(received_);
+}
+
+/**
+* @test Test broadcast with empty broadcast
+*   - Subscribe to broadcast which does not contain any datatypes
+*   - Call function twice to cause the stub to fire a broadcast event
+*   - Check if the callback function was called twice
+*/
+TEST_F(DTPrimitive, EmptyBroadcastReceive) {
+
+    CommonAPI::CallStatus callStatus;
+    std::uint32_t callbackCalled = 0;
+    int numberFunctionCalls = 2;
+
+    received_ = false;
+    testProxy_->getBTestEmptyEvent().subscribe([&]() {
+        received_ = true;
+        callbackCalled++;
+    });
+
+    for (int var = 0; var < numberFunctionCalls; ++var) {
+        testProxy_->fTestEmptyBroadcast(callStatus);
+        usleep(100000);
+    }
+
+    ASSERT_TRUE(received_);
+    ASSERT_EQ(numberFunctionCalls, callbackCalled);
 }
 
 int main(int argc, char** argv) {

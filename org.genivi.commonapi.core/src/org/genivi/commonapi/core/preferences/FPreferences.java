@@ -62,21 +62,23 @@ public class FPreferences {
         if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_SKELETON)) {
             preferences.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
         }    
-        
         if (!preferences.containsKey(PreferenceConstants.P_LICENSE)) {
             preferences.put(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
         }
-        if (!preferences.containsKey(PreferenceConstants.P_GENERATESTUB)) {
-            preferences.put(PreferenceConstants.P_GENERATESTUB, "true");
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_COMMON)) {
+        	preferences.put(PreferenceConstants.P_GENERATE_COMMON, "true");
         }
-        if (!preferences.containsKey(PreferenceConstants.P_GENERATEPROXY)) {
-            preferences.put(PreferenceConstants.P_GENERATEPROXY, "true");
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_STUB)) {
+            preferences.put(PreferenceConstants.P_GENERATE_STUB, "true");
+        }
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_PROXY)) {
+            preferences.put(PreferenceConstants.P_GENERATE_PROXY, "true");
         }
         if (!preferences.containsKey(PreferenceConstants.P_SKELETONPOSTFIX)) {
             preferences.put(PreferenceConstants.P_SKELETONPOSTFIX, "Default");
         }
-        if (!preferences.containsKey(PreferenceConstants.P_GENERATESKELETON)) {
-            preferences.put(PreferenceConstants.P_GENERATESKELETON, "false");
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_SKELETON)) {
+            preferences.put(PreferenceConstants.P_GENERATE_SKELETON, "false");
         }
         if (!preferences.containsKey(PreferenceConstants.P_LOGOUTPUT)) {
             preferences.put(PreferenceConstants.P_LOGOUTPUT, "true");
@@ -84,7 +86,15 @@ public class FPreferences {
         if (!preferences.containsKey(PreferenceConstants.P_ENUMPREFIX)) {
             preferences.put(PreferenceConstants.P_ENUMPREFIX, "");
         }
-        
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_CODE)) {
+            preferences.put(PreferenceConstants.P_GENERATE_CODE, "true");    
+        }
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_DEPENDENCIES)) {
+            preferences.put(PreferenceConstants.P_GENERATE_DEPENDENCIES, "true");    
+        }
+        if (!preferences.containsKey(PreferenceConstants.P_GENERATE_SYNC_CALLS)) {
+            preferences.put(PreferenceConstants.P_GENERATE_SYNC_CALLS, "true");    
+        }
     }
 
     public String getPreference(String preferencename, String defaultValue) {

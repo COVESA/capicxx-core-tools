@@ -7,7 +7,7 @@
 #include <iostream>
 #include "THMainLoopIntegrationStub.h"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace threading {
 
@@ -18,10 +18,10 @@ THMainLoopIntegrationStub::THMainLoopIntegrationStub() {
 THMainLoopIntegrationStub::~THMainLoopIntegrationStub() {
 }
 
-void THMainLoopIntegrationStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, uint8_t x, testMethodReply_t _reply) {
-
-	uint8_t y = x;
-    x_ = x;
+void THMainLoopIntegrationStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x, testMethodReply_t _reply) {
+    (void)_client;
+    uint8_t y = _x;
+    x_ = _x;
 
     uint8_t broadcastNumber = 0;
     broadcastNumber++;
@@ -40,4 +40,4 @@ void THMainLoopIntegrationStub::testMethod(const std::shared_ptr<CommonAPI::Clie
 
 } /* namespace threading */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */

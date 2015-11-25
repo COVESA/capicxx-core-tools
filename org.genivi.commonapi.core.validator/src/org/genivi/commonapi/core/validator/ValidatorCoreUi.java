@@ -24,8 +24,8 @@ import org.franca.core.franca.FModel;
 import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
 import org.genivi.commonapi.core.verification.ValidatorCore;
+import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
-import org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage;
 
 /**
  * This validator is automatically triggered from the XText editor.
@@ -44,7 +44,7 @@ public class ValidatorCoreUi extends ValidatorCore {
         }
         // call the super validation method
         super.validateModel(model, messageAcceptor);
-        
+
         Resource res = model.eResource();
         final Path platformPath = new Path(res.getURI().toPlatformString(true));
         final IFile file = ResourcesPlugin.getWorkspace().getRoot()
@@ -110,7 +110,7 @@ public class ValidatorCoreUi extends ValidatorCore {
         }
         start.clear();
     }
-    
+
     private HashMap<String, HashSet<String>> buildImportList(
             HashMap<String, HashSet<String>> rekImportList) {
         HashMap<String, HashSet<String>> helpMap = new HashMap<String, HashSet<String>>();
@@ -157,9 +157,9 @@ public class ValidatorCoreUi extends ValidatorCore {
         } else {
             return rekImportList;
         }
-    }    
-    
-    
+    }
+
+
     protected void findCyclicImports(String filePath, String prevFilePath,
             ArrayList<String> cyclicList, Import imp,
             ValidationMessageAcceptor messageAcceptor) {
@@ -191,17 +191,17 @@ public class ValidatorCoreUi extends ValidatorCore {
             }
             cyclicList.remove(cyclicList.size() - 1);
         }
-    }    
-    
+    }
+
 
     /**
      * Check whether the validation is enabled in the eclipse preferences
      * @return
      */
     public boolean isValidatorEnabled() {
-    	
+
     	IPreferenceStore prefs = CommonApiUiPlugin.getValidatorPreferences();
-    	return prefs != null && prefs.getBoolean(ValidatorCorePreferencesPage.ENABLED_CORE_VALIDATOR);
+    	return prefs != null && prefs.getBoolean(PreferenceConstants.P_ENABLE_CORE_VALIDATOR);
     }
 
 }

@@ -8,85 +8,85 @@
 package commonapi.examples
 
 interface E04PhoneBook {
-	version { major 0 minor 0 }
+    version { major 0 minor 0 }
 
-	<** @description : the phone book itself **>
-	attribute phoneBookStruct [] phoneBook readonly
+    <** @description : the phone book itself **>
+    attribute phoneBookStruct [] phoneBook readonly
 
-	<** @description : filter operations **>
-	method setPhoneBookDataFilter {
-		in {
-			elementFilterStruct elementFilter
-			contentFilterStruct [] contentFilter
-		}
-	}
+    <** @description : filter operations **>
+    method setPhoneBookDataFilter {
+        in {
+            elementFilterStruct elementFilter
+            contentFilterStruct [] contentFilter
+        }
+    }
 
-	<** @description : filter result **>
-	broadcast phoneBookDataSet selective {
-		out {
-			phoneBookDataElementMap [] phoneBookDataSet
-		}
-	}
+    <** @description : filter result **>
+    broadcast phoneBookDataSet selective {
+        out {
+            phoneBookDataElementMap [] phoneBookDataSet
+        }
+    }
 
-	<** @description : Data types of the phone book itself **>
-	enumeration phoneNumberEnum {
-		WORK
-		HOME
-		MOBILE1
-		MOBILE2
-	}
+    <** @description : Data types of the phone book itself **>
+    enumeration phoneNumberEnum {
+        WORK
+        HOME
+        MOBILE1
+        MOBILE2
+    }
 
-	map phoneNumberMap {
-		phoneNumberEnum to String
-	}
+    map phoneNumberMap {
+        phoneNumberEnum to String
+    }
 
-	struct phoneBookStruct {
-		String name
-		String forename
-		String organisation
-		String address
-		String email
-		phoneNumberMap phoneNumber
-	}
+    struct phoneBookStruct {
+        String name
+        String forename
+        String organisation
+        String address
+        String email
+        phoneNumberMap phoneNumber
+    }
 
-	<** @description : Data types for the filter operations **>
+    <** @description : Data types for the filter operations **>
 
-	struct elementFilterStruct {
-		Boolean addName
-		Boolean addForename
-		Boolean addOrganisation
-		Boolean addAddress
-		Boolean addEmail
-		Boolean addPhoneNumber
-	}
+    struct elementFilterStruct {
+        Boolean addName
+        Boolean addForename
+        Boolean addOrganisation
+        Boolean addAddress
+        Boolean addEmail
+        Boolean addPhoneNumber
+    }
 
-	struct contentFilterStruct {
-		phoneBookDataElementEnum element
-		String expression
-	}
+    struct contentFilterStruct {
+        phoneBookDataElementEnum element
+        String expression
+    }
 
-	<** @description : Data types for the result of the phone book filter **>
-	enumeration phoneBookDataElementEnum {
-		NAME
-		FORENAME
-		ORGANISATION
-		ADDRESS
-		EMAIL
-		PHONENUMBER
-	}
+    <** @description : Data types for the result of the phone book filter **>
+    enumeration phoneBookDataElementEnum {
+        NAME
+        FORENAME
+        ORGANISATION
+        ADDRESS
+        EMAIL
+        PHONENUMBER
+    }
 
-	struct phoneBookDataElement polymorphic {
-	}
+    struct phoneBookDataElement polymorphic {
+    }
 
-	struct phoneBookDataElementString extends phoneBookDataElement {
-		String content
-	}
+    struct phoneBookDataElementString extends phoneBookDataElement {
+        String content
+    }
 
-	struct phoneBookDataElementPhoneNumber extends phoneBookDataElement {
-		phoneNumberMap content
-	}
+    struct phoneBookDataElementPhoneNumber extends phoneBookDataElement {
+        phoneNumberMap content
+    }
 
-	map phoneBookDataElementMap {
-		phoneBookDataElementEnum to phoneBookDataElement
-	}
+    map phoneBookDataElementMap {
+        phoneBookDataElementEnum to phoneBookDataElement
+    }
 }

@@ -8,7 +8,7 @@
 #ifndef E05SPECIALDEVICESTUBIMPL_H_
 #define E05SPECIALDEVICESTUBIMPL_H_
 
-#include <v1_0/commonapi/examples/E05SpecialDeviceStubDefault.hpp>
+#include <v1/commonapi/examples/E05SpecialDeviceStubDefault.hpp>
 
 using namespace v1_0::commonapi::examples;
 
@@ -17,7 +17,8 @@ public:
     E05SpecialDeviceStubImpl();
     virtual ~E05SpecialDeviceStubImpl();
 
-    void doSomethingSpecial();
+    void doSomethingSpecial(const std::shared_ptr<CommonAPI::ClientId> _client,
+                            doSomethingSpecialReply_t _reply);
 };
 
 #endif /* E05SPECIALDEVICESTUBIMPL_H_ */

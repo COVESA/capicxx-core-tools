@@ -24,15 +24,15 @@ int main() {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
     std::shared_ptr<E05ManagerStubImpl> myService = std::make_shared < E05ManagerStubImpl > (managerInstanceName);
 
-	bool successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
+    bool successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
 
-	while (!successfullyRegistered) {
-		std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-		successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
-	}
+    while (!successfullyRegistered) {
+        std::cout << "Register Service failed, trying again in 100 milliseconds..." << std::endl;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        successfullyRegistered = runtime->registerService("local", managerInstanceName, myService, connectionIdService);
+    }
 
-	std::cout << "Successfully Registered Service!" << std::endl;
+    std::cout << "Successfully Registered Service!" << std::endl;
 
     while (true) {
         // Simulate external events

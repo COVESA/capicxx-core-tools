@@ -192,7 +192,8 @@ You can build all code generators by calling maven from the command-line. Open a
 mvn -Dtarget.id=org.genivi.commonapi.core.target clean verify
 ----
 
-After the successful build you will find the commond-line generators archived in org.genivi.commonapi.core.cli.product/target/products/commonapi-generator.zip and the update-sites in org.genivi.commonapi.core.updatesite/target.
+After the successful build you will find the commond-line generators archived in 
+_org.genivi.commonapi.core.cli.product/target/products/commonapi-generator.zip_ and the update-sites in org.genivi.commonapi.core.updatesite/target.
 
 ==== Eclipse
 
@@ -545,58 +546,85 @@ The parameters of the code generator are now significantly extended. The usage o
 commonapi-generator-linux-x86 <options> <fidl files>
 ----
 
-[cols="6,10", options="header"]
+[cols="8,10", options="header"]
 |=========================================================
 
 |Options|
 Description
 
 |+-h, --help+|
-Print out options of the code generator
+display help of available console commands
 
-|+-d, --dest+ _<arg>_|
+|+-p,--plugins+ |
+print plug-in versions
+
+|+-v,--version+ |
+print code generator version
+
+|+-d,--dest+ _<arg>_ |
 The default output directory
 
-|+-dc, --dest-common+ _<arg>_|
-The directory for the common code (relevant for proxy and stub, e.g. type definitions)
+|+-dc,--dest-common+ _<arg>_ |
+The directory for the common code
 
-|+-dp, --dest-proxy+ _<arg>_|
+|+-dp,--dest-proxy+ _<arg>_ |
 The directory for proxy code
 
-|+-ds, --dest-stub+ _<arg>_|
+|+-ds,--dest-stub+ _<arg>_ |
 The directory for stub code
 
-|+-dsk, --dest-skel+ _<arg>_|
+|+-dsk,--dest-skel+ _<arg>_ |
 The directory for the skeleton code
 
-|+-l, --license+ _<arg>_|
+|+-l,--license+ _<arg>_ |
 The file path to the license text that will be added to each generated file
 
-|+-ll, --loglevel+ _<arg>_|
+|+-ll,--loglevel+ _<arg>_ |
 The log level (quiet or verbose)
 
-|+-np, --no-proxy+ _<arg>_|
+|+-nc,--no-common+ |
+Switch off generation of common code
+
+|+-ng,--no-gen+ |
+Switch off code generation completely
+
+|+-np,--no-proxy+ |
 Switch off generation of proxy code
 
-|+-ns, --no-stub+ _<arg>_|
+|+-ns,--no-stub+ |
 Switch off generation of stub code
 
-|+-pre, --prefix-enum-literal+ _<arg>_|
+|+-nsc,--no-sync-calls+ |
+Switch off code generation of synchronous methods
+
+|+-nv,--no-val+ |
+Switch off validation of the fidl file
+
+|+-pf,--printfiles+ |
+Print out generated files
+
+|+-pre,--prefix-enum-literal+ _<arg>_ |
 The prefix added to all generated enumeration literals
 
-|+-sk, --skel+ _<arg>_|
- Generate skeleton code. The optional argument specifies the postfix. Without argument, the postfix is 'default'
+|+-sk,--skel+ _<arg>_ |
+Generate skeleton code. The optional argument specifies the postfix. Without argument, the postfix is 'default'
+
+|+-sp,--searchpath+ _<arg>_ |
+The search path to contain fidl/fdepl files
+
+|+-wod,--without-dependencies+ |
+Switch off code generation of dependencies
 |=========================================================
 
 Please note:
 
-- It is now possible to define different destination directories for proxy and stub code and to switch off the generation of proxy or stub code.
+- It is now possible to define different destination directories for proxy, stub and common code and to switch off the generation of proxy, stub or common code.
 - The CommonAPI 2.x code generator always generated default implementations for the stubs (skeleton). This is not the default behavior anymore. Call the code generator with the option +-sk+ without an argument to get the same result as before.
 -  It is possible to influence the literals of enumerations by setting the option +-pre+. With this option you can add a custom prefix to all generated enumeration literals.
 
 ==== Version In Namespace
 
-Since CommonAPI version 3, the version of the Franca interface becomes part of the C++ namespace. The version is added at the beginning of the namespace path, e.g. for an interface with version 1.0 the modified namespace begins with +v1_0+. Please refer to chapter _Namespaces_ for further information.    
+Since CommonAPI version 3, the version of the Franca interface becomes part of the C++ namespace. The version is added at the beginning of the namespace path, e.g. for an interface with version 1.0 the modified namespace begins with +v1+. Please refer to chapter _Namespaces_ for further information.    
  
 ==== New Runtime Loading Concept
 
@@ -693,36 +721,45 @@ See the example +E01HelloWorld+:
 ----
 package commonapi.examples
 
-
 interface E01HelloWorld {
-	version { major 1 minor 0 }
+    version { major 0 minor 1 }
 
 	// Interface definition here
+
 }
 ----
 
 The generated code looks as follows:
 [source,{cppstr}]
 ----
-namespace v1_0 {
+namespace v0 {
 namespace commonapi {
 namespace examples {
 
 class E01HelloWorld {
 public:
-    
-// Code here
+    virtual ~E01HelloWorld() { }
+
+    static inline const char* getInterface();
+    static inline CommonAPI::Version getInterfaceVersion();
+};
+
+const char* E01HelloWorld::getInterface() {
+    return ("commonapi.examples.E01HelloWorld");
+}
 
 CommonAPI::Version E01HelloWorld::getInterfaceVersion() {
-    return CommonAPI::Version(1, 0);
+    return CommonAPI::Version(0, 1);
 }
+
 
 } // namespace examples
 } // namespace commonapi
-} // namespace v1_0
+} // namespace v0
+
 ----
 
-The generated code will be generated into the directory +src-gen/v1_0/commonapi/examples+.
+The generated code will be generated into the directory +src-gen/v0/commonapi/examples+.
 
 The main reason for adding the version at the beginning of the namespace is that we consider the name of the interfaces together with the package path (fully qualified name) as a unit, as it is specified in the Franca file. This name should not be destroyed by an intervening add on.
 
@@ -831,41 +868,51 @@ The verification tests are implemented by using _googletest_ (http://code.google
 
 The first step is to create the glue code library. The term "glue code" refers to a binary that contains the binding specific generated code from the provided Franca files which you can find in _org.genivi.commonapi.core.verification/fidl_. The glue code library must contain the generated binding specific proxy and stub files. Please follow the instructions in your binding code for creating the glue code library.
 
-Now create a _build_ directory in the verification project and start CMake. Call CMake with the following parameters:
+Now create a _build_ directory in the verification project and start CMake.
+The Following parameters can be applied:
 
-[width="80%",cols="5,5"]
+[width="100%",cols="8,12"]
 |=========================================================
 
 |+-DUSE_INSTALLED_COMMONAPI+ |
 OFF/ON
 
-|+-DBINDING_NAME+ |
-DBus/SomeIP/...
+|+-DTESTS_BAT+ |
+Set to ON to build a subset of tests covering basic functionality which
+also have little execution time to serve as build acceptance tests
 
-|+-DCMAKE_BINDING_NAME+ |
-CommonAPI-DBus/CommonAPI-SomeIP/...
-
-|+-DCMAKE_BINDING_PATH+ |
-Path to the binding library
-
-|+-DCMAKE_GLUECODE_NAME+ |
-Name of the glue code library
-
-|+DCMAKE_GLUECODE_PATH+ |
-Path to the glue code library
-
-|+-DBINDING_EXTRA+ |
-Path to additional libraries which are needed by the linker (e.g. _libdbus_)
+|+-DTESTS_EXTRA+ |
+Set to ON to build extra tests for stability and performance testing
 
 |+-DCOMMONAPI_CMAKE_INSTALL_PATH+ |
 Path to the CommonAPI library
 
-|+-DCOMMONAPI_DBUS_TOOL_GENERATOR+ |
-Code generator executable with path
+|+-DCMAKE_GLUECODE_SOMEIP_NAME+ | 
+Name of the someIP gluecode library (e.g. "SomeIPGlue" for "libSomeIPGlue.so")
+
+|+-DCMAKE_GLUECODE_DBUS_NAME+ |
+Name of the dbus gluecode library (e.g. "DBusGlue" for "libDBusGlue.so")
+
+|+-DSomeIPGlue_DIR+ |
+Path to the someIP gluecode library 
+(e.g. TOOLS_DIR/org.genivi.commonapi.someip.verification/build)
+
+|+-DDBusGlue_DIR+ |
+Path to the dbus gluecode library 
+(e.g. DBUS_TOOLS_DIR/org.genivi.commonapi.dbus.verification/build)
+
+|+-DCOMMONAPI_CMAKE_INSTALL_PATH+ |
+Path to the CommonAPI library
+
+|+-DCommonAPI_DIR+ | 
+Path to CommonAPI 
+
+|+-DCOMMONAPI_TOOL_GENERATOR+ |
+Path to the CommonAPI core generator executable
 
 |=========================================================
 
-After that start _make check_ to build and run the verification tests.  
+After that start _make -j4_ and _ctest_ to build and run the verification tests.  
 
 === Formatting Code
 

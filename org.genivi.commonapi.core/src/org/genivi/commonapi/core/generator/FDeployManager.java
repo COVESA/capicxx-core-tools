@@ -61,24 +61,20 @@ public class FDeployManager {
 	 * @return the root model or null in case of an error.
 	 */
 	public EObject loadModel(URI uri, URI root) {
-		
 		// Check if this file is already loaded
-		if(deploymentModels.keySet().contains(uri.toString())) {
-			//System.out.println("aborting: " + uri.toString() + " root: " + root.toString());
-			return null;
-		}
-		if(fidlModels.keySet().contains(uri.toString())) {
-			//System.out.println("aborting: " + uri.toString() + " root: " + root.toString());
+		if(deploymentModels.keySet().contains(uri.toString())
+				|| fidlModels.keySet().contains(uri.toString())) {
 			return null;
 		}
 		
-		// resolve the input uri, in case it is a relative path
 		URI absURI = uri.resolve(root);
+		
 		if (!uri.equals(absURI)) {
 			// add this pair to URI converter so that others can get the URI by
 			// its relative path
 			resourceSet.getURIConverter().getURIMap().put(uri, absURI);
 		}
+		
 		// load root model
 		Resource resource = null;
 		try {
@@ -87,13 +83,13 @@ public class FDeployManager {
 			// fdepl/fidl files
 			resource.unload();
 			resource.load(Collections.EMPTY_MAP);
-			//System.out.println("loaded: " + resource.toString() + " root: " + root.toString());
 		} catch (Exception e) {
 			// Don't show an error message here, because code may be generated
 			// from an included fidl file.
-			//System.err.println("Failed to load model from : " + absURI);
+			// System.err.println("Failed to load model from : " + absURI + "(" + e.getMessage() +")"); 
 			return null;
 		}
+		
 		EObject model = resource.getContents().get(0);
 
 		// load all its imports recursively
@@ -108,7 +104,6 @@ public class FDeployManager {
 				resourceSet.getURIConverter().getURIMap()
 						.put(importURI, resolvedURI);
 				String uriName = resolvedURI.toString();
-				//System.out.println("Load model from import " + uriName);
 				EObject importModel = loadModel(resolvedURI, root);
 				if (importModel != null) {
 					if(importModel instanceof FDModel && !(uriName.contains("_spec"))) {
@@ -159,7 +154,7 @@ public class FDeployManager {
 		}
 		return null;
 	}
-
+	
 	public Map<String, FDModel> getDeploymentModels() {
 		return deploymentModels;
 	}

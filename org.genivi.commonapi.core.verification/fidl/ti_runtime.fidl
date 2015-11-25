@@ -4,8 +4,8 @@
 package commonapi.runtime
 
 interface TestInterface {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	method testMethod {
-	}
+    method testMethod {
+    }
 }

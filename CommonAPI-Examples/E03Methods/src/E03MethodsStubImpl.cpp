@@ -24,9 +24,9 @@ void E03MethodsStubImpl::incCounter() {
 ;
 
 void E03MethodsStubImpl::foo(const std::shared_ptr<CommonAPI::ClientId> _client,
-	    		int32_t _x1,
-	    		std::string _x2,
-	    		fooReply_t _reply) {
+                int32_t _x1,
+                std::string _x2,
+                fooReply_t _reply) {
 
     std::cout << "foo called, setting new values." << std::endl;
 

@@ -7,7 +7,7 @@
 
 #include "PFPrimitiveStub.h"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace performance {
 namespace primitive {
@@ -21,18 +21,18 @@ PFPrimitiveStub::~PFPrimitiveStub() {
 
 }
 
-void PFPrimitiveStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId,
-		TestInterface::TestArray x, testMethodReply_t _reply) {
+void PFPrimitiveStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
+        TestInterface::TestArray _x, testMethodReply_t _reply) {
+    (void)_client;
+    TestInterface::TestArray y;
 
-	TestInterface::TestArray y;
-
-	// Copy array!
-	y = x;
-	_reply(y);
+    // Copy array!
+    y = _x;
+    _reply(y);
 }
 
 } /* namespace primitive */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace  v1_0     */
+} /* namespace  v1     */
 

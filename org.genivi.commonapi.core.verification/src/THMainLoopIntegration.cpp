@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "utils/VerificationMainLoop.h"
-#include "v1_0/commonapi/threading/TestInterfaceProxy.hpp"
+#include "v1/commonapi/threading/TestInterfaceProxy.hpp"
 #include "utils/VerificationMainLoop.h"
 #include "stub/THMainLoopIntegrationStub.h"
 
@@ -51,17 +51,17 @@ protected:
     }
 
     void TearDown() {
-    	runtime_->unregisterService(domain, v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(), instance);
+        runtime_->unregisterService(domain, v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(), instance);
 
         if (mainLoopForProxy_->isRunning()) {
-        	std::future<bool> proxyStopped = mainLoopForProxy_->stop();
-        	// synchronisation with stopped mainloop
-        	proxyStopped.get();
+            std::future<bool> proxyStopped = mainLoopForProxy_->stop();
+            // synchronisation with stopped mainloop
+            proxyStopped.get();
         }
         if (mainLoopForStub_->isRunning()) {
-        	std::future<bool> stubStopped = mainLoopForStub_->stop();
-        	// synchronisation with stopped mainloop
-        	stubStopped.get();
+            std::future<bool> stubStopped = mainLoopForStub_->stop();
+            // synchronisation with stopped mainloop
+            stubStopped.get();
         }
 
         usleep(200);
@@ -117,7 +117,7 @@ TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
-    	usleep(100);
+        usleep(100);
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
@@ -136,12 +136,12 @@ TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 
 /**
 * @test Verifies Transport Reading When Dispatching Watches.
-* 	- get proxy with available flag = true
-* 	- generate big test data
-* 	- send asynchronous test message
-* 	- dispatch dispatchSource: the message must not be arrived
-* 	- dispatch watches (reads transport).
-* 	- dispatch dispatchSources again: now the message must be arrived.
+*     - get proxy with available flag = true
+*     - generate big test data
+*     - send asynchronous test message
+*     - dispatch dispatchSource: the message must not be arrived
+*     - dispatch watches (reads transport).
+*     - dispatch dispatchSources again: now the message must be arrived.
 */
 TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
@@ -151,7 +151,7 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
-    	usleep(100);
+        usleep(100);
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
@@ -160,19 +160,21 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     if (mainLoopForStub_->isRunning()) {
-		std::future<bool> stubStopped = mainLoopForStub_->stop();
-		// synchronisation with stopped mainloop
-		stubStopped.get();
-	}
-	if (stubThread.joinable()) {
-		stubThread.join();
-	}
+        std::future<bool> stubStopped = mainLoopForStub_->stop();
+        // synchronisation with stopped mainloop
+        stubStopped.get();
+    }
+    if (stubThread.joinable()) {
+        stubThread.join();
+    }
 
     uint8_t x = 5;
-    uint8_t y = 0;
+    //uint8_t y = 0;
 
     std::future<CommonAPI::CallStatus> futureStatus = testProxy_->testMethodAsync(x,
                                     [&] (const CommonAPI::CallStatus& status, uint8_t y) {
+                    (void)status;
+                    (void)y;
                                         callbackCalled_++;
                                     }
                                     );
@@ -189,10 +191,10 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
 /**
 * @test Verifies Synchronous Call Message Handling Order.
-* 	- get proxy with available flag = true
-* 	- subscribe for broadcast event
-* 	- generate 5 test broadcasts
-* 	- 5 broadcasts should arrive in the right order
+*     - get proxy with available flag = true
+*     - subscribe for broadcast event
+*     - generate 5 test broadcasts
+*     - 5 broadcasts should arrive in the right order
 */
 TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 
@@ -200,7 +202,7 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 
     // wait until thread is running
     while (!mainLoopForStub_->isRunning()) {
-    	usleep(100);
+        usleep(100);
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
@@ -226,13 +228,13 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
     usleep(2);
 
     if (mainLoopForStub_->isRunning()) {
-		std::future<bool> stubStopped = mainLoopForStub_->stop();
-		// synchronisation with stopped mainloop
-		stubStopped.get();
-	}
-	if (stubThread.joinable()) {
-		stubThread.join();
-	}
+        std::future<bool> stubStopped = mainLoopForStub_->stop();
+        // synchronisation with stopped mainloop
+        stubStopped.get();
+    }
+    if (stubThread.joinable()) {
+        stubThread.join();
+    }
 
     // in total 5 broadcasts should have been arrived
     ASSERT_EQ(lastBroadcastNumber_, 5);

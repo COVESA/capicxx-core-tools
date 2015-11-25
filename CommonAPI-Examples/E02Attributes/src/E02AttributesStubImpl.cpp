@@ -6,14 +6,14 @@
 #include "E02AttributesStubImpl.hpp"
 
 E02AttributesStubImpl::E02AttributesStubImpl() {
-	cnt = 0;
+    cnt = 0;
 }
 
 E02AttributesStubImpl::~E02AttributesStubImpl() {
 }
 
 void E02AttributesStubImpl::incCounter() {
-	cnt++;
-	setXAttribute((int32_t)cnt);
-	std::cout <<  "New counter value = " << cnt << "!" << std::endl;
+    cnt++;
+    setXAttribute((int32_t)cnt);
+    std::cout <<  "New counter value = " << cnt << "!" << std::endl;
 }

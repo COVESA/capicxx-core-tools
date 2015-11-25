@@ -7,9 +7,9 @@
 #ifndef THMAINLOOPINTEGRATION_H_
 #define THMAINLOOPINTEGRATION_H_
 
-#include "v1_0/commonapi/threading/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/threading/TestInterfaceStubDefault.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace threading {
 
@@ -25,6 +25,6 @@ public:
 
 } /* namespace threading */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */
 
 #endif /* THMAINLOOPINTEGRATION_H_ */

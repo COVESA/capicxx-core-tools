@@ -4,24 +4,24 @@
 package commonapi.performance.complex
 
 interface TestInterface {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	method testMethod {
-	    in {
-	        tArray x
-	    }
-	    out {
-	        tArray y
-	    }
-	}
-	
-	struct tStruct {
-		innerStruct iStruct
-		innerUnion iUnion
-	}
-	
-	struct innerStruct {
-		UInt32 uint32Member
+    method testMethod {
+        in {
+            tArray x
+        }
+        out {
+            tArray y
+        }
+    }
+    
+    struct tStruct {
+        innerStruct iStruct
+        innerUnion iUnion
+    }
+    
+    struct innerStruct {
+        UInt32 uint32Member
         Boolean booleanMember
         UInt8 uint8Member
         String stringMember
@@ -33,6 +33,6 @@ interface TestInterface {
         UInt8 uint8Member
         String stringMember
     }
-	
-	array tArray of tStruct
+    
+    array tArray of tStruct
 }

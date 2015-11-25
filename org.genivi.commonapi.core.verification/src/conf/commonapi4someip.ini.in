@@ -4,6 +4,14 @@ binding=someip
 [proxy]
 local:commonapi.runtime.TestInterface:commonapi.runtime.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.communication.TestInterface:commonapi.communication.TestInterface=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.bselective.TestInterface:commonapi.advanced.bselective.TestInterface=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Manager:commonapi.advanced.managed.Manager=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Device:commonapi.advanced.managed.Device=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Device:commonapi.advanced.managed.Manager.device01=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Device:commonapi.advanced.managed.Manager.device02=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.SpecialDevice:commonapi.advanced.managed.SpecialDevice=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.SpecialDevice:commonapi.advanced.managed.Manager.specialDevice00=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.polymorph.TestInterface:commonapi.advanced.polymorph.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.primitive.TestInterface:commonapi.datatypes.primitive.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.advanced.TestInterface:commonapi.datatypes.advanced.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.derived.TestInterface:commonapi.datatypes.derived.TestInterface=@GLUECODE_SO_SOMEIP@
@@ -166,6 +174,11 @@ local:commonapi.stability.mp.ControlInterface:commonapi.stability.mp.ControlInte
 local:commonapi.runtime.TestInterface:commonapi.runtime.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.communication.TestInterface:commonapi.communication.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.communication.Daemon:commonapi.communication.Daemon=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.bselective.TestInterface:commonapi.advanced.bselective.TestInterface=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Manager:commonapi.advanced.managed.Manager=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.Device:commonapi.advanced.managed.Device=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.managed.SpecialDevice:commonapi.advanced.managed.SpecialDevice=@GLUECODE_SO_SOMEIP@
+local:commonapi.advanced.polymorph.TestInterface:commonapi.advanced.polymorph.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.primitive.TestInterface:commonapi.datatypes.primitive.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.advanced.TestInterface:commonapi.datatypes.advanced.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.datatypes.derived.TestInterface:commonapi.datatypes.derived.TestInterface=@GLUECODE_SO_SOMEIP@

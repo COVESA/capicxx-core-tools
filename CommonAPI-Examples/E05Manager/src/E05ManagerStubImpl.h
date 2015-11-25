@@ -11,7 +11,7 @@
 #include <map>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E05ManagerStubDefault.hpp>
+#include <v1/commonapi/examples/E05ManagerStubDefault.hpp>
 
 #include "E05DeviceStubImpl.h"
 #include "E05SpecialDeviceStubImpl.h"

@@ -4,18 +4,18 @@
 package commonapi.threading
 
 interface TestInterface {
-	version { major 1 minor 0 }
-	
-	method testMethod {
-	    in {
-	        UInt8 x
-	    }
-	    out {
-	        UInt8 y
-	    }
-	}
-	
-	broadcast testBroadcast {
+    version { major 1 minor 0 }
+    
+    method testMethod {
+        in {
+            UInt8 x
+        }
+        out {
+            UInt8 y
+        }
+    }
+    
+    broadcast testBroadcast {
         out {
             UInt8 y
         }

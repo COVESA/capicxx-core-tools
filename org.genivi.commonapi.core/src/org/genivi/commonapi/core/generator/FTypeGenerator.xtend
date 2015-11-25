@@ -6,19 +6,16 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
-import java.util.ArrayList
 import java.util.Collection
 import java.util.LinkedList
 import java.util.List
 import javax.inject.Inject
 import org.eclipse.emf.common.util.EList
-import org.franca.core.franca.FAnnotation
 import org.franca.core.franca.FAnnotationBlock
 import org.franca.core.franca.FAnnotationType
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FEnumerationType
-import org.franca.core.franca.FEnumerator
 import org.franca.core.franca.FField
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
@@ -33,7 +30,6 @@ import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 import static com.google.common.base.Preconditions.*
-
 import static extension org.genivi.commonapi.core.generator.FrancaGeneratorExtensions.*
 
 class FTypeGenerator {
@@ -48,29 +44,6 @@ class FTypeGenerator {
                 return true;
         }
         return false
-    }
-
-	// TODO: is this code needed ?
-    def static sortAnnotations(FAnnotationBlock annots) {
-        var ArrayList<ArrayList<FAnnotation>> ret = new ArrayList<ArrayList<FAnnotation>>(4)
-        ret.add(new ArrayList<FAnnotation>())
-        ret.add(new ArrayList<FAnnotation>())
-        ret.add(new ArrayList<FAnnotation>())
-        ret.add(new ArrayList<FAnnotation>())
-        for(anno : annots.elements) {
-            if(anno == null){
-            }else {
-                if(anno.type.value.equals(FAnnotationType::DESCRIPTION_VALUE))
-                    ret.get(0).add(anno)
-                if(anno.type.value.equals(FAnnotationType::PARAM_VALUE))
-                    ret.get(1).add(anno)
-                if(anno.type.value.equals(FAnnotationType::DEPRECATED_VALUE))
-                    ret.get(2).add(anno)
-                if(anno.type.value.equals(FAnnotationType::AUTHOR_VALUE))
-                    ret.get(3).add(anno)
-            }
-        }
-        return ret
     }
     
     def private static findNextBreak(String text) {
@@ -101,50 +74,6 @@ class FTypeGenerator {
     	return commentBody;    
     }
         
-	// TODO: Does this code offer additional functionality compared to breaktext ?
-     def static breaktext_(String text, FAnnotationType annotation) {
-        var ret = ""
-        var temptext = ""       
-		
-		if(annotation == FAnnotationType::DESCRIPTION_VALUE && text.length > CommentLineLength) {
-            ret = " * " + text.substring(0, findNextBreak(text)) + "\n";
-            temptext = text.substring(findNextBreak(text));
-        }else if(annotation != FAnnotationType::DESCRIPTION_VALUE && text.length > CommentLineLength) {
-            if(annotation == FAnnotationType::AUTHOR_VALUE) {
-                ret = " * @author "
-            }if(annotation == FAnnotationType::DEPRECATED_VALUE){
-                ret = " * @deprecated "
-            }if(annotation == FAnnotationType::PARAM_VALUE){
-                ret = " * @param "
-            }
-            ret = ret + text.substring(0, findNextBreak(text)) + "\n";
-            temptext = text.substring(findNextBreak(text));
-        }else {
-            if(annotation == FAnnotationType::AUTHOR_VALUE)
-                ret = " * @author "
-            if(annotation == FAnnotationType::DEPRECATED_VALUE)
-                ret = " * @deprecated "
-            if(annotation == FAnnotationType::PARAM_VALUE)
-                ret = " * @param "
-            if(annotation == FAnnotationType::DESCRIPTION_VALUE)
-                ret = " * "
-            ret = ret + text + "\n";
-        }
-        while(temptext.length > CommentLineLength) {
-        	try {
-                ret = ret + " * " + temptext.substring(0, findNextBreak(temptext)) + "\n";
-                temptext = temptext.substring(findNextBreak(temptext));
-            }
-            catch (StringIndexOutOfBoundsException sie) {
-                System.out.println("Comment problem in text " + text);
-                sie.printStackTrace();
-            }
-        }
-        if(temptext.length > 0)
-            ret = ret + " * " + temptext + "\n"
-        return ret;
-    }
-
     def static generateComments(FModelElement model, boolean inline) {
         var intro = ""
         var tail = ""
@@ -164,32 +93,6 @@ class FTypeGenerator {
         return ""
     }
 
-	// TODO: Does this code offer additional functionality compared to generateComments ?
-    def static generateComments_(FModelElement model, boolean inline) {
-        var typ = getTyp(model)
-        var ret = ""
-        var commexists = false
-        if( model != null && model.comment != null){
-            for (list : sortAnnotations(model.comment)){
-                for (comment : list){
-                    if(comment.type.value.equals(FAnnotationType::DESCRIPTION_VALUE) || 
-                        (comment.type.value.equals(FAnnotationType::AUTHOR_VALUE) && typ == ModelTyp::INTERFACE) || 
-                        (comment.type.value.equals(FAnnotationType::DEPRECATED_VALUE) && (typ == ModelTyp::METHOD || typ==ModelTyp::ENUM)) || 
-                        (comment.type.value.equals(FAnnotationType::PARAM_VALUE) && typ == ModelTyp::METHOD)){
-                        if(!inline && !commexists)
-                            ret = "/**\n"
-                        commexists = true
-                        ret = ret + breaktext(comment.comment, comment.type)
-                    }
-                }
-            }
-            if(!inline && commexists)
-                ret = ret + " */"
-            if(inline && commexists)
-                ret = ret + " * "
-        }
-        return ret
-    }
     
     def static getTyp(FModelElement element) {
         if(element instanceof FInterface || element instanceof FTypeCollection)
@@ -203,7 +106,6 @@ class FTypeGenerator {
 
     def generateFTypeDeclarations(FTypeCollection fTypeCollection, PropertyAccessor deploymentAccessor) '''
         «FOR type: fTypeCollection.types.sortTypes(fTypeCollection)»
-            «generateComments(type, false)»
             «type.generateFTypeDeclaration(deploymentAccessor)»
         «ENDFOR»
         «IF fTypeCollection instanceof FInterface»
@@ -250,9 +152,9 @@ class FTypeGenerator {
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, PropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
         «IF fArrayType.elementType.derived != null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
-            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getElementType(null, true)»>> «fArrayType.elementName»;
+            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getElementType(fArrayType, true)»>> «fArrayType.elementName»;
         «ELSE»
-            typedef std::vector<«fArrayType.elementType.getElementType(null, true)»> «fArrayType.elementName»;
+            typedef std::vector<«fArrayType.elementType.getElementType(fArrayType, true)»> «fArrayType.elementName»;
         «ENDIF»
     '''
 
@@ -277,10 +179,10 @@ class FTypeGenerator {
 			struct «fStructType.elementName» : CommonAPI::Struct<«fStructType.allElements.map[getTypeName(fStructType, false)].join(", ")»> {
 		«ENDIF»
 			«IF fStructType.hasPolymorphicBase()»
-				«IF fStructType.hasDerivedTypes() »
+				«IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
 				static std::shared_ptr<«fStructType.elementName»> create(CommonAPI::Serial _serial);
 				«ENDIF»
-				const CommonAPI::Serial getSerial() const {	return «fStructType.elementName.toUpperCase»_SERIAL; }
+				CommonAPI::Serial getSerial() const { return «fStructType.elementName.toUpperCase»_SERIAL; }
 			«ENDIF»
 			
 			«fStructType.elementName»() {
@@ -316,6 +218,9 @@ class FTypeGenerator {
 			«IF fStructType.hasPolymorphicBase()»
 			template<class _Input>
 			void readValue(CommonAPI::InputStream<_Input> &_input, const CommonAPI::EmptyDeployment *_depl) {
+			    «IF fStructType.derivedFStructTypes.empty»
+			    (void) _depl;
+			    «ENDIF»
 				«var i = -1»
 				«FOR element : fStructType.elements»
 				_input.template readValue<CommonAPI::EmptyDeployment>(std::get<«i = i+1»>(values_));
@@ -352,18 +257,36 @@ class FTypeGenerator {
 				}
 				«ENDIF»
 			}
-
 			template<class _Output>
-			void writeType(CommonAPI::TypeOutputStream<_Output> &_output) {
+			void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
 				«var l = -1»
 				«FOR element : fStructType.elements»
-				_output.writeType(std::get<«l = l+1»>(values_));
+				_output.writeType(std::get<«l = l+1»>(values_), _depl);
 				«ENDFOR»
 				«IF fStructType.hasDerivedTypes()»
 				switch (getSerial()) {
 				«FOR derived : fStructType.derivedFStructTypes»
 				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template writeType<_Output>(_output);
+					static_cast<«derived.elementName» *>(this)->template writeType<_Output>(_output, _depl);
+					break;
+				«ENDFOR»
+				default:
+					break;
+				}
+				«ENDIF»
+			}
+			template<class _Output, class _Deployment>
+			void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const _Deployment *_depl) {
+				«var l1 = -1»
+				«var l2 = fStructType.allElements.size - fStructType.elements.size - 1»
+				«FOR element : fStructType.elements»
+				_output.writeType(std::get<«l1 = l1+1»>(values_), std::get<«l2 = l2+1»>(_depl->values_));
+				«ENDFOR»
+				«IF fStructType.hasDerivedTypes()»
+				switch (getSerial()) {
+				«FOR derived : fStructType.derivedFStructTypes»
+				«derived.generateCases(null, false)»
+					static_cast<«derived.elementName» *>(this)->template writeType<_Output, _Deployment>(_output, _depl);
 					break;
 				«ENDFOR»
 				default:
@@ -374,6 +297,9 @@ class FTypeGenerator {
 
 			template<class _Output>
 			void writeValue(CommonAPI::OutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
+			    «IF fStructType.derivedFStructTypes.empty»
+			    (void) _depl;
+			    «ENDIF»
 				«var m = -1»
 				«FOR element : fStructType.elements»
 				_output.template writeValue<CommonAPI::EmptyDeployment>(std::get<«m = m+1»>(values_));
@@ -396,7 +322,7 @@ class FTypeGenerator {
 				«var n = -1»
 				«var o = fStructType.allElements.size - fStructType.elements.size - 1»
 				«FOR element : fStructType.elements»
-				_output.template writeValue<>(std::get<«n = n+1»>(values_), _depl, std::get<«o = o + 1»>(_depl->values_));
+				_output.template writeValue<>(std::get<«n = n+1»>(values_), std::get<«o = o + 1»>(_depl->values_));
 				«ENDFOR»
 				«IF fStructType.hasDerivedTypes()»
 				switch (getSerial()) {
@@ -461,10 +387,21 @@ class FTypeGenerator {
                 «ENDFOR»
             };
             
-            «_enumeration.name»() = default;
-            «_enumeration.name»(const Literal &_value) 
-                : «baseTypeName»(static_cast<«IF _enumeration.base == null»«backingType»«ELSE»«baseTypeName»::Literal«ENDIF»>(_value)) {}
+            «_enumeration.name»()
+                : «baseTypeName»(static_cast<«IF _enumeration.base == null»«backingType»«ELSE»«baseTypeName»::Literal«ENDIF»>(Literal::«_enumeration.enumerators.get(0).elementName»)) {}
+            «generateEnumBaseTypeConstructor(_enumeration, _enumeration.name, baseTypeName, backingType)»
             «_enumeration.generateBaseTypeAssignmentOperator(_accessor)»
+
+            inline bool validate() const {
+                switch (value_) {
+                «FOR enumerator : _enumeration.enumerators»
+                case static_cast<«backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
+                «ENDFOR»
+                    return true;
+                default:
+                    return «IF _enumeration.base == null»false;«ELSE»«baseTypeName»::validate();«ENDIF»
+                }
+            }
 
             inline bool operator==(const «_enumeration.name» &_other) const { return (value_ == _other.value_); }
             inline bool operator!=(const «_enumeration.name» &_other) const { return (value_ != _other.value_); }
@@ -482,7 +419,20 @@ class FTypeGenerator {
         };
     '''
     
-    def generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, PropertyAccessor _accessor) '''
+    def CharSequence generateEnumBaseTypeConstructor(FEnumerationType _enumeration, String _name, String _baseName, String _backingType) '''
+       «IF _enumeration.base != null»
+           «generateEnumBaseTypeConstructor(_enumeration.base, _name, _baseName, _backingType)»
+           «_name»(const «_enumeration.getBaseType(_backingType)»::Literal &_value)
+               : «_baseName»(_value) {}
+       «ELSE»
+            «_name»(const Literal &_value) 
+                : «_baseName»(static_cast<«_backingType»>(_value)) {}
+            «_name»(const «_backingType» &_value) 
+                : «_baseName»(_value) {}
+       «ENDIF»
+    '''
+    
+    def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, PropertyAccessor _accessor) '''
         «IF _enumeration.base != null»
             «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
             «val baseTypeName = _enumeration.getBaseType(backingType)»
@@ -512,7 +462,6 @@ class FTypeGenerator {
         
         return names
     }
-
 
     def dispatch generateFTypeInlineImplementation(FTypeDef fTypeDef, FModelElement parent, PropertyAccessor deploymentAccessor) ''''''
     def dispatch generateFTypeInlineImplementation(FArrayType fArrayType, FModelElement parent, PropertyAccessor deploymentAccessor) ''''''
@@ -557,7 +506,8 @@ class FTypeGenerator {
 			«IF fStructType.allElements.size > 0»
 				«FOR element : fStructType.allElements BEFORE 'return (' SEPARATOR ' && ' AFTER ');'»get«element.elementName.toFirstUpper»() == _other.get«element.elementName.toFirstUpper»()«ENDFOR»
 			«ELSE»
-				return true;
+			    (void) _other;
+			    return true;
 			«ENDIF»
 		}
 
@@ -672,15 +622,6 @@ class FTypeGenerator {
         return reference
     }
 
-	// TODO: check whether this is used anywhere....
-    def String generateBaseConstructorCall(FStructType parent, FStructType source) {
-        var call = parent.getRelativeNameReference(source)
-        call = call + "(" + parent.allElements.map[elementName + "Value"].join(", ") + ")"
-        if (!source.elements.empty)
-            call = call + ","
-        return call
-    }
-
     def private generateHasher(FMapType fMap) {
         if (fMap.keyType.derived instanceof FEnumerationType)  {
             return ''', CommonAPI::EnumHasher<«fMap.keyType.derived.getFullName»>'''
@@ -710,82 +651,7 @@ class FTypeGenerator {
         }
     }
 
-	// TODO: Check whether this is used somewhere
-    def getBaseStructName(FStructType fStructType) {
-        if (fStructType.hasPolymorphicBase)
-            return "CommonAPI::PolymorphicStruct"
-
-        return "CommonAPI::Struct"
-    }
-
     def private getConstReferenceVariable(FField destination, FModelElement source) {
         "const " + destination.getTypeName(source, false) + " &_" + destination.elementName
-    }
-
-	//TODO: used?
-    def generateInlineOperatorWithName(FEnumerationType fEnumerationType, String enumerationName, FEnumerationType base, FModelElement parent, String parentName, String operator, PropertyAccessor deploymentAccessor) '''
-        inline bool operator«operator»(const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& lhs, const «base.getClassNamespaceWithName(base.elementName, base.eContainer as FModelElement, (base.eContainer as FModelElement).elementName)»& rhs) {
-            return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
-        }
-        inline bool operator«operator»(const «base.getClassNamespaceWithName(base.elementName, base.eContainer as FModelElement, (base.eContainer as FModelElement).elementName)»& lhs, const «fEnumerationType.getClassNamespaceWithName(enumerationName, parent, parentName)»& rhs) {
-            return static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(lhs) «operator» static_cast<«fEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(rhs);
-        } 
-    '''
-
-	//TODO: used?
-    def getBaseList(FEnumerationType fEnumerationType) {
-        val baseList = new LinkedList<FEnumerationType>
-        var currentBase = fEnumerationType.base
-        
-        while (currentBase != null) {
-            baseList.add(0, currentBase)
-            currentBase = currentBase.base
-        }
-
-        return baseList
-    }
-
-	//TODO: used?
-    def generateValue(FEnumerator fEnumerator) {
-        val parsedValue = tryParseInteger(fEnumerator.value.enumeratorValue)
-        if (parsedValue != null)
-            return ' = ' + parsedValue
-        return ''
-    }
-
-    def private tryParseInteger(String string) {
-        if (!string.nullOrEmpty) {
-            if (string.startsWith("0x") || string.startsWith("0X")) {
-                try {
-                    return "0x" + Integer::toHexString((Integer::parseInt(string.substring(2), 16)))
-                } catch (NumberFormatException e) {
-                    return null
-                }
-            } else if (string.startsWith("0b") || string.startsWith("0B")) {
-                try {
-                    return "0x" + Integer::toHexString((Integer::parseInt(string.substring(2), 2)))
-                } catch (NumberFormatException e) {
-                    return null
-                }
-            } else if (string.startsWith("0")) {
-                try {
-                    Integer::parseInt(string, 8)
-                    return string
-                } catch (NumberFormatException e) {
-                    return null
-                }
-            } else {
-                try {
-                    return Integer::parseInt(string, 10)
-                } catch (NumberFormatException e) {
-                    try {
-                        return "0x" + Integer::toHexString((Integer::parseInt(string, 16)))
-                    } catch (NumberFormatException e2) {
-                        return null
-                    }
-                }
-            }
-        }
-        return null
     }
 }

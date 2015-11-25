@@ -7,7 +7,7 @@
 #include <iostream>
 #include "CMMethodCallsStub.h"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace communication {
 
@@ -17,16 +17,18 @@ CMMethodCallsStub::CMMethodCallsStub() {
 CMMethodCallsStub::~CMMethodCallsStub() {
 }
 
-void CMMethodCallsStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, uint8_t x,
+void CMMethodCallsStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x,
                                    testMethodReply_t _reply) {
+    (void)_client;
+
     uint8_t y;
 
     std::cout << "testMethod called." << std::endl;
-    y = x;
+    y = _x;
     _reply(y);
 }
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace communication */
 } /* namespace commonapi */
 

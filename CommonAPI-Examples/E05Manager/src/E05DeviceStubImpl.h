@@ -8,7 +8,7 @@
 #ifndef E05DEVICESTUBIMPL_H_
 #define E05DEVICESTUBIMPL_H_
 
-#include <v1_0/commonapi/examples/E05DeviceStubDefault.hpp>
+#include <v1/commonapi/examples/E05DeviceStubDefault.hpp>
 
 using namespace v1_0::commonapi::examples;
 
@@ -16,7 +16,8 @@ class E05DeviceStubImpl: public E05DeviceStubDefault {
 public:
     E05DeviceStubImpl();
     virtual ~E05DeviceStubImpl();
-    void doSomething();
+    void doSomething(const std::shared_ptr<CommonAPI::ClientId> _client,
+                     doSomethingReply_t _reply);
 };
 
 #endif /* E05DEVICESTUBIMPL_H_ */

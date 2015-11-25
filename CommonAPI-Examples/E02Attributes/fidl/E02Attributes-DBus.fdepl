@@ -7,5 +7,5 @@ import "platform:/plugin/org.genivi.commonapi.dbus/deployment/CommonAPI-DBus_dep
 import "E02Attributes.fidl"
 
 define org.genivi.commonapi.dbus.deployment for interface commonapi.examples.E02Attributes {
-	DBusDefaultAttributeType = freedesktop
+    DBusDefaultAttributeType = freedesktop
 }

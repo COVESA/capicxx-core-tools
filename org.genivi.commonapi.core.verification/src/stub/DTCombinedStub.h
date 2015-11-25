@@ -7,10 +7,10 @@
 #ifndef DTCOMBINEDSTUB_H_
 #define DTCOMBINEDSTUB_H_
 
-#include "v1_0/commonapi/datatypes/combined/TestInterfaceStubDefault.hpp"
-#include "v1_0/commonapi/datatypes/combined/TestInterface.hpp"
+#include "v1/commonapi/datatypes/combined/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/datatypes/combined/TestInterface.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace combined {
@@ -31,5 +31,5 @@ public:
 } /* namespace combined */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */
 #endif /* DTCOMBINEDSTUB_H_ */

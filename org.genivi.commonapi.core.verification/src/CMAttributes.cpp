@@ -15,7 +15,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "v1_0/commonapi/communication/TestInterfaceProxy.hpp"
+#include "v1/commonapi/communication/TestInterfaceProxy.hpp"
 #include "stub/CMAttributesStub.h"
 
 const std::string serviceId = "service-sample";
@@ -84,7 +84,16 @@ protected:
                 runtime_->unregisterService(domain, CMAttributesStub::StubInterface::getInterface(),
                         testAddress);
 
-         ASSERT_TRUE(serviceUnregistered);
+        ASSERT_TRUE(serviceUnregistered);
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     uint8_t value_;
@@ -97,10 +106,10 @@ protected:
 * @test Test synchronous getValue API function for attributes with combinations of
 *  additional properties readonly and noSubscriptions (testAttribute,
 *  testA readonly, testB noSubscriptions, testC readonly noSubscriptions).
-* 	- Set attribute to certain value on stub side.
-* 	- Call getValue.
-* 	- Check if returned call status is CommonAPI::CallStatus::SUCCESS.
-* 	- Check if value of is equal to expected value.
+*     - Set attribute to certain value on stub side.
+*     - Call getValue.
+*     - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
+*     - Check if value of is equal to expected value.
 */
 TEST_F(CMAttributes, AttributeGetSynchronous) {
 
@@ -147,7 +156,6 @@ TEST_F(CMAttributes, AttributeGetSynchronous) {
 */
 TEST_F(CMAttributes, AttributeGetAsynchronous) {
 
-    CommonAPI::CallStatus callStatus;
     std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
             std::bind(&CMAttributes::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
@@ -213,7 +221,6 @@ TEST_F(CMAttributes, AttributeSetSynchronous) {
 */
 TEST_F(CMAttributes, AttributeSetAsynchronous) {
 
-    CommonAPI::CallStatus callStatus;
     std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
             std::bind(&CMAttributes::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 

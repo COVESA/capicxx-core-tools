@@ -9,28 +9,28 @@ package commonapi.examples
 
 interface E03Methods {
 
-	version { major 1 minor 2 }
+    version { major 1 minor 2 }
 
-	method foo {
-		in {
-			Int32 x1
-			String x2
-		}
-		out {
-			Int32 y1
-			String y2
-		}
-		error stdErrorTypeEnum
-	}
+    method foo {
+        in {
+            Int32 x1
+            String x2
+        }
+        out {
+            Int32 y1
+            String y2
+        }
+        error stdErrorTypeEnum
+    }
 
-	broadcast myStatus {
-		out {
-			Int32 myCurrentValue
-		}
-	}
+    broadcast myStatus {
+        out {
+            Int32 myCurrentValue
+        }
+    }
 
-	enumeration stdErrorTypeEnum {
-		NO_FAULT
-		MY_FAULT
-	}
+    enumeration stdErrorTypeEnum {
+        NO_FAULT
+        MY_FAULT
+    }
 }

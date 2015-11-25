@@ -11,7 +11,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "v1_0/commonapi/stability/sp/TestInterfaceProxy.hpp"
+#include "v1/commonapi/stability/sp/TestInterfaceProxy.hpp"
 #include "stub/StabilitySPStub.h"
 
 const std::string serviceId = "service-sample";
@@ -27,6 +27,10 @@ const int MAXREGLOOPS = 16;
 const int MAXREGCOUNT = 16;
 const int MESSAGESIZE = 80;
 const int MAXSUBSCRIPTIONSETS = 10;
+
+#ifdef WIN32
+std::mutex gtestMutex;
+#endif
 
 using namespace v1_0::commonapi::stability::sp;
 
@@ -46,26 +50,66 @@ class StabilitySP: public ::testing::Test {
 protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
-        ASSERT_TRUE((bool)runtime_);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE((bool)runtime_);
+        }
 
         testStub_ = std::make_shared<StabilitySPStub>();
         serviceRegistered_ = runtime_->registerService(domain, testAddress, testStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
 
         testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
-        ASSERT_TRUE((bool)testProxy_);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE((bool)testProxy_);
+        }
 
         testProxy_->isAvailableBlocking();
-        ASSERT_TRUE(testProxy_->isAvailable());
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(testProxy_->isAvailable());
+        }
     }
 
     void TearDown() {
         bool unregistered = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress);
-        ASSERT_TRUE(unregistered);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(unregistered);
+        }
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     uint8_t value_;
     bool serviceRegistered_;
+    bool serviceUnregistered_;
     std::shared_ptr<CommonAPI::Runtime> runtime_;
 
     std::shared_ptr<TestInterfaceProxy<>> testProxy_;
@@ -73,11 +117,11 @@ protected:
 };
 /**
 * @test Register and unregister services in a loop.
-*	- do MAXREGLOOPS times:
-*	-   register MAXREGCOUNT addresses as services
-*	-   unregister the addresses that were just registered
-*	- check the return code of each register/unregister call
-*	- test fails if any of the return codes are false
+*    - do MAXREGLOOPS times:
+*    -   register MAXREGCOUNT addresses as services
+*    -   unregister the addresses that were just registered
+*    - check the return code of each register/unregister call
+*    - test fails if any of the return codes are false
 **/
 
 TEST_F(StabilitySP, RepeatedRegistrations) {
@@ -87,12 +131,24 @@ TEST_F(StabilitySP, RepeatedRegistrations) {
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int loopcount = 0; loopcount < MAXREGLOOPS; loopcount++) {
         for (unsigned int regcount = 0; regcount < MAXREGCOUNT; regcount++) {
-            serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-            ASSERT_TRUE(serviceRegistered_);
+            serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+            {
+#ifdef WIN32
+                std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                ASSERT_TRUE(serviceRegistered_);
+            }
         }
         for (unsigned int regcount = 0; regcount < MAXREGCOUNT; regcount++) {
-            serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-            ASSERT_TRUE(serviceRegistered_);
+            serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+            {
+#ifdef WIN32
+                std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                ASSERT_TRUE(serviceUnregistered_);
+            }
         }
     }
 }
@@ -105,7 +161,13 @@ public:
     // callback for asynchronous attribute functions.
     void recvValue(const CommonAPI::CallStatus& callStatus, TestInterface::tArray arrayResultValue) {
         std::lock_guard<std::mutex> lock(recvValue_mutex_);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+        }
         asyncCounter++;
 
         TestInterface::tArray arrayTestValue;
@@ -116,11 +178,29 @@ public:
         }
         arrayTestValue.shrink_to_fit();
 
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
-        ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+        }
+
         if(arrayTestValue.size() == arrayResultValue.size()) {
             for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
-              EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+                {
+#ifdef WIN32
+                    std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                    EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+                }
             }
         }
     }
@@ -146,11 +226,28 @@ public:
 
         arrayTestValue.shrink_to_fit();
 
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
-        ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
+        }
+
         if(arrayTestValue.size() == arrayResultValue.size()) {
             for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
-              EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+                {
+#ifdef WIN32
+                    std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                    EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
+                }
             }
         }
     }
@@ -164,7 +261,14 @@ public:
         for (unsigned int proxycount = 0; proxycount < MAXSERVERCOUNT; proxycount++) {
             proxy_[proxycount] = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress + std::to_string(proxycount), clientId);
             success_ = success_ && (bool)proxy_[proxycount];
-            ASSERT_TRUE(success_);
+
+            {
+#ifdef WIN32
+                std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                EXPECT_TRUE(success_);
+            }
+
             for (unsigned int wait = 0; !proxy_[proxycount]->isAvailable() && wait < 100; ++wait) {
                 usleep(10000);
             }
@@ -172,7 +276,12 @@ public:
             if (!proxy_[proxycount]->isAvailable())
                 std::cout << testAddress + std::to_string(proxycount) << std::endl;
 
-            ASSERT_TRUE(proxy_[proxycount]->isAvailable());
+            {
+#ifdef WIN32
+                std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+                EXPECT_TRUE(proxy_[proxycount]->isAvailable());
+            }
         }
     }
 
@@ -218,19 +327,25 @@ public:
             }
             previousCount = asyncCounter;
         }
-        EXPECT_EQ(expected, asyncCounter);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(expected, asyncCounter);
+        }
     }
 
     void runSetSubscribedAttributes(unsigned int id) {
-        unsigned char message1 = id;
-        unsigned char message2 = message1 + MAXTHREADCOUNT;
+        unsigned char message1 = (unsigned char)(id);
+        unsigned char message2 = static_cast<unsigned char>(message1 + MAXTHREADCOUNT);
         unsigned char message = message1;
 
         for (unsigned int loopcount = 0; loopcount < MAXSUBSCRIPTIONSETS; loopcount++) {
             for (unsigned int proxycount = 0; proxycount < MAXSERVERCOUNT; proxycount++) {
                 exerciseSetSubscribedAttribute(proxy_[proxycount], message);
                 // toggle between two different messages
-                message = message1 + message2 - message;
+                message = static_cast<unsigned char>(message1 + message2 - message);
             }
         }
 
@@ -296,8 +411,23 @@ public:
         CommonAPI::CallStatus callStatus;
         proxy->testMethod(arrayTestValue, callStatus, arrayResultValue);
 
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
+            EXPECT_TRUE(status);
+            if (!status) {
+                return false;
+            }
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
 
         return true;
     }
@@ -311,8 +441,24 @@ public:
 
         CommonAPI::CallStatus callStatus;
         proxy->getTestAttributeAttribute().setValue(arrayTestValue, callStatus, arrayResultValue);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
+            EXPECT_TRUE(status);
+            if (!status) {
+                return false;
+            }
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
 
         return true;
     }
@@ -328,8 +474,24 @@ public:
 
         CommonAPI::CallStatus callStatus;
         proxy->getTestAttributeAttribute().setValue(arrayTestValue, callStatus, arrayResultValue);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
+            EXPECT_TRUE(status);
+            if (!status) {
+                return false;
+            }
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
 
         return true;
     }
@@ -344,8 +506,24 @@ public:
 
         CommonAPI::CallStatus callStatus;
         proxy->getTestAttributeAttribute().getValue(callStatus, arrayResultValue);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        EXPECT_EQ(arrayTestValue, arrayResultValue);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
+            EXPECT_TRUE(status);
+            if (!status) {
+                return false;
+            }
+        }
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            EXPECT_EQ(arrayTestValue, arrayResultValue);
+        }
 
         return true;
     }
@@ -353,7 +531,6 @@ public:
         std::function<void (const CommonAPI::CallStatus&, TestInterface::tArray)> myCallback =
             std::bind(&ProxyThread::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
-        CommonAPI::CallStatus callStatus;
         CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(50 * 1000);
 
         proxy->getTestAttributeAttribute().getValueAsync(myCallback, callInfo);
@@ -381,22 +558,28 @@ public:
 };
 /**
 * @test Create a number of services and proxies and send messages through them.
-*	- Register MAXSERVERCOUNT addresses as services
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then sends MAXMETHODCALLS messages to each.
-*	- Each message is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the return message from the server is not correct
+*    - Register MAXSERVERCOUNT addresses as services
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then sends MAXMETHODCALLS messages to each.
+*    - Each message is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the return message from the server is not correct
 **/
 TEST_F(StabilitySP, MultipleMethodCalls) {
     std::shared_ptr<TestInterfaceStubDefault> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
     }
 
     ProxyThread * proxyrunners[MAXTHREADCOUNT];
@@ -413,28 +596,51 @@ TEST_F(StabilitySP, MultipleMethodCalls) {
     }
 
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 /**
 * @test Create a number of services and proxies and set attributes through them.
-*	- Register MAXSERVERCOUNT addresses as services
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then sets attributes MAXMETHODCALLS times to each.
-*	- Each attribute is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the return attribute from the server is not correct
+*    - Register MAXSERVERCOUNT addresses as services
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then sets attributes MAXMETHODCALLS times to each.
+*    - Each attribute is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the return attribute from the server is not correct
 **/
 TEST_F(StabilitySP, MultipleAttributeSets) {
     std::shared_ptr<TestInterfaceStubDefault> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
     }
     ProxyThread * proxyrunners[MAXTHREADCOUNT];
     for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
@@ -448,30 +654,53 @@ TEST_F(StabilitySP, MultipleAttributeSets) {
         proxyrunners[threadcount]->setThread(0);
     }
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 
 /**
 * @test Create a number of services and proxies and get attributes through them.
-*	- Register MAXSERVERCOUNT addresses as services
+*    - Register MAXSERVERCOUNT addresses as services
 *       - Set the attribute for service, at the stub side.
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then gets attributes MAXMETHODCALLS times for each.
-*	- Each attribute is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the returned attribute from the server is not correct
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then gets attributes MAXMETHODCALLS times for each.
+*    - Each attribute is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the returned attribute from the server is not correct
 **/
 TEST_F(StabilitySP, MultipleAttributeGets) {
     std::shared_ptr<StabilitySPStub> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
 
     }
     TestInterface::tArray arrayTestValue;
@@ -493,30 +722,53 @@ TEST_F(StabilitySP, MultipleAttributeGets) {
         proxyrunners[threadcount]->setThread(0);
     }
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 
 /**
 * @test Create a number of services and proxies and get attributes through them.
-*	- Register MAXSERVERCOUNT addresses as services
+*    - Register MAXSERVERCOUNT addresses as services
 *       - Set the attribute for service, at the stub side.
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then gets attributes MAXMETHODCALLS times for each asynchronously
-*	- Each attribute is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the callbacks are not called correct number of times
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then gets attributes MAXMETHODCALLS times for each asynchronously
+*    - Each attribute is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the callbacks are not called correct number of times
 **/
 TEST_F(StabilitySP, MultipleAttributeGetAsyncs) {
     std::shared_ptr<StabilitySPStub> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
     }
     TestInterface::tArray arrayTestValue;
 
@@ -537,30 +789,53 @@ TEST_F(StabilitySP, MultipleAttributeGetAsyncs) {
         proxyrunners[threadcount]->setThread(0);
     }
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 
 /**
 * @test Create a number of services and proxies and set attributes through them.
-*	- Register MAXSERVERCOUNT addresses as services
+*    - Register MAXSERVERCOUNT addresses as services
 *       - Set the attribute for service, at the stub side.
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then sets attributes MAXMETHODCALLS times for each asynchronously
-*	- Each attribute is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the callbacks are not called correct number of times
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then sets attributes MAXMETHODCALLS times for each asynchronously
+*    - Each attribute is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the callbacks are not called correct number of times
 **/
 TEST_F(StabilitySP, MultipleAttributeSetAsyncs) {
     std::shared_ptr<StabilitySPStub> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
     }
     TestInterface::tArray arrayTestValue;
 
@@ -581,30 +856,53 @@ TEST_F(StabilitySP, MultipleAttributeSetAsyncs) {
         proxyrunners[threadcount]->setThread(0);
     }
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 
 /**
 * @test Create a number of services and proxies and set attributes through them.
-*	- Register MAXSERVERCOUNT addresses as services
+*    - Register MAXSERVERCOUNT addresses as services
 *       - Set the attribute for service, at the stub side.
-*	- Create MAXTHREADCOUNT threads, each of which
-*		creates a proxy for each service address and
-*		then sets attributes MAXMETHODCALLS times for each asynchronously
-*	- Each attribute is MESSAGESIZE bytes long.
-*	- Test fails if any of the services fail to get registered
-*	  or if any of the proxies won't get available
-*	  or if the callbacks are not called correct number of times
+*    - Create MAXTHREADCOUNT threads, each of which
+*        creates a proxy for each service address and
+*        then sets attributes MAXMETHODCALLS times for each asynchronously
+*    - Each attribute is MESSAGESIZE bytes long.
+*    - Test fails if any of the services fail to get registered
+*      or if any of the proxies won't get available
+*      or if the callbacks are not called correct number of times
 **/
 TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
     std::shared_ptr<StabilitySPStub> testMultiRegisterStub_;
 
     testMultiRegisterStub_ = std::make_shared<StabilitySPStub>();
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string( regcount ), testMultiRegisterStub_, serviceId);
-        ASSERT_TRUE(serviceRegistered_);
+        serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceRegistered_);
+        }
     }
     TestInterface::tArray arrayTestValue;
     arrayTestValue.push_back(0);
@@ -644,8 +942,25 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
         proxyrunners[threadcount]->setThread(0);
     }
     for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
-        serviceRegistered_ = runtime_->unregisterService( domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string( regcount ));
-        ASSERT_TRUE(serviceRegistered_);
+        serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
+
+        {
+#ifdef WIN32
+            std::lock_guard<std::mutex> gtestLock(gtestMutex);
+#endif
+            ASSERT_TRUE(serviceUnregistered_);
+        }
+    }
+
+    for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
+        for (unsigned int regcount = 0; regcount < MAXSERVERCOUNT; regcount++) {
+            while (proxyrunners[threadcount]->proxy_[regcount]->isAvailable()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+        }
+
+        delete proxyrunners[threadcount];
+        proxyrunners[threadcount] = nullptr;
     }
 }
 

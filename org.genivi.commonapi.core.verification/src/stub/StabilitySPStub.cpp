@@ -9,7 +9,7 @@
 #include <unistd.h>
 #endif
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace stability {
 namespace sp {
@@ -22,16 +22,17 @@ StabilitySPStub::StabilitySPStub() {
 StabilitySPStub::~StabilitySPStub() {
 }
 
-void StabilitySPStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId,
-        TestInterface::tArray tArrayIn,
+void StabilitySPStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
+        TestInterface::tArray _tArrayIn,
         testMethodReply_t _reply) {
+    (void)_client;
 
         TestInterface::tArray tArrayOut;
 
-        tArrayOut = tArrayIn;
+        tArrayOut = _tArrayIn;
 
         fireTestBroadcastEvent(
-            tArrayIn
+            _tArrayIn
         );
 
         _reply(tArrayOut);
@@ -43,7 +44,7 @@ void StabilitySPStub::setTestValues(TestInterface::tArray x) {
     setTestAttributeAttribute(x);
 }
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace sp */
 } /* namespace stability */
 } /* namespace commonapi */

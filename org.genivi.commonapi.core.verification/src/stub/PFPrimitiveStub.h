@@ -6,16 +6,16 @@
 #ifndef PFPRIMITIVESTUB_H_
 #define PFPRIMITIVESTUB_H_
 
-#include "v1_0/commonapi/performance/primitive/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/performance/primitive/TestInterfaceStubDefault.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace performance {
 namespace primitive {
 
 class PFPrimitiveStub : public TestInterfaceStubDefault {
 public:
-	PFPrimitiveStub();
+    PFPrimitiveStub();
     virtual ~PFPrimitiveStub();
 
     virtual void testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, TestInterface::TestArray x, testMethodReply_t _reply);
@@ -24,6 +24,6 @@ public:
 } /* namespace primitive */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace  v1_0     */
+} /* namespace  v1     */
 
 #endif /* PFPRIMITIVESTUB_H_ */

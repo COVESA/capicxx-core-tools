@@ -4,22 +4,34 @@
 package commonapi.communication
 
 interface TestInterface {
-	version { major 1 minor 0 }
-	
-	attribute UInt8 testAttribute
-	
-	attribute UInt8 testA readonly
-	attribute UInt8 testB noSubscriptions
-	attribute UInt8 testC readonly noSubscriptions 
+    version { major 1 minor 0 }
+    
+    attribute UInt8 testAttribute
+    
+    attribute UInt8 testA readonly
+    attribute UInt8 testB noSubscriptions
+    attribute UInt8 testC readonly noSubscriptions 
 
-	method testMethod {
-	    in {
-	        UInt8 x
-	    }
-	    out {
-	        UInt8 y
-	    }
-	}
+    method testMethod {
+        in {
+            UInt8 x
+        }
+        out {
+            UInt8 y
+        }
+    }
+    
+    broadcast bTestSelective selective {
+        out {
+            UInt8 ux
+        }
+    }
+    broadcast bTest {
+        out {
+            UInt8 ux
+        }
+    }
+    
 }
 
 interface Daemon {

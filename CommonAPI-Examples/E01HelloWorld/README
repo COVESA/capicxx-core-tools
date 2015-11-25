@@ -49,7 +49,7 @@ Here, you will need two includes in order to access the Common API client functi
 #include <unistd.h>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v0_1/commonapi/examples/E01HelloWorldProxy.hpp>
+#include <v0/commonapi/examples/E01HelloWorldProxy.hpp>
 ----
 
 Please note that you always have to include +CommonAPI.hpp+ for accessing the runtime part of CommonAPI and the generated proxy. If your defined interface has a version number then you will find the version in the namespace of your interface class and in the directory structure.     

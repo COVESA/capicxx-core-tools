@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
-#include "v1_0/commonapi/performance/primitive/TestInterfaceProxy.hpp"
+#include "v1/commonapi/performance/primitive/TestInterfaceProxy.hpp"
 #include "stub/PFPrimitiveStub.h"
 
 #include "utils/StopWatch.h"
@@ -46,49 +46,62 @@ public:
 
 class PFPrimitive: public ::testing::Test {
 public:
-	 void recvArray(const CommonAPI::CallStatus& callStatus, TestInterface::TestArray y) {
-		 // Stop the time & verify call status
-		 watch_.stop();
-		 EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-
-		 std::unique_lock<std::mutex> uniqueLock(synchLock_);
-		 condVar_.notify_one();
-	 }
+     void recvArray(const CommonAPI::CallStatus& callStatus, TestInterface::TestArray y) {
+         (void)y;
+         EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+         callCount_++;
+         if (callCount_ == loopCountPerPaylod) {
+             callCount_ = 0;
+             std::unique_lock<std::mutex> uniqueLock(synchLock_);
+             condVar_.notify_one();
+         }
+     }
 
 protected:
-	void SetUp() {
-		runtime_ = CommonAPI::Runtime::get();
-		ASSERT_TRUE((bool)runtime_);
+    void SetUp() {
+        runtime_ = CommonAPI::Runtime::get();
+        ASSERT_TRUE((bool)runtime_);
 
-		testStub_ = std::make_shared<PFPrimitiveStub>();
-		bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
-		ASSERT_TRUE(serviceRegistered);
+        testStub_ = std::make_shared<PFPrimitiveStub>();
+        bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+        ASSERT_TRUE(serviceRegistered);
 
-		testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
-		ASSERT_TRUE((bool)testProxy_);
+        testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+        ASSERT_TRUE((bool)testProxy_);
 
         testProxy_->isAvailableBlocking();
         ASSERT_TRUE(testProxy_->isAvailable());
-	}
 
-	void TearDown() {
-		bool unregistered = runtime_->unregisterService(domain, PFPrimitiveStub::StubInterface::getInterface(), testAddress);
-		ASSERT_TRUE(unregistered);
+        callCount_ = 0;
+    }
+
+    void TearDown() {
+        bool unregistered = runtime_->unregisterService(domain, PFPrimitiveStub::StubInterface::getInterface(), testAddress);
+        ASSERT_TRUE(unregistered);
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     void printTestValues() {
-		// Get elapsed time, calculate mean time and print out!
-		StopWatch::usec_t methodCallTime = watch_.getTotalElapsedMicroseconds();
-		StopWatch::usec_t meanTime = (methodCallTime / loopCountPerPaylod);
-		StopWatch::usec_t perByteTime = meanTime / arraySize_;
-		uint32_t callsPerSeconds = usecPerSecond / (methodCallTime / loopCountPerPaylod);
+        // Get elapsed time, calculate mean time and print out!
+        StopWatch::usec_t methodCallTime = watch_.getTotalElapsedMicroseconds();
+        StopWatch::usec_t meanTime = (methodCallTime / loopCountPerPaylod);
+        StopWatch::usec_t perByteTime = StopWatch::usec_t(meanTime / arraySize_);
+        uint32_t callsPerSeconds = uint32_t(usecPerSecond / (methodCallTime / loopCountPerPaylod));
 
-		std::cout << "[MEASURING ]  Size=" << std::setw(7) << std::setfill('.') << arraySize_
-				  << ", Mean-Time=" << std::setw(7) << std::setfill('.') << meanTime << "us"
-				  << ", per-Byte=" << std::setw(7) << std::setfill('.')
-				  << (perByteTime <= 0 ? ".....<1" : std::to_string(perByteTime)) << "us"
-				  << ", calls/s=" << std::setw(7) << std::setfill('.') << callsPerSeconds
-				  << std::endl;
+        std::cout << "[MEASURING ]  Size=" << std::setw(7) << std::setfill('.') << arraySize_
+                  << ", Mean-Time=" << std::setw(7) << std::setfill('.') << meanTime << "us"
+                  << ", per-Byte=" << std::setw(7) << std::setfill('.')
+                  << (perByteTime <= 0 ? ".....<1" : std::to_string(perByteTime)) << "us"
+                  << ", calls/s=" << std::setw(7) << std::setfill('.') << callsPerSeconds
+                  << std::endl;
     }
 
     std::string configFileName_;
@@ -107,83 +120,93 @@ protected:
 /**
 * @test Test synchronous ping pong function call
 *   - primitive array is array of UInt_8
-* 	- The stub just set the in array to the out array
-* 	- CallStatus and array content will be used to verify the sync call has succeeded
-* 	- Using double payload every cycle, starting with 1 end with maxPrimitiveArraySize
-* 	- Doing primitiveLoopSize loops to build the mean time
+*     - The stub just set the in array to the out array
+*     - CallStatus and array content will be used to verify the sync call has succeeded
+*     - Using double payload every cycle, starting with 1 end with maxPrimitiveArraySize
+*     - Doing primitiveLoopSize loops to build the mean time
 */
 TEST_F(PFPrimitive, Ping_Pong_Primitive_Synchronous) {
-	CommonAPI::CallStatus callStatus;
+    CommonAPI::CallStatus callStatus;
 
-	watch_.reset();
+    watch_.reset();
 
-	// Loop until maxPrimitiveArraySize
-	while (arraySize_ <= maxPrimitiveArraySize) {
+    // Loop until maxPrimitiveArraySize
+    while (arraySize_ <= maxPrimitiveArraySize) {
 
-		// Create in-array with actual arraySize
-		TestInterface::TestArray in(arraySize_);
+        // Create in-array with actual arraySize
+        TestInterface::TestArray in(arraySize_);
 
-		// Call commonAPI method loopCountPerPaylod times to calculate mean time
-		for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
+        // Call commonAPI method loopCountPerPaylod times to calculate mean time
+        for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
 
-			// Create an empty out-array for every commonAPI function call
-			TestInterface::TestArray out;
+            // Create an empty out-array for every commonAPI function call
+            TestInterface::TestArray out;
 
-			// Call commonAPI function and measure time
-			watch_.start();
-			testProxy_->testMethod(in, callStatus, out);
-			watch_.stop();
+            // Call commonAPI function and measure time
+            watch_.start();
+            testProxy_->testMethod(in, callStatus, out);
+            watch_.stop();
 
-			// Check the call was successful & out array has same elements than in array
-			EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-			EXPECT_EQ(in, out);
-		}
+            // Check the call was successful & out array has same elements than in array
+            EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+            EXPECT_EQ(in, out);
+        }
 
-		// Printing results
-		printTestValues();
+        // Printing results
+        printTestValues();
 
-		// Increase array size for next iteration
-		arraySize_ *= 2;
+        // Increase array size for next iteration
+        arraySize_ *= 2;
 
-		// Reset StopWatch for next iteration
-		watch_.reset();
-	}
+        // Reset StopWatch for next iteration
+        watch_.reset();
+    }
 }
 
 /**
 * @test Test asynchronous ping pong function call
 *   - primitive array is array of UInt_8
-* 	- The stub just set (copies) the in array to the out array
-* 	- Only the CallStatus will be used to verify the async call has succeeded
-* 	- Using double payload every cycle, starting with 1 end with maxPrimitiveArraySize
-* 	- Doing primitiveLoopSize loops to build the mean time
+*     - The stub just set (copies) the in array to the out array
+*     - Only the CallStatus will be used to verify the async call has succeeded
+*     - Using double payload every cycle, starting with 1 end with maxPrimitiveArraySize
+*     - Doing primitiveLoopSize loops to build the mean time
 */
 TEST_F(PFPrimitive, Ping_Pong_Primitive_Asynchronous) {
     myCallback_ = std::bind(&PFPrimitive::recvArray, this, std::placeholders::_1, std::placeholders::_2);
 
     std::unique_lock<std::mutex> uniqueLock(synchLock_);
 
-	// Loop until maxPrimitiveArraySize
-	while (arraySize_ <= maxPrimitiveArraySize) {
+    // Loop until maxPrimitiveArraySize
+    while (arraySize_ <= maxPrimitiveArraySize) {
 
-		watch_.reset();
+        watch_.reset();
 
-		// Initialize testData, call count stop watch for next iteration!
-		TestInterface::TestArray in(arraySize_);
+        // Initialize testData, call count stop watch for next iteration!
+        TestInterface::TestArray in(arraySize_);
 
-		for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
-			TestInterface::TestArray out;
-			watch_.start();
-			testProxy_->testMethodAsync(in, myCallback_);
-			condVar_.wait(uniqueLock);
-		}
+#ifdef WIN32
+        // DBus under Windows is way to slow at the moment (about 10 times slower than linux), so without an increase in timeout, this test never succeeds.
+        // Only raising for WIN32, since linux should run with the default timeout without problems.
+        CommonAPI::CallInfo callInfo(60000);
+#endif
 
-		// Printing results
-		printTestValues();
+        watch_.start();
+        for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
+#ifdef WIN32
+            testProxy_->testMethodAsync(in, myCallback_, &callInfo);
+#else
+            testProxy_->testMethodAsync(in, myCallback_);
+#endif
+        }
+        condVar_.wait(uniqueLock);
+        watch_.stop();
 
-		// Increase array size for next iteration
-		arraySize_ *= 2;
-	}
+        // Printing results
+        printTestValues();
+
+        // Increase array size for next iteration
+        arraySize_ *= 2;
+    }
 }
 
 int main(int argc, char** argv) {

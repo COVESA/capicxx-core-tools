@@ -15,6 +15,9 @@ E05DeviceStubImpl::E05DeviceStubImpl() {
 E05DeviceStubImpl::~E05DeviceStubImpl() {
 }
 
-void E05DeviceStubImpl::doSomething() {
+void E05DeviceStubImpl::doSomething(
+        const std::shared_ptr<CommonAPI::ClientId> _client,
+        doSomethingReply_t _reply) {
     std::cout << "E05DeviceStubImpl::doSomething() called." << std::endl;
+    _reply();
 }

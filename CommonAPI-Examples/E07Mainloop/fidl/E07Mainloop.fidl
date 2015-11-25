@@ -7,16 +7,16 @@
 package commonapi.examples
 
 interface E07Mainloop {
-	version { major 1 minor 0 }
-	
-	attribute Int32 x
+    version { major 1 minor 0 }
+    
+    attribute Int32 x
 
-	method sayHello {
-		in {
-			String name
-		}
-		out {
-			String message
-		}
-	}
+    method sayHello {
+        in {
+            String name
+        }
+        out {
+            String message
+        }
+    }
 }

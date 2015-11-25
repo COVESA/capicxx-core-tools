@@ -2,7 +2,7 @@ import "platform:/plugin/org.genivi.commonapi.dbus/deployment/CommonAPI-DBus_dep
 import "E03Methods.fidl"
 
 define org.genivi.commonapi.dbus.deployment for interface commonapi.examples.E03Methods {
-	method foo {
-	    Timeout = 1234
-	}
+    method foo {
+        Timeout = 1234
+    }
 }

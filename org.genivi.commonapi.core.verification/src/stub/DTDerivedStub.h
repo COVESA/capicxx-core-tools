@@ -7,10 +7,10 @@
 #ifndef DTDERIVEDSTUB_H_
 #define DTDERIVEDSTUB_H_
 
-#include "v1_0/commonapi/datatypes/derived/TestInterfaceStubDefault.hpp"
-#include "v1_0/commonapi/datatypes/derived/TestInterface.hpp"
+#include "v1/commonapi/datatypes/derived/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/datatypes/derived/TestInterface.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace derived {
@@ -34,5 +34,5 @@ public:
 } /* namespace derived */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */
 #endif /* DTDERIVEDSTUB_H_ */

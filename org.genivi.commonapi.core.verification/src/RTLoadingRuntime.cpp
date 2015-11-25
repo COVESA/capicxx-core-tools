@@ -37,8 +37,8 @@ protected:
 
 /**
 * @test Loads Default Runtime.
-* 	- Calls CommonAPI::Runtime::get().
-* 	- Success if return value is true.
+*     - Calls CommonAPI::Runtime::get().
+*     - Success if return value is true.
 */
 TEST_F(RTLoadingRuntime, LoadsDefaultRuntime) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

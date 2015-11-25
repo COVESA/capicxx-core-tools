@@ -24,8 +24,8 @@ interface TestInterface {
     // Level 0
 
     enumeration tEnum {
-        VALUE1= "0"
-        VALUE2= "123"
+        VALUE1= 0
+        VALUE2= 123
     }
 
     array tArray of String

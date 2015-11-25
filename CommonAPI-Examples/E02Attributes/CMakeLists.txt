@@ -29,11 +29,11 @@ OPTION(USE_INSTALLED_COMMONAPI "Set to OFF to use the local (build tree) version
 message(STATUS "USE_INSTALLED_COMMONAPI is set to value: ${USE_INSTALLED_COMMONAPI}")
 
 if ("${USE_INSTALLED_COMMONAPI}" STREQUAL "ON")
-    FIND_PACKAGE(CommonAPI 3.1.3 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.3 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI 3.1.4 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.4 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
 else()
-    FIND_PACKAGE(CommonAPI 3.1.3 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.3 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI 3.1.4 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.4 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
 endif()
 
 message(STATUS "CommonAPI_CONSIDERED_CONFIGS: ${CommonAPI_CONSIDERED_CONFIGS}")
@@ -46,30 +46,30 @@ include(FindPkgConfig)
 ###############################################################################
 # find DBus by using the 'pkg-config' tool
 if (MSVC)
-	#Not beautiful, but it works
-	if (DBus_DIR)
-		if (DBus_BUILD_DIR)
-			set(DBus_INCLUDE_DIRS "${DBus_DIR};${DBus_BUILD_DIR};")
-		else ()
-			message (FATAL_ERROR "DBus_BUILD_DIR not set! Cannot continue.")
-		endif ()
-	else()
-		message (FATAL_ERROR "DBus_DIR not set! Cannot continue.")
-	endif ()
+    #Not beautiful, but it works
+    if (DBus_DIR)
+        if (DBus_BUILD_DIR)
+            set(DBus_INCLUDE_DIRS "${DBus_DIR};${DBus_BUILD_DIR};")
+        else ()
+            message (FATAL_ERROR "DBus_BUILD_DIR not set! Cannot continue.")
+        endif ()
+    else()
+        message (FATAL_ERROR "DBus_DIR not set! Cannot continue.")
+    endif ()
 else()
-	pkg_check_modules(DBus REQUIRED dbus-1>=1.4)
+    pkg_check_modules(DBus REQUIRED dbus-1>=1.4)
 endif()
 
 # SOME/IP
-find_package (CommonAPI-SomeIP 3.1.3 REQUIRED)
-find_package (vsomeip 1.3.0 REQUIRED)
+find_package (CommonAPI-SomeIP 3.1.4 REQUIRED)
+find_package (vsomeip 2.0.0 REQUIRED)
 
 # Source Files
 set(PRJ_SRC_PATH src)
 set(PRJ_SRC_GEN_PATH src-gen)
-set(PRJ_SRC_GEN_COMMONAPI_PATH ${PRJ_SRC_GEN_PATH}/core/v1_0/commonapi/examples)
-set(PRJ_SRC_GEN_COMMONAPI_DBUS_PATH ${PRJ_SRC_GEN_PATH}/dbus/v1_0/commonapi/examples)
-set(PRJ_SRC_GEN_COMMONAPI_SOMEIP_PATH ${PRJ_SRC_GEN_PATH}/someip/v1_0/commonapi/examples)
+set(PRJ_SRC_GEN_COMMONAPI_PATH ${PRJ_SRC_GEN_PATH}/core/v1/commonapi/examples)
+set(PRJ_SRC_GEN_COMMONAPI_DBUS_PATH ${PRJ_SRC_GEN_PATH}/dbus/v1/commonapi/examples)
+set(PRJ_SRC_GEN_COMMONAPI_SOMEIP_PATH ${PRJ_SRC_GEN_PATH}/someip/v1/commonapi/examples)
 
 set(PRJ_NAME_CLIENT ${PRJ_NAME}Client)
 set(PRJ_NAME_SERVICE ${PRJ_NAME}Service)
@@ -79,7 +79,7 @@ FILE(GLOB PRJ_PROXY_GEN_SRCS ${PRJ_SRC_GEN_COMMONAPI_PATH}/*Proxy.cpp)
 FILE(GLOB PRJ_STUB_GEN_SRCS ${PRJ_SRC_GEN_COMMONAPI_PATH}/*Stub*.cpp)
 FILE(GLOB PRJ_TYPES_GEN_SRCS ${PRJ_SRC_GEN_COMMONAPI_PATH}/CommonTypes.cpp)
 FILE(GLOB PRJ_STUB_IMPL_SRCS ${PRJ_SRC_COMMONAPI_PATH}/*Stub*.cpp)
-set(PRJ_CLIENT_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_CLIENT}.cpp ${PRJ_PROXY_GEN_SRCS})
+set(PRJ_CLIENT_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_CLIENT}.cpp ${PRJ_PROXY_GEN_SRCS} ${PRJ_TYPES_GEN_SRCS})
 set(PRJ_SERVICE_SRCS ${PRJ_SRC_PATH}/${PRJ_NAME_SERVICE}.cpp ${PRJ_SRC_PATH}/${PRJ_NAME}StubImpl.cpp ${PRJ_STUB_GEN_SRCS} ${PRJ_STUB_IMPL_SRCS} ${PRJ_TYPES_GEN_SRCS})
 
 # Boost
@@ -112,7 +112,7 @@ link_directories(
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
-	${Boost_LIBRARY_DIR}
+    ${Boost_LIBRARY_DIR}
 )
 else()
 link_directories(
@@ -120,7 +120,7 @@ link_directories(
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
     ${DBus_INCLUDE_DIRS}/dbus/.libs
-	${Boost_LIBRARY_DIR}
+    ${Boost_LIBRARY_DIR}
 )
 endif()
 

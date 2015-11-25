@@ -10,11 +10,19 @@
 #endif
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E02AttributesProxy.hpp>
+#include <CommonAPI/Extensions/AttributeCacheExtension.hpp>
+#include <v1/commonapi/examples/E02AttributesProxy.hpp>
 
-#include "AttributeCacheExtension.hpp"
+using namespace v1::commonapi::examples;
 
-using namespace v1_0::commonapi::examples;
+template<typename _AttributeType>
+class AttrExt : public CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>
+{
+public:
+    AttrExt(_AttributeType& baseAttribute) :
+        CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>(baseAttribute) {
+    };
+};
 
 void recv_cb(const CommonAPI::CallStatus& callStatus, const int32_t& val) {
     std::cout << "Receive callback: " << val << std::endl;
@@ -22,8 +30,8 @@ void recv_cb(const CommonAPI::CallStatus& callStatus, const int32_t& val) {
 
 void recv_cb_s(const CommonAPI::CallStatus& callStatus, const CommonTypes::a1Struct& valStruct) {
     std::cout << "Receive callback for structure: a1.s = " << valStruct.getS()
-			  << ", valStruct.a2.b = " << (valStruct.getA2().getB() ? "TRUE" : "FALSE")
-			  << ", valStruct.a2.d = " << valStruct.getA2().getD()
+              << ", valStruct.a2.b = " << (valStruct.getA2().getB() ? "TRUE" : "FALSE")
+              << ", valStruct.a2.d = " << valStruct.getA2().getD()
               << std::endl;
 }
 
@@ -34,11 +42,10 @@ int main() {
     std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
 
     std::string domain = "local";
-	std::string instance = "commonapi.examples.Attributes"; 
-	std::string connection = "client-sample";
+    std::string instance = "commonapi.examples.Attributes"; 
+    std::string connection = "client-sample";
 
-    std::shared_ptr<CommonAPI::DefaultAttributeProxyHelper<E02AttributesProxy, AttributeCacheExtension>::class_t> myProxy =
-	runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttributeCacheExtension>(domain, instance, connection);
+    auto myProxy = runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttrExt>(domain, instance, connection);
 
     std::cout << "Waiting for service to become available." << std::endl;
     while (!myProxy->isAvailable()) {
@@ -90,9 +97,13 @@ int main() {
     myProxy->getA1Attribute().setValueAsync(valueStruct, fcb_s, &info);
 
     while (true) {
-    	int32_t valueCached = 0;
-    	bool r = myProxy->getXAttributeExtension().getCachedValue(valueCached);
-    	std::cout << "Got cached attribute value[" << (int)r << "]: " << valueCached << std::endl;
-		usleep(1000000);
+        int32_t errorValue = -1;
+        int32_t valueCached = *myProxy->getXAttributeExtension().getCachedValue(errorValue);
+        if (valueCached != errorValue) {
+            std::cout << "Got cached attribute value[" << (int)valueCached << "]: " << valueCached << std::endl;
+        } else {
+            std::cout << "Got cached attribute error value[" << (int)valueCached << "]: " << valueCached << std::endl;
+        }
+        usleep(1000000);
     }
 }

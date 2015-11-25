@@ -23,6 +23,15 @@
          <options>
             <option
                   argCount="0"
+                  description="Switch off generation of common code"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.noproxy"
+                  longName="no-common"
+                  required="false"
+                  shortName="nc">
+            </option>
+            <option
+                  argCount="0"
                   description="Switch off generation of proxy code"
                   hasOptionalArg="false"
                   id="org.genivi.commonapi.core.cli.option.noproxy"
@@ -85,13 +94,13 @@
                   shortName="dsk">
             </option>
             <option
-                  argCount="1"
-                  description="Switch on/off validation of the fidl file"
+                  argCount="0"
+                  description="Switch off validation of the fidl file"
                   hasOptionalArg="false"
                   id="org.genivi.commonapi.core.cli.option.validation"
-                  longName="validation"
+                  longName="no-val"
                   required="false"
-                  shortName="val">
+                  shortName="nv">
             </option>
             <option
                   argCount="1"
@@ -129,7 +138,52 @@
                   required="false"
                   shortName="sk">
             </option>
-        </options>
+            <option
+                  argCount="0"
+                  description="Print out generated files"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.printFiles"
+                  longName="printfiles"
+                  required="false"
+                  shortName="pf">
+            </option>
+            <option
+                  argCount="1"
+                  description="The search path to contain fidl/fdepl files"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.searchpath"
+                  longName="searchpath"
+                  required="false"
+                  shortName="sp">
+            </option>
+            <option
+                  argCount="0"
+                  description="Switch off code generation completely"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.nogeneration"
+                  longName="no-gen"
+                  required="false"
+                  shortName="ng">
+            </option>
+            <option
+                  argCount="0"
+                  description="Switch off code generation of dependencies"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.nodependencies"
+                  longName="without-dependencies"
+                  required="false"
+                  shortName="wod">
+            </option>
+          <option
+                  argCount="0"
+                  description="Switch off code generation of synchronous methods"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.nosynccalls"
+                  longName="no-sync-calls"
+                  required="false"
+                  shortName="nsc">
+            </option>                 
+         </options>
       </command>
    </extension>
 </plugin>

@@ -7,7 +7,7 @@
 #define E02ATTRIBUTESSTUBIMPL_H_
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E02AttributesStubDefault.hpp>
+#include <v1/commonapi/examples/E02AttributesStubDefault.hpp>
 
 class E02AttributesStubImpl: public v1_0::commonapi::examples::E02AttributesStubDefault {
 

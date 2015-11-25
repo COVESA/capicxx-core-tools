@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
-#include "v1_0/commonapi/datatypes/advanced/TestInterfaceProxy.hpp"
+#include "v1/commonapi/datatypes/advanced/TestInterfaceProxy.hpp"
 #include "stub/DTAdvancedStub.h"
 
 const std::string domain = "local";
@@ -37,6 +37,19 @@ public:
 };
 
 class DTAdvanced: public ::testing::Test {
+
+public:
+    void recvEnumValue(const CommonAPI::CallStatus& callStatus,
+             ::v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration responseValue) {
+        (void)responseValue;
+        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    }
+    void recvInvalidEnumValue(const CommonAPI::CallStatus& callStatus,
+             ::v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration responseValue) {
+        (void)responseValue;
+        EXPECT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
+    }
+
 
 protected:
     void SetUp() {
@@ -69,6 +82,15 @@ protected:
 
     void TearDown() {
         ASSERT_TRUE(runtime_->unregisterService(domain, v1_0::commonapi::datatypes::advanced::DTAdvancedStub::StubInterface::getInterface(), testAddress));
+        
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     bool received_;
@@ -147,6 +169,111 @@ TEST_F(DTAdvanced, SendAndReceive) {
     EXPECT_EQ(typedefTestValue, typedefResultValue);
 }
 
+/*
+* @test Test function call with an invalid type
+* Try to pass an invalid value. Check that it failed.
+*/
+TEST_F(DTAdvanced, SendAndReceiveInvalid) {
+
+    CommonAPI::CallStatus callStatus;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
+
+    arrayTestValue.push_back("Test1");
+    arrayTestValue.push_back("Test2");
+    arrayTestValue.push_back("Test3");
+
+    // put a deliberately invalid value to the enum data value
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+
+    structTestValue.setBooleanMember(true);
+    structTestValue.setUint8Member(42);
+    structTestValue.setStringMember("Hello World");
+
+    uint8_t u = 53;
+    unionTestValue = u;
+
+    mapTestValue[1] = "Hello";
+    mapTestValue[2] = "World";
+
+    typedefTestValue = 64;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefResultValue;
+
+    testProxy_->fTest(
+            arrayTestValue,
+            enumerationTestValue,
+            structTestValue,
+            unionTestValue,
+            mapTestValue,
+            typedefTestValue,
+            callStatus,
+            arrayResultValue,
+            enumerationResultValue,
+            structResultValue,
+            unionResultValue,
+            mapResultValue,
+            typedefResultValue
+    );
+
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
+}
+
+
+/**
+* @test Test attribute functions with invalid values
+*   - Call set function of attributes with invalid types
+*   - Check that the attribute's value has not changed
+*/
+TEST_F(DTAdvanced, AttributeSetInvalid) {
+
+    CommonAPI::CallStatus callStatus;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
+
+    // put a deliberately invalid value to the enum data value
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
+
+    testProxy_->getAEnumerationAttribute().setValue(enumerationTestValue, callStatus, enumerationResultValue);
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
+}
+
+/**
+* @test Test attribute asynchronous functions with invalid values
+*   - Call set asynch function of attributes with invalid types
+*   - Callback should be called with error status
+*   - Check that attribute value has not changed
+*/
+TEST_F(DTAdvanced, AttributeSetAsyncInvalid) {
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
+
+    std::function<void (const CommonAPI::CallStatus&,
+        v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration)> myCallback =
+            std::bind(&DTAdvanced::recvInvalidEnumValue, this, std::placeholders::_1, std::placeholders::_2);
+
+    // put a deliberately invalid value to the enum data value
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
+
+    testProxy_->getAEnumerationAttribute().setValueAsync(enumerationTestValue, myCallback);
+    usleep(100000);
+}
+
+
 /**
 * @test Test attribute functions with advanced types
 *   - Call set function of attributes with advanced types
@@ -191,6 +318,14 @@ TEST_F(DTAdvanced, AttributeSet) {
     testProxy_->getAArrayAttribute().setValue(arrayTestValue, callStatus, arrayResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(arrayTestValue, arrayResultValue);
+
+    // check initial value of enumeration attribute
+    enumerationTestValue = v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE1; // this is the expected default value
+    EXPECT_EQ(enumerationTestValue, enumerationResultValue); // the uninitialized enumerationResultValue should have the default value
+    enumerationResultValue = v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE2; // set to some other value
+    testProxy_->getAEnumerationAttribute().getValue(callStatus, enumerationResultValue); // get value of attribute
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(enumerationTestValue, enumerationResultValue); // attribute value should default to the initial default value
 
     testProxy_->getAEnumerationAttribute().setValue(enumerationTestValue, callStatus, enumerationResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);

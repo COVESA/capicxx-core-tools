@@ -5,10 +5,11 @@
 package org.genivi.commonapi.core;
 
 import java.util.List;
+
 import org.franca.core.franca.FInterface;
-import org.franca.deploymodel.dsl.fDeploy.FDProvider;
-import org.franca.deploymodel.dsl.fDeploy.FDInterfaceInstance;
 import org.franca.deploymodel.core.FDeployedProvider;
+import org.franca.deploymodel.dsl.fDeploy.FDInterfaceInstance;
+import org.franca.deploymodel.dsl.fDeploy.FDProvider;
 
 /**
  * Accessor for deployment properties for 'org.genivi.commonapi.core.deployment' specification
@@ -24,6 +25,10 @@ public class DeploymentProviderPropertyAccessor
 	
 	public List<FInterface> getClientInstanceReferences (FDProvider obj) {
 		return target.getInterfaceArray(obj, "ClientInstanceReferences");
+	}
+	
+	public String getProject (FDProvider obj) {
+		return target.getString(obj, "Project");
 	}
 	
 	public String getDomain (FDInterfaceInstance obj) {

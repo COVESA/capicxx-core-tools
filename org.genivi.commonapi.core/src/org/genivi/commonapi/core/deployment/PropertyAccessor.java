@@ -14,7 +14,10 @@ import org.franca.deploymodel.core.FDeployedInterface;
 import org.franca.deploymodel.core.FDeployedProvider;
 import org.franca.deploymodel.core.FDeployedTypeCollection;
 import org.franca.deploymodel.dsl.fDeploy.FDInterfaceInstance;
+import org.franca.deploymodel.dsl.fDeploy.FDProperty;
 import org.franca.deploymodel.dsl.fDeploy.FDProvider;
+import org.franca.deploymodel.dsl.fDeploy.FDString;
+import org.franca.deploymodel.dsl.fDeploy.FDValue;
 import org.genivi.commonapi.core.DeploymentInterfacePropertyAccessor;
 import org.genivi.commonapi.core.DeploymentProviderPropertyAccessor;
 import org.genivi.commonapi.core.DeploymentTypeCollectionPropertyAccessor;
@@ -94,7 +97,7 @@ public class PropertyAccessor {
 			case PROVIDER:
 			case NONE:
 			default:
-				return EnumBackingType.Int32;
+				return EnumBackingType.UseDefault;
 			}
 		}
 		catch (java.lang.NullPointerException e) {}
@@ -134,6 +137,16 @@ public class PropertyAccessor {
 				return provider_.getInstanceId(obj);
 		}
 		catch (java.lang.NullPointerException e) {}
+		// Access the model directly, without accessor
+		for(FDProperty property : obj.getProperties()) {
+			if(property.eContainer() instanceof FDInterfaceInstance) {
+				FDValue fdVal = property.getValue().getSingle();
+				if(fdVal instanceof FDString) {
+					String value = ((FDString) fdVal).getValue();
+					return value;
+				}
+			}
+		}
 		return null;
 	}
 	
@@ -162,9 +175,9 @@ public class PropertyAccessor {
 		case UInt16:
 			return DefaultEnumBackingType.UInt16;
 		case UInt32:
-			return DefaultEnumBackingType.UInt8;
+			return DefaultEnumBackingType.UInt32;
 		case UInt64:
-			return DefaultEnumBackingType.UInt8;
+			return DefaultEnumBackingType.UInt64;
 		case Int8:
 			return DefaultEnumBackingType.Int8;
 		case Int16:
@@ -185,9 +198,9 @@ public class PropertyAccessor {
 		case UInt16:
 			return EnumBackingType.UInt16;
 		case UInt32:
-			return EnumBackingType.UInt8;
+			return EnumBackingType.UInt32;
 		case UInt64:
-			return EnumBackingType.UInt8;
+			return EnumBackingType.UInt64;
 		case Int8:
 			return EnumBackingType.Int8;
 		case Int16:
@@ -209,9 +222,9 @@ public class PropertyAccessor {
 			case UInt16:
 				return DefaultEnumBackingType.UInt16;
 			case UInt32:
-				return DefaultEnumBackingType.UInt8;
+				return DefaultEnumBackingType.UInt32;
 			case UInt64:
-				return DefaultEnumBackingType.UInt8;
+				return DefaultEnumBackingType.UInt64;
 			case Int8:
 				return DefaultEnumBackingType.Int8;
 			case Int16:
@@ -235,9 +248,9 @@ public class PropertyAccessor {
 			case UInt16:
 				return EnumBackingType.UInt16;
 			case UInt32:
-				return EnumBackingType.UInt8;
+				return EnumBackingType.UInt32;
 			case UInt64:
-				return EnumBackingType.UInt8;
+				return EnumBackingType.UInt64;
 			case Int8:
 				return EnumBackingType.Int8;
 			case Int16:

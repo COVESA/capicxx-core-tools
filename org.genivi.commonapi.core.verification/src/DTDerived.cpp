@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
-#include "v1_0/commonapi/datatypes/derived/TestInterfaceProxy.hpp"
+#include "v1/commonapi/datatypes/derived/TestInterfaceProxy.hpp"
 #include "stub/DTDerivedStub.h"
 
 const std::string domain = "local";
@@ -68,7 +68,16 @@ protected:
     }
 
     void TearDown() {
-		runtime_->unregisterService(domain, v1_0::commonapi::datatypes::derived::DTDerivedStub::StubInterface::getInterface(), testAddress);
+        runtime_->unregisterService(domain, v1_0::commonapi::datatypes::derived::DTDerivedStub::StubInterface::getInterface(), testAddress);
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     bool received_;
@@ -170,6 +179,15 @@ TEST_F(DTDerived, AttributeSet) {
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(structExtTestValue, structExtResultValue);
 
+    // check initial value of enumeration attribute
+    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2; // this is the expected default value
+    EXPECT_EQ(enumExtTestValue, enumExtResultValue); // the uninitialized enumExtResultValue should have the default value
+    enumExtResultValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3; // set to some other value
+    testProxy_->getAEnumExtAttribute().getValue(callStatus, enumExtResultValue); // get value of attribute
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(enumExtTestValue, enumExtResultValue); // attribute value should default to the initial default value
+
+    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3;
     testProxy_->getAEnumExtAttribute().setValue(enumExtTestValue, callStatus, enumExtResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(enumExtTestValue, enumExtResultValue);

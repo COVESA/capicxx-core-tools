@@ -12,12 +12,12 @@ import org.eclipse.jface.preference.FieldEditorPreferencePage;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
+import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
 
 public class ValidatorCorePreferencesPage extends FieldEditorPreferencePage
         implements IWorkbenchPreferencePage {
 
-    public final static String ENABLED_CORE_VALIDATOR = "ENABLED_CORE_VALIDATOR";
 
     @Override
     public void checkState() {
@@ -26,17 +26,14 @@ public class ValidatorCorePreferencesPage extends FieldEditorPreferencePage
 
     @Override
     public void createFieldEditors() {
-        addField(new BooleanFieldEditor(ENABLED_CORE_VALIDATOR,
+        addField(new BooleanFieldEditor(PreferenceConstants.P_ENABLE_CORE_VALIDATOR,
                 "validator enabled", getFieldEditorParent()));
     }
 
     @Override
     public void init(IWorkbench workbench) {
-        IPreferenceStore prefStore = CommonApiUiPlugin.getDefault()
-                .getPreferenceStore();
+        IPreferenceStore prefStore = CommonApiUiPlugin.getValidatorPreferences();
         setPreferenceStore(prefStore);
         setDescription("Disable or enable the core validator!");
-        prefStore.setDefault(
-                ValidatorCorePreferencesPage.ENABLED_CORE_VALIDATOR, true);
     }
 }

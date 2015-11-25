@@ -7,35 +7,35 @@ import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP
 import "E07Mainloop.fidl"
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E07Mainloop {
-	SomeIpServiceID = 4660
+    SomeIpServiceID = 4660
 
-	attribute x {
-		SomeIpGetterID = 3000
-		SomeIpSetterID = 3001
-		SomeIpNotifierID = 33010		
-		SomeIpEventGroups = { 33010 }
-	}
-	
-	method sayHello {
-		SomeIpMethodID = 33000
-		
-		in {
-			name {
-				SomeIpStringEncoding = utf16le
-			}
-		}
-	}
+    attribute x {
+        SomeIpGetterID = 3000
+        SomeIpSetterID = 3001
+        SomeIpNotifierID = 33010        
+        SomeIpEventGroups = { 33010 }
+    }
+    
+    method sayHello {
+        SomeIpMethodID = 33000
+        
+        in {
+            name {
+                SomeIpStringEncoding = utf16le
+            }
+        }
+    }
 
 }
 
 define org.genivi.commonapi.someip.deployment for provider Service {
-	instance commonapi.examples.E07Mainloop {
-		InstanceId = "commonapi.examples.Mainloop"
-		
-		SomeIpInstanceID = 22136
-	
-		SomeIpUnicastAddress = "192.168.0.2"
-		SomeIpReliableUnicastPort = 30499
-		SomeIpUnreliableUnicastPort = 30499
-	}
+    instance commonapi.examples.E07Mainloop {
+        InstanceId = "commonapi.examples.Mainloop"
+        
+        SomeIpInstanceID = 22136
+    
+        SomeIpUnicastAddress = "192.168.0.2"
+        SomeIpReliableUnicastPort = 30499
+        SomeIpUnreliableUnicastPort = 30499
+    }
 }

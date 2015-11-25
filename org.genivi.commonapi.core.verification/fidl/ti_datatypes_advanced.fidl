@@ -46,8 +46,8 @@ interface TestInterface {
     array tArray of String
 
     enumeration tEnumeration {
-        VALUE1= "0"
-        VALUE2= "123"
+        VALUE1= 1
+        VALUE2= 123
     }
 
     struct tStruct {

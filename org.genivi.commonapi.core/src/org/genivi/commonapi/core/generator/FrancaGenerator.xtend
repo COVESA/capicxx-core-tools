@@ -6,29 +6,20 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
-import java.util.Collection
+import java.io.File
+import java.util.ArrayList
 import java.util.HashSet
-import java.util.LinkedList
 import java.util.List
+import java.util.Map
+import java.util.Set
 import javax.inject.Inject
 import org.eclipse.core.resources.IResource
-import org.eclipse.core.resources.ResourcesPlugin
-import org.eclipse.core.runtime.Path
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.eclipse.xtext.generator.IGenerator
 import org.franca.core.dsl.FrancaPersistenceManager
-import org.franca.core.franca.FArrayType
-import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FInterface
-import org.franca.core.franca.FMapType
 import org.franca.core.franca.FModel
-import org.franca.core.franca.FStructType
-import org.franca.core.franca.FType
-import org.franca.core.franca.FTypeCollection
-import org.franca.core.franca.FTypeDef
-import org.franca.core.franca.FTypeRef
-import org.franca.core.franca.FUnionType
 import org.franca.deploymodel.core.FDeployedInterface
 import org.franca.deploymodel.core.FDeployedTypeCollection
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
@@ -38,8 +29,7 @@ import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
-
-import static com.google.common.base.Preconditions.*
+import org.franca.deploymodel.core.FDeployedProvider
 
 class FrancaGenerator implements IGenerator {
     @Inject private extension FTypeCollectionGenerator
@@ -47,72 +37,150 @@ class FrancaGenerator implements IGenerator {
     @Inject private extension FInterfaceProxyGenerator
     @Inject private extension FInterfaceStubGenerator
     @Inject private extension FrancaGeneratorExtensions
-
+    
     @Inject private FrancaPersistenceManager francaPersistenceManager
     @Inject private FDeployManager fDeployManager
 
+    val String CORE_SPECIFICATION_TYPE = "core.deployment"
+
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
-        var List<FDInterface> deployedInterfaces = new LinkedList<FDInterface>()
-        var List<FDTypes> deployedTypeCollections = new LinkedList<FDTypes>()
-        var List<FDProvider> deployedProviders = new LinkedList<FDProvider>()
+        if (!input.URI.fileExtension.equals(francaPersistenceManager.fileExtension) &&
+            !input.URI.fileExtension.equals(FDeployManager.fileExtension)) {
+                return
+        }        
+        
+        var List<FDInterface> deployedInterfaces = new ArrayList<FDInterface>()
+        var List<FDTypes> deployedTypeCollections = new ArrayList<FDTypes>()
+        var List<FDProvider> deployedProviders = new ArrayList<FDProvider>()
         var IResource res = null
-        val String CORE_SPECIFICATION_TYPE = "core.deployment"
 
-        // generate code from the fidl or fdepl file 
-        if (input.URI.fileExtension.equals(francaPersistenceManager.fileExtension) ||
-            input.URI.fileExtension.equals(FDeployManager.fileExtension)) {
+        var rootModel = fDeployManager.loadModel(input.URI, input.URI);
+        
+        generatedFiles_ = new HashSet<String>()
 
-            var model = fDeployManager.loadModel(input.URI, input.URI);
-            
-            // fModels is the map of all models from imported fidl files
-            var fModels = fDeployManager.fidlModels
-            
-            if (model instanceof FDModel) {
-                // read deployment information              
-                deployedInterfaces = getFDInterfaces(model, CORE_SPECIFICATION_TYPE)
-                deployedTypeCollections = getFDTypesList(model, CORE_SPECIFICATION_TYPE)
-                deployedProviders = getFDProviders(model, CORE_SPECIFICATION_TYPE)
-            }
-            // add the model from the given fidl file
-            else if(model instanceof FModel) {
-                fModels.put(input.URI.lastSegment, model);
-            }
+        withDependencies_ = FPreferences::instance.getPreference(
+            PreferenceConstants::P_GENERATE_DEPENDENCIES, "true"
+        ).equals("true")
 
-            for (fModelEntry : fModels.entrySet) {
-                //System.out.println("Generation code for: " + fModelEntry.key)
-                var fModel = fModelEntry.value
+        // models holds the map of all models from imported .fidl files
+        var models = fDeployManager.fidlModels
+        // deployments holds the map of all models from imported .fdepl files
+        var deployments = fDeployManager.deploymentModels
 
-                if (fModel != null) {
+        if (rootModel instanceof FDModel) {
+            deployments.put(input.URI.toString, rootModel)
+        } else if (rootModel instanceof FModel) {
+            models.put(input.URI.toString, rootModel)
+        }
 
-                    // actually generate code
-                    doGenerateComponents(fModel, deployedInterfaces, deployedTypeCollections, deployedProviders,
-                        fileSystemAccess, res)
+        // Categorize deployment information. Store for each deployment whether (or not)
+        // it contains an interface or type collection deployment
+        for (itsEntry : deployments.entrySet) {
+            var FDModel itsDeployment = itsEntry.value
+
+            val List<FDInterface> itsInterfaces = getFDInterfaces(itsDeployment, CORE_SPECIFICATION_TYPE)
+            val List<FDTypes> itsTypeCollections = getFDTypesList(itsDeployment, CORE_SPECIFICATION_TYPE)
+            val List<FDProvider> itsProviders = getAllFDProviders(itsDeployment)
+                         
+            deployedInterfaces.addAll(itsInterfaces)
+            deployedTypeCollections.addAll(itsTypeCollections)
+            deployedProviders.addAll(itsProviders)
+        }
+        
+        if (rootModel instanceof FDModel) {
+            doGenerateDeployment(rootModel, deployments, models,
+                deployedInterfaces, deployedTypeCollections, deployedProviders,
+                fileSystemAccess, res)
+        } else if (rootModel instanceof FModel) {
+            doGenerateModel(rootModel, deployments, models,
+                deployedInterfaces, deployedTypeCollections, deployedProviders,
+                fileSystemAccess, res)
+        }
+        
+        fDeployManager.clearFidlModels
+        fDeployManager.clearDeploymentModels
+    }
+ 
+    def private void doGenerateDeployment(FDModel _deployment,
+                                          Map<String, FDModel> _deployments,
+                                          Map<String, FModel> _models,
+                                          List<FDInterface> _interfaces,
+                                          List<FDTypes> _typeCollections,
+                                          List<FDProvider> _providers,
+                                          IFileSystemAccess _access,
+                                          IResource _res) {
+        val String deploymentName
+            = _deployments.entrySet.filter[it.value == _deployment].head.key
+                    
+        var String basePath = deploymentName.substring(
+            0, deploymentName.lastIndexOf(File.separatorChar))
+        
+        var Set<String> itsImports = new HashSet<String>()
+        for (anImport : _deployment.imports) {
+            val String canonical = getCanonical(basePath, anImport.importURI)
+            itsImports.add(canonical)
+        }
+
+        if (withDependencies_) {
+            for (itsEntry : _deployments.entrySet) {
+                if (itsImports.contains(itsEntry.key)) {
+                    doGenerateDeployment(itsEntry.value, _deployments, _models,
+                        _interfaces, _typeCollections, _providers,
+                        _access, _res)
                 }
             }
-            fDeployManager.clearFidlModels
-        } else {
-            // input has not  *.fidl or *.fdepl
-            checkArgument(false, "Unknown input: " + input)
+        }
+         
+        for (itsEntry : _models.entrySet) {
+            if (itsImports.contains(itsEntry.key)) {
+                doGenerateModel(itsEntry.value, _deployments, _models,
+                    _interfaces, _typeCollections, _providers,
+                    _access, _res)
+            }
+        }
+    }  
+
+    def private void doGenerateModel(FModel _model,
+                                     Map<String, FDModel> _deployments,
+                                     Map<String, FModel> _models,
+                                     List<FDInterface> _interfaces,
+                                     List<FDTypes> _typeCollections,
+                                     List<FDProvider> _providers,
+                                     IFileSystemAccess _access,
+                                     IResource _res) {
+
+        val String modelName
+            = _models.entrySet.filter[it.value == _model].head.key
+
+        if (generatedFiles_.contains(modelName)) {
+            return
+        }
+
+        generatedFiles_.add(modelName);
+                                         
+        doGenerateComponents(_model,
+            _interfaces, _typeCollections, _providers,
+            _access, _res)
+        
+        if (withDependencies_) {
+            for (itsEntry : _models.entrySet) {
+                var FModel itsModel = itsEntry.value
+                if (itsModel != null) {
+                    doGenerateComponents(itsModel,
+                        _interfaces, _typeCollections, _providers,
+                        _access, _res)
+                }
+            }
         }
     }
 
-    def private doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces,
+    def private void doGenerateComponents(FModel fModel, List<FDInterface> deployedInterfaces,
         List<FDTypes> deployedTypeCollections, List<FDProvider> deployedProviders,
         IFileSystemAccess fileSystemAccess, IResource res) {
-
-        val allReferencedFTypes = fModel.allReferencedFTypes
-        val allFTypeTypeCollections = allReferencedFTypes.filter[eContainer instanceof FTypeCollection].map[
-            eContainer as FTypeCollection]
-        val allFTypeFInterfaces = allReferencedFTypes.filter[eContainer instanceof FInterface].map[
-			eContainer as FInterface]
-
-        val generateTypeCollections = fModel.typeCollections.toSet
-        generateTypeCollections.addAll(allFTypeTypeCollections)
-
-        val interfacesToGenerate = fModel.allReferencedFInterfaces.toSet
-        interfacesToGenerate.addAll(allFTypeFInterfaces)
-
-        val defaultDeploymentAccessor = new PropertyAccessor() 
+        var typeCollectionsToGenerate = fModel.typeCollections.toSet
+        var interfacesToGenerate = fModel.interfaces.toSet
+        
+        val defaultDeploymentAccessor = new PropertyAccessor()
         interfacesToGenerate.forEach [
             val currentInterface = it
             var PropertyAccessor deploymentAccessor
@@ -122,10 +190,13 @@ class FrancaGenerator implements IGenerator {
             } else {
                 deploymentAccessor = defaultDeploymentAccessor
             }
-            generateInterface(it, fileSystemAccess, deploymentAccessor, res)
+            if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_COMMON, "true").equals("true")) {
+                generateInterface(it, fileSystemAccess, deploymentAccessor, res)
+            }
         ]
-        
-        generateTypeCollections.forEach [
+
+        // for all type collections
+        typeCollectionsToGenerate.forEach [
             val currentTypeCollection = it
             if (!(currentTypeCollection instanceof FInterface)) {
                 var PropertyAccessor deploymentAccessor
@@ -137,10 +208,13 @@ class FrancaGenerator implements IGenerator {
                 } else {
                     deploymentAccessor = defaultDeploymentAccessor
                 }
-                generate(it, fileSystemAccess, deploymentAccessor, res)
+                if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_COMMON, "true").equals("true")) {
+                    generate(it, fileSystemAccess, deploymentAccessor, res)
+                }
             }
         ]
 
+        // for all interfaces
         fModel.interfaces.forEach [
             val currentInterface = it
             var PropertyAccessor deploymentAccessor
@@ -150,136 +224,32 @@ class FrancaGenerator implements IGenerator {
             } else {
                 deploymentAccessor = defaultDeploymentAccessor
             }
-            if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATEPROXY, "true").equals("true")) {
+            if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_PROXY, "true").equals("true")) {
                 it.generateProxy(fileSystemAccess, deploymentAccessor, res)
             }
-            if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATESTUB, "true").equals("true")) {
+            if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_STUB, "true").equals("true")) {
                 it.generateStub(fileSystemAccess, res)
             }
         ]
-
-        return;
-    }
-
-    private var String filePrefix = "file://"
-
-    def getFilePathUrl(Resource resource)
-    {
-        val filePath = resource.filePath
-        return filePrefix + filePath
-    }
-
-    def private getFilePath(Resource resource)
-    {
-        if(resource.URI.file)
-        {
-            return resource.URI.toFileString
-        }
-
-        val platformPath = new Path(resource.URI.toPlatformString(true))
-        val file = ResourcesPlugin::getWorkspace().getRoot().getFile(platformPath);
-
-        return file.location.toString
-    }
-
-    def private getAllReferencedFInterfaces(FModel fModel)
-    {
-        val referencedFInterfaces = fModel.interfaces.toSet
-        fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
-        fModel.interfaces.forEach[managedInterfaces.forEach[addFInterfaceTree(referencedFInterfaces)]]
-        return referencedFInterfaces
-    }
-
-    def private void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences)
-    {
-        if(!fInterfaceReferences.contains(fInterface))
-        {
-            fInterfaceReferences.add(fInterface)
-            fInterface.base?.addFInterfaceTree(fInterfaceReferences)
-        }
-    }
-
-    def private getAllReferencedFTypes(FModel fModel)
-    {
-        val referencedFTypes = new HashSet<FType>
-
-        fModel.typeCollections.forEach[types.forEach[addFTypeDerivedTree(referencedFTypes)]]
-
+        // generate interface instance header
         fModel.interfaces.forEach [
-            attributes.forEach[type.addDerivedFTypeTree(referencedFTypes)]
-            types.forEach[addFTypeDerivedTree(referencedFTypes)]
-            methods.forEach [
-                inArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
-                outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
+            val currentInterface = it
+            val List<String> deployedInstances = new ArrayList<String>()
+            deployedProviders.forEach [
+                val deploymentAccessor = new PropertyAccessor(new FDeployedProvider(it))
+                it.instances.filter[currentInterface == target].forEach [
+                    var instanceId = deploymentAccessor.getInstanceId(it)
+                    if (instanceId != null) {
+                        deployedInstances.add(instanceId)
+                    }
+                ]
             ]
-            broadcasts.forEach [
-                outArgs.forEach[type.addDerivedFTypeTree(referencedFTypes)]
-            ]
+            if (!deployedInstances.isEmpty) {
+                currentInterface.generateInstanceIds(fileSystemAccess, deployedInstances)
+            }
         ]
-
-        return referencedFTypes
     }
-
-    def private void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences)
-    {
-        fTypeRef.derived?.addFTypeDerivedTree(fTypeReferences)
-    }
-
-    def private dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fTypeDef))
-        {
-            fTypeReferences.add(fTypeDef)
-            fTypeDef.actualType.addDerivedFTypeTree(fTypeReferences)
-        }
-    }
-
-    def private dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fArrayType))
-        {
-            fTypeReferences.add(fArrayType)
-            fArrayType.elementType.addDerivedFTypeTree(fTypeReferences)
-        }
-    }
-
-    def private dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fMapType))
-        {
-            fTypeReferences.add(fMapType)
-            fMapType.keyType.addDerivedFTypeTree(fTypeReferences)
-            fMapType.valueType.addDerivedFTypeTree(fTypeReferences)
-        }
-    }
-
-    def private dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fStructType))
-        {
-            fTypeReferences.add(fStructType)
-            fStructType.base?.addFTypeDerivedTree(fTypeReferences)
-            fStructType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
-        }
-    }
-
-    def private dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fEnumerationType))
-        {
-            fTypeReferences.add(fEnumerationType)
-            fEnumerationType.base?.addFTypeDerivedTree(fTypeReferences)
-        }
-    }
-
-    def private dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences)
-    {
-        if(!fTypeReferences.contains(fUnionType))
-        {
-            fTypeReferences.add(fUnionType)
-            fUnionType.base?.addFTypeDerivedTree(fTypeReferences)
-            fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
-        }
-    }
-
+    
+    private boolean withDependencies_ = false
+    private Set<String> generatedFiles_;
 }

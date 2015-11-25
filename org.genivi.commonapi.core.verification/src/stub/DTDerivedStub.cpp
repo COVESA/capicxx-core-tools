@@ -10,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace derived {
@@ -29,13 +29,14 @@ void DTDerivedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
         TestInterface::tUnionExt tUnionExtIn,
         std::shared_ptr<TestInterface::tBaseStruct> tBaseStructIn,
         fTestReply_t _reply) {
+    (void)clientId;
 
     TestInterface::tStructExt tStructExtOut = tStructExtIn;
     TestInterface::tEnumExt tEnumExtOut = tEnumExtIn;
     TestInterface::tUnionExt tUnionExtOut = tUnionExtIn;
     std::shared_ptr<TestInterface::tBaseStruct> tBaseStructOut = tBaseStructIn;
 
-	_reply(tStructExtOut, tEnumExtOut, tUnionExtOut, tBaseStructOut);
+    _reply(tStructExtOut, tEnumExtOut, tUnionExtOut, tBaseStructOut);
 
     fireBTestEvent(
             tStructExtOut,
@@ -48,4 +49,4 @@ void DTDerivedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
 } /* namespace derived */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */

@@ -8,7 +8,7 @@
 #define E07MAINLOOPSTUBIMPL_H_
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E07MainloopStubDefault.hpp>
+#include <v1/commonapi/examples/E07MainloopStubDefault.hpp>
 
 class E07MainloopStubImpl: public v1_0::commonapi::examples::E07MainloopStubDefault {
 

@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <condition_variable>
+#include <cstdio>
 #ifdef WIN32
 #include <WinSock2.h>
 #else
@@ -22,6 +23,7 @@
 #endif
 
 #include <cassert>
+#include <mutex>
 
 namespace CommonAPI {
 
@@ -29,81 +31,82 @@ typedef pollfd DemoMainLoopPollFd;
 
 class VerificationMainLoopEventQueue {
 public:
-	void run(const int64_t& timeoutInterval = TIMEOUT_INFINITE) {
-		running_ = true;
-		while (running_) {
-			std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
-			queueCondition_.wait(queueUniqueLock);
+    void run(const int64_t& timeoutInterval = TIMEOUT_INFINITE) {
+            (void)timeoutInterval;
+        running_ = true;
+        while (running_) {
+            std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
+            queueCondition_.wait(queueUniqueLock);
 
-			for (unsigned int i = 0; i < queue_.size(); i++) {
-				queue_.at(i)();
-			}
+            for (unsigned int i = 0; i < queue_.size(); i++) {
+                queue_.at(i)();
+            }
 
-			queueUniqueLock.unlock();
-			queueCondition_.notify_one();
-		}
-	}
+            queueUniqueLock.unlock();
+            queueCondition_.notify_one();
+        }
+    }
 
-	void stop() {
-		running_ = false;
-	}
+    void stop() {
+        running_ = false;
+    }
 
-	void pushToQueue(std::function<void()> func) {
-		std::lock_guard<std::mutex> queueUniqueLock(queueLock_);
-		queue_.push_back(func);
-		queueCondition_.notify_one();
-	}
+    void pushToQueue(std::function<void()> func) {
+        std::lock_guard<std::mutex> queueUniqueLock(queueLock_);
+        queue_.push_back(func);
+        queueCondition_.notify_one();
+    }
 
 private:
-	bool running_;
-	std::vector<std::function<void()>> queue_;
-	std::condition_variable queueCondition_;
-	std::mutex queueLock_;
+    bool running_;
+    std::vector<std::function<void()>> queue_;
+    std::condition_variable queueCondition_;
+    std::mutex queueLock_;
 };
 
 class VerificationMainLoop {
  public:
-	 VerificationMainLoop() = delete;
-	 VerificationMainLoop(const VerificationMainLoop&) = delete;
-	 VerificationMainLoop& operator=(const VerificationMainLoop&) = delete;
-	 VerificationMainLoop(VerificationMainLoop&&) = delete;
-	 VerificationMainLoop& operator=(VerificationMainLoop&&) = delete;
+     VerificationMainLoop() = delete;
+     VerificationMainLoop(const VerificationMainLoop&) = delete;
+     VerificationMainLoop& operator=(const VerificationMainLoop&) = delete;
+     VerificationMainLoop(VerificationMainLoop&&) = delete;
+     VerificationMainLoop& operator=(VerificationMainLoop&&) = delete;
 
-	 explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context, std::shared_ptr<VerificationMainLoopEventQueue> eventQueue) :
-		context_(context),
-		eventQueue_(eventQueue),
-		currentMinimalTimeoutInterval_(TIMEOUT_INFINITE),
-		breakLoop_(false),
-		running_(false),
-		m_bNeedWakeup(false)
+     explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context, std::shared_ptr<VerificationMainLoopEventQueue> eventQueue) :
+        m_bNeedWakeup(false),
+        context_(context),
+        currentMinimalTimeoutInterval_(TIMEOUT_INFINITE),
+        breakLoop_(false),
+        running_(false),
+        eventQueue_(eventQueue)
     {
 #ifdef WIN32
-		wsaEvents_.push_back(WSACreateEvent());
+        wsaEvents_.push_back(WSACreateEvent());
 
-		if (wsaEvents_[0] == WSA_INVALID_EVENT) {
-			printf("Invalid Event Created!");
-		}
+        if (wsaEvents_[0] == WSA_INVALID_EVENT) {
+            printf("Invalid Event Created!");
+        }
 #else
-		wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
-		wakeFd_.events = POLLIN;
-		assert(wakeFd_.fd != -1);
-		registerFileDescriptor(wakeFd_);
+        wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
+        wakeFd_.events = POLLIN;
+        assert(wakeFd_.fd != -1);
+        registerFileDescriptor(wakeFd_);
 #endif
 
         dispatchSourceListenerSubscription_ = context_->subscribeForDispatchSources(
-			std::bind(&VerificationMainLoop::registerDispatchSource, this, std::placeholders::_1, std::placeholders::_2),
-			std::bind(&VerificationMainLoop::deregisterDispatchSource, this, std::placeholders::_1));
+            std::bind(&VerificationMainLoop::registerDispatchSource, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&VerificationMainLoop::deregisterDispatchSource, this, std::placeholders::_1));
         watchListenerSubscription_ = context_->subscribeForWatches(
-			std::bind(&VerificationMainLoop::registerWatch, this, std::placeholders::_1, std::placeholders::_2),
-			std::bind(&VerificationMainLoop::deregisterWatch, this, std::placeholders::_1));
+            std::bind(&VerificationMainLoop::registerWatch, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&VerificationMainLoop::deregisterWatch, this, std::placeholders::_1));
         timeoutSourceListenerSubscription_ = context_->subscribeForTimeouts(
-			std::bind(&VerificationMainLoop::registerTimeout, this, std::placeholders::_1, std::placeholders::_2),
-			std::bind(&VerificationMainLoop::deregisterTimeout, this, std::placeholders::_1));
+            std::bind(&VerificationMainLoop::registerTimeout, this, std::placeholders::_1, std::placeholders::_2),
+            std::bind(&VerificationMainLoop::deregisterTimeout, this, std::placeholders::_1));
         wakeupListenerSubscription_ = context_->subscribeForWakeupEvents(
-			std::bind(&VerificationMainLoop::wakeup, this));
+            std::bind(&VerificationMainLoop::wakeup, this));
     }
 
-	 ~VerificationMainLoop() {
+     ~VerificationMainLoop() {
 #ifndef WIN32
         deregisterFileDescriptor(wakeFd_);
 #endif
@@ -113,7 +116,7 @@ class VerificationMainLoop {
         context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
 #ifdef WIN32
-		WSACloseEvent(wsaEvents_[0]);
+        WSACloseEvent(wsaEvents_[0]);
 #else
         close(wakeFd_.fd);
 #endif
@@ -156,8 +159,8 @@ class VerificationMainLoop {
         prepare(timeout);
         poll();
         if(check()) {
-			dispatch();
-			//dispatchCondition_.notify_one();
+            dispatch();
+            //dispatchCondition_.notify_one();
         }
     }
 
@@ -169,6 +172,7 @@ class VerificationMainLoop {
     void prepare(const int64_t& timeout = TIMEOUT_INFINITE) {
         currentMinimalTimeoutInterval_ = timeout;
 
+        registeredDispatchSourcesMutex_.lock();
         for (auto dispatchSourceIterator = registeredDispatchSources_.begin();
                         dispatchSourceIterator != registeredDispatchSources_.end();
                         dispatchSourceIterator++) {
@@ -180,9 +184,11 @@ class VerificationMainLoop {
                 currentMinimalTimeoutInterval_ = dispatchTimeout;
             }
         }
+        registeredDispatchSourcesMutex_.unlock();
 
         int64_t currentContextTime = getCurrentTimeInMs();
 
+        registeredTimeoutsMutex_.lock();
         for (auto timeoutPriorityRange = registeredTimeouts_.begin();
                         timeoutPriorityRange != registeredTimeouts_.end();
                         timeoutPriorityRange++) {
@@ -196,99 +202,106 @@ class VerificationMainLoop {
                 currentMinimalTimeoutInterval_ = intervalToReady;
             }
         }
+        registeredTimeoutsMutex_.unlock();
     }
 
-	void poll() {
+    void poll() {
 #ifdef WIN32
-		int managedFileDescriptorOffset = 0;
+        int managedFileDescriptorOffset = 0;
 #else
-		int managedFileDescriptorOffset = 1;
+        int managedFileDescriptorOffset = 1;
 #endif
 
-		for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
-			(*fileDescriptor).revents = 0;
-		}
+        for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
+            (*fileDescriptor).revents = 0;
+        }
 
 #ifdef WIN32
-		size_t numReadyFileDescriptors = 0;
+        size_t numReadyFileDescriptors = 0;
 
-		int errorCode = WSAWaitForMultipleEvents(wsaEvents_.size(), wsaEvents_.data(), FALSE, currentMinimalTimeoutInterval_, FALSE);
+        int errorCode = WSAWaitForMultipleEvents(wsaEvents_.size(), wsaEvents_.data(), FALSE, currentMinimalTimeoutInterval_, FALSE);
 
-		if (errorCode == WSA_WAIT_IO_COMPLETION) {
-			printf("WSAWaitForMultipleEvents failed with error: WSA_WAIT_IO_COMPLETION");
-		}
-		else if (errorCode == WSA_WAIT_FAILED) {
-			printf("WSAWaitForMultipleEvents failed with error: %ld\n", WSAGetLastError());
-		}
-		else {
-			for (uint32_t i = 0; i < managedFileDescriptors_.size(); i++) {
-				if (WaitForSingleObjectEx(wsaEvents_[i + 1], 0, true) != WAIT_TIMEOUT) {
-					numReadyFileDescriptors++;
-					managedFileDescriptors_[i].revents = POLLIN;
-				}
-			}
-		}
+        if (errorCode == WSA_WAIT_IO_COMPLETION) {
+            printf("WSAWaitForMultipleEvents failed with error: WSA_WAIT_IO_COMPLETION");
+        }
+        else if (errorCode == WSA_WAIT_FAILED) {
+            printf("WSAWaitForMultipleEvents failed with error: %ld\n", WSAGetLastError());
+        }
+        else {
+            for (uint32_t i = 0; i < managedFileDescriptors_.size(); i++) {
+                if (WaitForSingleObjectEx(wsaEvents_[i + 1], 0, true) != WAIT_TIMEOUT) {
+                    numReadyFileDescriptors++;
+                    managedFileDescriptors_[i].revents = POLLIN;
+                }
+            }
+        }
 #else
-		size_t numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), currentMinimalTimeoutInterval_);
+        size_t numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]), managedFileDescriptors_.size(), int(currentMinimalTimeoutInterval_));
 #endif
-		// If no FileDescriptors are ready, poll returned because of a timeout that has expired.
-		// The only case in which this is not the reason is when the timeout handed in "prepare"
-		// expired before any other timeouts.
-		if (!numReadyFileDescriptors) {
-			int64_t currentContextTime = getCurrentTimeInMs();
+        // If no FileDescriptors are ready, poll returned because of a timeout that has expired.
+        // The only case in which this is not the reason is when the timeout handed in "prepare"
+        // expired before any other timeouts.
+        if (!numReadyFileDescriptors) {
+            int64_t currentContextTime = getCurrentTimeInMs();
 
-			for (auto timeoutPriorityRange = registeredTimeouts_.begin();
-				timeoutPriorityRange != registeredTimeouts_.end();
-				timeoutPriorityRange++) {
+            registeredTimeoutsMutex_.lock();
+            for (auto timeoutPriorityRange = registeredTimeouts_.begin();
+                timeoutPriorityRange != registeredTimeouts_.end();
+                timeoutPriorityRange++) {
 
-				int64_t intervalToReady = timeoutPriorityRange->second->getReadyTime() - currentContextTime;
+                int64_t intervalToReady = timeoutPriorityRange->second->getReadyTime() - currentContextTime;
 
-				if (intervalToReady <= 0) {
-					timeoutsToDispatch_.insert(*timeoutPriorityRange);
-				}
-			}
-		}
+                if (intervalToReady <= 0) {
+                    timeoutsToDispatch_.insert(*timeoutPriorityRange);
+                }
+            }
+            registeredTimeoutsMutex_.unlock();
+        }
 
 #ifdef WIN32
-		acknowledgeWakeup();
+        acknowledgeWakeup();
 #else
-		if (wakeFd_.revents) {
-			acknowledgeWakeup();
-		}
+        if (wakeFd_.revents) {
+            acknowledgeWakeup();
+        }
 #endif
     }
 
     bool check() {
 //The first file descriptor always is the loop's wakeup-descriptor (but not for windows anymore). All others need to be linked to a watch.
 #ifdef WIN32
-		int managedFileDescriptorOffset = 0;
+        int managedFileDescriptorOffset = 0;
 #else
-		int managedFileDescriptorOffset = 1;
+        int managedFileDescriptorOffset = 1;
 #endif
-		for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
+        registeredWatchesMutex_.lock();
+        for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
             for (auto registeredWatchIterator = registeredWatches_.begin();
                         registeredWatchIterator != registeredWatches_.end();
                         registeredWatchIterator++) {
                 const auto& correspondingWatchPriority = registeredWatchIterator->first;
                 const auto& correspondingWatchPair = registeredWatchIterator->second;
 
-				if (std::get<0>(correspondingWatchPair) == fileDescriptor->fd && fileDescriptor->revents) {
-					watchesToDispatch_.insert({ correspondingWatchPriority, { std::get<1>(correspondingWatchPair) } });
-				}
+                if (std::get<0>(correspondingWatchPair) == fileDescriptor->fd && fileDescriptor->revents) {
+                    watchesToDispatch_.insert({ correspondingWatchPriority, { std::get<1>(correspondingWatchPair) } });
+                }
             }
         }
+        registeredWatchesMutex_.unlock();
 
+        registeredDispatchSourcesMutex_.lock();
         for(auto dispatchSourceIterator = registeredDispatchSources_.begin(); dispatchSourceIterator != registeredDispatchSources_.end(); ++dispatchSourceIterator) {
             if((std::get<1>(*dispatchSourceIterator))->check()) {
                 sourcesToDispatch_.insert( {std::get<0>(*dispatchSourceIterator), std::get<1>(*dispatchSourceIterator)});
             }
         }
+        registeredDispatchSourcesMutex_.unlock();
 
         return !timeoutsToDispatch_.empty() || !watchesToDispatch_.empty() || !sourcesToDispatch_.empty();
     }
 
     void dispatch() {
-		eventQueue_->pushToQueue(std::bind(&VerificationMainLoop::doExternalIteration, this));
+        eventQueue_->pushToQueue(std::bind(&VerificationMainLoop::doExternalIteration, this));
     }
 
     void doExternalIteration()
@@ -322,14 +335,16 @@ class VerificationMainLoop {
 
     void wakeup() {
 #ifdef WIN32
-		if (!WSASetEvent(wsaEvents_[0]))
-		{
-			printf("SetEvent failed (%d)\n", GetLastError());
-			return;
-		}
+        if (!WSASetEvent(wsaEvents_[0]))
+        {
+            printf("SetEvent failed (%d)\n", GetLastError());
+            return;
+        }
 #else
         int64_t wake = 1;
-        ::write(wakeFd_.fd, &wake, sizeof(int64_t));
+        if(::write(wakeFd_.fd, &wake, sizeof(int64_t)) == -1) {
+            std::perror("VerificationMainLoop::wakeup");
+        }
 #endif
     }
 
@@ -348,28 +363,31 @@ class VerificationMainLoop {
     }
 
 #ifdef WIN32
-	void registerEvent(
-		const HANDLE& wsaEvent) {
-		wsaEvents_.push_back(wsaEvent);
-	}
+    void registerEvent(
+        const HANDLE& wsaEvent) {
+        wsaEvents_.push_back(wsaEvent);
+    }
 
-	void unregisterEvent(
-		const HANDLE& wsaEvent) {
-		for (auto it = wsaEvents_.begin();
-			it != wsaEvents_.end(); it++) {
-			if ((*it) == wsaEvent) {
-				wsaEvents_.erase(it);
-				break;
-			}
-		}
-	}
+    void unregisterEvent(
+        const HANDLE& wsaEvent) {
+        for (auto it = wsaEvents_.begin();
+            it != wsaEvents_.end(); it++) {
+            if ((*it) == wsaEvent) {
+                wsaEvents_.erase(it);
+                break;
+            }
+        }
+    }
 #endif
 
     void registerDispatchSource(DispatchSource* dispatchSource, const DispatchPriority dispatchPriority) {
+        registeredDispatchSourcesMutex_.lock();
         registeredDispatchSources_.insert( {dispatchPriority, dispatchSource} );
+        registeredDispatchSourcesMutex_.unlock();
     }
 
     void deregisterDispatchSource(DispatchSource* dispatchSource) {
+        registeredDispatchSourcesMutex_.lock();
         for(auto dispatchSourceIterator = registeredDispatchSources_.begin();
                 dispatchSourceIterator != registeredDispatchSources_.end();
                 dispatchSourceIterator++) {
@@ -379,6 +397,7 @@ class VerificationMainLoop {
                 break;
             }
         }
+        registeredDispatchSourcesMutex_.unlock();
         breakLoop_ = true;
     }
 
@@ -387,19 +406,21 @@ class VerificationMainLoop {
         registerFileDescriptor(fdToRegister);
 
 #ifdef WIN32
-		registerEvent(watch->getAssociatedEvent());
+        registerEvent(watch->getAssociatedEvent());
 #endif
-
+        registeredWatchesMutex_.lock();
         registeredWatches_.insert( {dispatchPriority, {watch->getAssociatedFileDescriptor().fd, watch}});
+        registeredWatchesMutex_.unlock();
     }
 
     void deregisterWatch(Watch* watch) {
         deregisterFileDescriptor(watch->getAssociatedFileDescriptor());
 
 #ifdef WIN32
-		unregisterEvent(watch->getAssociatedEvent());
+        unregisterEvent(watch->getAssociatedEvent());
 #endif
 
+        registeredWatchesMutex_.lock();
         for(auto watchIterator = registeredWatches_.begin();
                 watchIterator != registeredWatches_.end();
                 watchIterator++) {
@@ -409,13 +430,17 @@ class VerificationMainLoop {
                 break;
             }
         }
+        registeredWatchesMutex_.unlock();
     }
 
     void registerTimeout(Timeout* timeout, const DispatchPriority dispatchPriority) {
+        registeredTimeoutsMutex_.lock();
         registeredTimeouts_.insert( {dispatchPriority, timeout} );
+        registeredTimeoutsMutex_.unlock();
     }
 
     void deregisterTimeout(Timeout* timeout) {
+        registeredTimeoutsMutex_.lock();
         for(auto timeoutIterator = registeredTimeouts_.begin();
                 timeoutIterator != registeredTimeouts_.end();
                 timeoutIterator++) {
@@ -425,17 +450,18 @@ class VerificationMainLoop {
                 break;
             }
         }
+        registeredTimeoutsMutex_.unlock();
     }
 
     void acknowledgeWakeup() {
 #ifdef WIN32
-		for (unsigned int i = 0; i < wsaEvents_.size(); i++) {
-			if (!WSAResetEvent(wsaEvents_[i]))
-			{
-				printf("ResetEvent failed (%d)\n", GetLastError());
-				return;
-			}
-		}
+        for (unsigned int i = 0; i < wsaEvents_.size(); i++) {
+            if (!WSAResetEvent(wsaEvents_[i]))
+            {
+                printf("ResetEvent failed (%d)\n", GetLastError());
+                return;
+            }
+        }
 #else
         int64_t buffer;
         while (::read(wakeFd_.fd, &buffer, sizeof(int64_t)) == sizeof(buffer))
@@ -465,13 +491,17 @@ class VerificationMainLoop {
     bool breakLoop_;
     bool running_;
 
+    std::mutex registeredDispatchSourcesMutex_;
+    std::mutex registeredWatchesMutex_;
+    std::mutex registeredTimeoutsMutex_;
+
 #ifdef WIN32
-	std::vector<HANDLE> wsaEvents_;
+    std::vector<HANDLE> wsaEvents_;
 #else
     DemoMainLoopPollFd wakeFd_;
 #endif
 
-	std::shared_ptr<VerificationMainLoopEventQueue> eventQueue_;
+    std::shared_ptr<VerificationMainLoopEventQueue> eventQueue_;
 };
 
 

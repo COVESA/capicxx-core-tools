@@ -16,7 +16,7 @@ interface TestInterface {
             tArray y
         }
     }
-	
+    
     broadcast testBroadcast {
         out {
             tArray y

@@ -7,9 +7,9 @@
 #ifndef CMMETHODCALLSSTUB_H_
 #define CMMETHODCALLSSTUB_H_
 
-#include "v1_0/commonapi/communication/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/communication/TestInterfaceStubDefault.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace communication {
 
@@ -22,7 +22,7 @@ public:
         testMethodReply_t _reply);
 };
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace communication */
 } /* namespace commonapi */
 

@@ -10,7 +10,7 @@
 #include <ctime>
 
 #ifdef WIN32
-	#include <chrono>
+    #include <chrono>
 #endif
 
 #define USEC_PER_SEC  1000000ULL
@@ -18,27 +18,29 @@
 
 
 StopWatch::usec_t StopWatch::getTotalElapsedMicroseconds() const {
-	usec_t elapsed = totalElapsed_;
+    usec_t elapsed = totalElapsed_;
 
-	if (started_)
-		elapsed += getElapsed();
+    if (started_)
+        elapsed += getElapsed();
 
-	return elapsed;
+    return elapsed;
 }
 
 StopWatch::usec_t StopWatch::getTotalElapsedSeconds() const {
-	return getTotalElapsedMicroseconds() / USEC_PER_SEC;
+    return getTotalElapsedMicroseconds() / USEC_PER_SEC;
 }
 
 StopWatch::usec_t StopWatch::now() {
 #ifdef WIN32
-	return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 #else
-	struct timespec ts;
+    struct timespec ts;
 
-	assert(!clock_gettime(CLOCK_MONOTONIC, &ts));
+    const int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
+    assert(!ret);
+    (void)ret;
 
-	return (usec_t) ts.tv_sec * USEC_PER_SEC + (usec_t) ts.tv_nsec / NSEC_PER_USEC;
+    return (usec_t) ts.tv_sec * USEC_PER_SEC + (usec_t) ts.tv_nsec / NSEC_PER_USEC;
 #endif
 }
 

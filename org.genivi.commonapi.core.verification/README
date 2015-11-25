@@ -41,6 +41,11 @@ There are some cmake options that allow you to define the binding that should be
     This will enable the verification test for SomeIP in ctest
 * -DCMAKE_GLUECODE_DBUS_NAME=DBusGlue and -DDBusGlue_DIR : 
     This will enable the verifcation tests for DBus in ctest
+* -DTESTS_BAT:
+    Set to ON to build a subset of tests covering basic functionality which
+    also have little execution time to serve as build acceptance tests
+* -DTESTS_EXTRA:
+    Set to ON to build extra tests for stability and performance testing
 
 If the gluecode for both middlewarebindings is defined, there will be two 
 testcases available for one verification tests. One with postfix `DBus` and one

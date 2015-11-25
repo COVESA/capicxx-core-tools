@@ -80,13 +80,11 @@ public enum CommandExecuter
     private final String       EXTENSION_POINT_PARSING_ERROR_MESSAGE       = "An error occured while parsing console command \"%s\"!";
     private final String       OPTION_ID_NOT_FOUND_MESSAGE                 = "The option ID \"%s\" could not be found!";
     private final String       OPTION_GROUP_ID_NOT_FOUND_MESSAGE           = "The option group ID \"%s\" could not be found!";
-    private final String       NO_REQUIRED_OPTION_MESSAGE                  = "This console command needs to specify at least one required option!";
     private final String       HELP_NO_COMMANDS_TEXT_MESSAGE               = "No registered console commands available!";
     private final String       HELP_NAME_TEXT_MESSAGE                      = "Command: %s";
     private final String       HELP_ID_TEXT_MESSAGE                        = "%s: %s";
     private final String       HELP_WRONG_ID_MESSAGE                       = HELP_ID_TEXT_MESSAGE + "%nID does not match: %s";
     private final String       HELP_SEVERAL_COMMANDS_MESSAGE               = "Several console commands are compatible to this set of parameters. Add ID option to select the desired one.%n";
-    private final String       EXECUTE_COMMAND_MESSAGE                     = "Executing %s...%n" ;
     private final String       LAUNCHER_NAME;
     private final Option       ID_OPTION;
 
@@ -219,11 +217,6 @@ public enum CommandExecuter
                 public void run() throws Exception
                 {
                     ConsoleConfiguration configuration = perfectMatchingConfigurations.get(0);
-
-                    if (configurations.size() > 1)
-                    {
-                        println(EXECUTE_COMMAND_MESSAGE, configuration.name);
-                    }
 
                     Object executable = configuration.commandConfiguration.createExecutableExtension(COMMAND_HANDLER_ATTRIBUTE_NAME);
                     ICommandLineHandler handler = (ICommandLineHandler) executable;

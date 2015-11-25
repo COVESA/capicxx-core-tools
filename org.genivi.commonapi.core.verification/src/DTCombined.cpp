@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
-#include "v1_0/commonapi/datatypes/combined/TestInterfaceProxy.hpp"
+#include "v1/commonapi/datatypes/combined/TestInterfaceProxy.hpp"
 #include "stub/DTCombinedStub.h"
 
 const std::string domain = "local";
@@ -72,6 +72,15 @@ protected:
 
     void TearDown() {
         ASSERT_TRUE(runtime_->unregisterService(domain, v1_0::commonapi::datatypes::combined::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+        // wait that proxy is not available
+        int counter = 0;  // counter for avoiding endless loop
+        while ( testProxy_->isAvailable() && counter < 10 ) {
+            usleep(100000);
+            counter++;
+        }
+
+        ASSERT_FALSE(testProxy_->isAvailable());
     }
 
     bool serviceRegistered_;

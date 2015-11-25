@@ -4,16 +4,16 @@
 package commonapi.performance.primitive
 
 interface TestInterface {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	method testMethod {
-	    in {
-	        TestArray x
-	    }
-	    out {
-	        TestArray y
-	    }
-	}
-	
-	array TestArray of UInt8
+    method testMethod {
+        in {
+            TestArray x
+        }
+        out {
+            TestArray y
+        }
+    }
+    
+    array TestArray of UInt8
 }

@@ -6,10 +6,10 @@
 #ifndef STABILITYSPSTUB_H_
 #define STABILITYSPSTUB_H_
 
-#include "v1_0/commonapi/stability/sp/TestInterfaceStubDefault.hpp"
-#include "v1_0/commonapi/stability/sp/TestInterface.hpp"
+#include "v1/commonapi/stability/sp/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/stability/sp/TestInterface.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace stability {
 namespace sp {
@@ -26,7 +26,7 @@ public:
     virtual void setTestValues(TestInterface::tArray x);
 };
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace sp */
 } /* namespace stability */
 } /* namespace commonapi */

@@ -7,9 +7,9 @@
 #ifndef CMATTRIBUTESSTUB_H_
 #define CMATTRIBUTESSTUB_H_
 
-#include "v1_0/commonapi/communication/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/communication/TestInterfaceStubDefault.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace communication {
 
@@ -20,7 +20,7 @@ public:
     virtual void setTestValues(uint8_t);
 };
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace communication */
 } /* namespace commonapi */
 

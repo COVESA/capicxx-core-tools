@@ -10,6 +10,8 @@ import com.google.common.base.Charsets
 import com.google.common.hash.Hasher
 import com.google.common.hash.Hashing
 import com.google.common.primitives.Ints
+import java.io.File
+import java.io.IOException
 import java.math.BigInteger
 import java.util.ArrayList
 import java.util.Collection
@@ -19,6 +21,7 @@ import java.util.LinkedList
 import java.util.List
 import java.util.Map
 import java.util.Set
+import java.util.jar.Manifest
 import org.eclipse.core.resources.IResource
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
@@ -27,10 +30,12 @@ import org.eclipse.core.runtime.preferences.InstanceScope
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
+import org.franca.core.franca.FArgument
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
 import org.franca.core.franca.FBroadcast
+import org.franca.core.franca.FCompoundType
 import org.franca.core.franca.FConstantDef
 import org.franca.core.franca.FEnumerationType
 import org.franca.core.franca.FEnumerator
@@ -38,6 +43,7 @@ import org.franca.core.franca.FExpression
 import org.franca.core.franca.FField
 import org.franca.core.franca.FInitializerExpression
 import org.franca.core.franca.FIntegerConstant
+import org.franca.core.franca.FIntegerInterval
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMapType
 import org.franca.core.franca.FMethod
@@ -56,8 +62,8 @@ import org.franca.core.franca.FVersion
 import org.franca.core.franca.FrancaFactory
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.franca.deploymodel.dsl.fDeploy.FDModel
-import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.franca.deploymodel.dsl.fDeploy.FDProvider
+import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.deployment.PropertyAccessor.DefaultEnumBackingType
 import org.genivi.commonapi.core.deployment.PropertyAccessor.EnumBackingType
@@ -68,7 +74,6 @@ import org.osgi.framework.FrameworkUtil
 import static com.google.common.base.Preconditions.*
 
 import static extension java.lang.Integer.*
-
 
 class FrancaGeneratorExtensions {
 	
@@ -114,16 +119,17 @@ class FrancaGeneratorExtensions {
     
      def String getFullyQualifiedCppName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel) {
-        	var name = (fModelElement.eContainer as FModel).name
+        	val containerName = (fModelElement.eContainer as FModel).name
+        	var prefix = "::"
         	if (fModelElement instanceof FTypeCollection) {
         		val FVersion itsVersion = fModelElement.version
         		if (itsVersion != null) {
-        			name = fModelElement.versionPrefix + name
+        			prefix = fModelElement.versionPrefix
         		}
         	}
-            return "::" + (name + "::" + fModelElement.elementName).replace(".", "::")
+            return (prefix + containerName + "::" + fModelElement.elementName).replace(".", "::")
         }
-        return "::" + ((fModelElement.eContainer as FModelElement).fullyQualifiedName + "::" + fModelElement.elementName).replace(".", "::")
+        return ((fModelElement.eContainer as FModelElement).fullyQualifiedCppName + "::" + fModelElement.elementName).replace(".", "::")
     }
     
     def splitCamelCase(String string) {
@@ -227,8 +233,16 @@ class FrancaGeneratorExtensions {
         fTypeCollection.elementName + ".hpp"
     }
 
+    def getInstanceHeaderFile(FTypeCollection fTypeCollection) {
+        fTypeCollection.elementName + "InstanceIds.hpp"
+    }
+    
     def getHeaderPath(FTypeCollection fTypeCollection) {
         fTypeCollection.versionPathPrefix + fTypeCollection.model.directoryPath + '/' + fTypeCollection.headerFile
+    }
+
+    def getInstanceHeaderPath(FTypeCollection fTypeCollection) {
+        fTypeCollection.versionPathPrefix + fTypeCollection.model.directoryPath + '/' + fTypeCollection.instanceHeaderFile
     }
 
     def getSourceFile(FTypeCollection fTypeCollection) {
@@ -459,35 +473,62 @@ class FrancaGeneratorExtensions {
        var String retval = ""
        for(list_element : fMethod.outArgs) {
           retval += getTypeName(list_element, fMethod, true)  + ' ' + list_element.elementName
-          if (((list_element.type.derived instanceof FStructType
-             && (list_element.type.derived as FStructType).hasPolymorphicBase))
-             || list_element.array){
-                retval += " = {}"
-          } else if(list_element.type.predefined != null) {
-             // primitive types
-             switch list_element.type.predefined {
-               case FBasicTypeId::BOOLEAN: retval+= " = false"
-               case FBasicTypeId::INT8: retval += " = 0"
-               case FBasicTypeId::UINT8: retval += " = 0"
-               case FBasicTypeId::INT16: retval += " = 0"
-               case FBasicTypeId::UINT16: retval += " = 0"
-               case FBasicTypeId::INT32: retval += " = 0"
-               case FBasicTypeId::UINT32: retval += " = 0"
-               case FBasicTypeId::INT64: retval += " = 0"
-               case FBasicTypeId::UINT64: retval += " = 0"
-               case FBasicTypeId::FLOAT: retval += " = 0.0f"
-               case FBasicTypeId::DOUBLE: retval += " = 0.0"
-               case FBasicTypeId::STRING: retval += " = \"\""
-               case FBasicTypeId::BYTE_BUFFER: retval += " = {}"
-               default: {}//System.out.println("No initialization generated for" +
-                   //" non-basic type: " + list_element.getName)
-             }
-          }
+          retval += list_element.type.generateDummyArgumentInitialization(list_element, fMethod)
           retval += ";\n"
        }
        return retval
     }
-
+    
+    private def String generateDummyArgumentInitialization(FTypeRef typeRef, FArgument list_element, FMethod fMethod) {
+        if (list_element.array) {
+            " = {}"
+        } else if (typeRef.derived != null) {
+            typeRef.derived.generateDummyArgumentInitialization(list_element, fMethod)
+        } else if (typeRef.predefined != null) {
+            typeRef.predefined.generateDummyArgumentInitialization
+        } else {
+            ""
+        }
+    }
+    
+    private def generateDummyArgumentInitialization(FType type, FArgument list_element, FMethod fMethod) {
+        if ((type instanceof FArrayType) || (type instanceof FCompoundType)) {
+            " = {}"
+        } else if (type instanceof FEnumerationType) {
+            val enumType = type as FEnumerationType
+            if (enumType.enumerators.empty) {
+                " = " + getTypeName(list_element, fMethod, true) + "(0u)"
+            } else {
+                " = " + getTypeName(list_element, fMethod, true) + "::" + enumPrefix + enumType.enumerators.get(0).elementName
+            }
+        } else if (type instanceof FIntegerInterval) {
+            " = " + (type as FIntegerInterval).lowerBound
+        } else if (type instanceof FTypeDef) {
+            (type as FTypeDef).actualType.generateDummyArgumentInitialization(list_element, fMethod)
+        } else {
+            ""
+        }
+    }
+    
+    private def generateDummyArgumentInitialization(FBasicTypeId basicType) {
+        switch basicType {
+            case FBasicTypeId::BOOLEAN:     " = false"
+            case FBasicTypeId::INT8:        " = 0"
+            case FBasicTypeId::UINT8:       " = 0u"
+            case FBasicTypeId::INT16:       " = 0"
+            case FBasicTypeId::UINT16:      " = 0u"
+            case FBasicTypeId::INT32:       " = 0"
+            case FBasicTypeId::UINT32:      " = 0ul"
+            case FBasicTypeId::INT64:       " = 0"
+            case FBasicTypeId::UINT64:      " = 0ull"
+            case FBasicTypeId::FLOAT:       " = 0.0f"
+            case FBasicTypeId::DOUBLE:      " = 0.0"
+            case FBasicTypeId::STRING:      " = \"\""
+            case FBasicTypeId::BYTE_BUFFER: " = {}"
+            default: ""
+        }
+    }
+        
     def generateDummyArgumentDefinitions(FMethod fMethod) {
       var definition = ''
       if (fMethod.hasError)
@@ -610,6 +651,8 @@ class FrancaGeneratorExtensions {
         }
         
         signature += fMethod.asyncCallbackClassName + ' _callback'
+        if (_isDefault)
+        	signature += " = nullptr"
         signature += ", const CommonAPI::CallInfo *_info"
         if (_isDefault)
             signature += " = nullptr"
@@ -1288,15 +1331,20 @@ class FrancaGeneratorExtensions {
             hasher.putString(fTypeRef.predefined.getName, Charsets::UTF_8);
     }
 
-    def boolean hasDerivedFStructTypes(FStructType fStructType) {
-        return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).exists [
-            EObject instanceof FStructType && (EObject as FStructType).base == fStructType
-        ]
-    }
 
     def getDerivedFStructTypes(FStructType fStructType) {
         return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
             filter[it instanceof FStructType].map[it as FStructType].filter[base == fStructType]
+    }
+    
+    def boolean isStructEmpty(FStructType fStructType) {
+        if(!fStructType.elements.empty) {
+            return false
+        }
+        if(fStructType.base != null) {
+            return isStructEmpty(fStructType.base)
+        }
+        return true
     }
     
     def generateCppNamespace(FModel fModel) '''
@@ -1314,17 +1362,26 @@ class FrancaGeneratorExtensions {
         «ENDFOR»
     '''
 
+    def generateMajorVersionNamespace(FTypeCollection _tc) '''
+        
+        «var FVersion itsVersion = _tc.version»
+        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+        // Compatibility
+        namespace v«itsVersion.major.toString»_«itsVersion.minor.toString» = v«itsVersion.major.toString»;
+        «ENDIF» 
+    '''
+
     def generateVersionNamespaceBegin(FTypeCollection _tc) '''
         «var FVersion itsVersion = _tc.version»
         «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
-            namespace v«itsVersion.major.toString»_«itsVersion.minor.toString» {
+            namespace v«itsVersion.major.toString» {
         «ENDIF»  
     '''
 
     def generateVersionNamespaceEnd(FTypeCollection _tc) '''
         «var FVersion itsVersion = _tc.version»
         «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
-            } // namespace v«itsVersion.major.toString»_«itsVersion.minor.toString»
+            } // namespace v«itsVersion.major.toString»
         «ENDIF»
     '''
 
@@ -1340,7 +1397,7 @@ class FrancaGeneratorExtensions {
         var String prefix = "::"
         var FVersion itsVersion = _tc.version
         if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
-            prefix += "v" + itsVersion.major.toString + "_" + itsVersion.minor.toString + "::"
+            prefix += "v" + itsVersion.major.toString + "::"
         }
         return prefix
     }
@@ -1349,16 +1406,11 @@ class FrancaGeneratorExtensions {
     	var String prefix = ""
         var FVersion itsVersion = _tc.version
         if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
-            prefix = "v" + itsVersion.major.toString + "_" + itsVersion.minor.toString + "/"
+            prefix = "v" + itsVersion.major.toString + "/"
         }
         return prefix
     }
     
-	// TODO: Remove the following method
-    def isFireAndForget(FMethod fMethod) {
-        return fMethod.fireAndForget
-    }
-
     def getFilePath(Resource resource) {
         if (resource.URI.file)
             return resource.URI.toFileString
@@ -1369,43 +1421,60 @@ class FrancaGeneratorExtensions {
         return file.location.toString
     }
 
-    def getHeader(FModel model, IResource res) {
-        if (FrameworkUtil::getBundle(this.getClass()) != null) {
-            var returnValue = DefaultScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, "")
-            returnValue = InstanceScope::INSTANCE.getNode(PreferenceConstants::SCOPE).get(PreferenceConstants::P_LICENSE, returnValue)
-            returnValue = FPreferences::instance.getPreference(PreferenceConstants::P_LICENSE, returnValue)
-            return returnValue
-        }
-        return ""
+    def getLicenseHeader() {
+        return FPreferences::instance.getPreference(PreferenceConstants::P_LICENSE, PreferenceConstants.DEFAULT_LICENSE)
     }
 
-    def getFrancaVersion() {
+    static def getFrancaVersion() {
+        val bundleName = "org.franca.core"
+        getBundleVersion(bundleName)
+    }
+
+    static def getCoreVersion() {
+        val bundleName = "org.genivi.commonapi.core"
+        getBundleVersion(bundleName)
+	}
+
+	static def getBundleVersion(String bundleName) {
         val bundle = FrameworkUtil::getBundle(FrancaGeneratorExtensions)
-        val bundleContext = bundle.getBundleContext();
-        for (b : bundleContext.bundles) {
-            if (b.symbolicName.equals("org.franca.core")) {
-                return b.version.toString
+        if (bundle != null) {
+
+            //OSGI framework running
+            val bundleContext = bundle.getBundleContext();
+            for (b : bundleContext.bundles) {
+                if (b.symbolicName.equals(bundleName)) {
+                    return b.version.toString
+                }
             }
+        } else {
+
+            //pure java runtime
+            try {
+                val manifestsEnum = typeof(FrancaGeneratorExtensions).classLoader.getResources("META-INF/MANIFEST.MF")
+                val bundleRegex = "^" + bundleName.replace(".", "\\.") + "(;singleton:=true)?$"
+                while (manifestsEnum.hasMoreElements) {
+                    val manifestURL = manifestsEnum.nextElement
+                    val manifest = new Manifest(manifestURL.openStream)
+                    val name = manifest.mainAttributes.getValue("Bundle-SymbolicName")
+                    if (name != null && name.matches(bundleRegex)) {
+                        val version = manifest.mainAttributes.getValue("Bundle-Version")
+                        return version
+                    }
+                }
+            } catch (IOException exc) {
+                System.out.println("Failed to get the bundle version: " + exc.getMessage())
+            }
+            return ""
         }
     }
 
-    def static getCoreVersion() {
-        val bundle = FrameworkUtil::getBundle(FrancaGeneratorExtensions)
-        val bundleContext = bundle.getBundleContext();
-        for (b : bundleContext.bundles) {
-            if (b.symbolicName.equals("org.genivi.commonapi.core")) {
-                return b.version.toString
-            }
-        }
-    }
-
-    def generateCommonApiLicenseHeader(FModelElement model, IResource modelid) '''
+    def generateCommonApiLicenseHeader() '''
         /*
         * This file was generated by the CommonAPI Generators.
-        * Used org.genivi.commonapi.core «FrancaGeneratorExtensions::getCoreVersion()».
+        * Used org.genivi.commonapi.core «getCoreVersion()».
         * Used org.franca.core «getFrancaVersion()».
         *
-        «getCommentedString(getHeader(model.model, modelid))»
+        «getCommentedString(getLicenseHeader())»
         */
     '''
 
@@ -1764,7 +1833,7 @@ class FrancaGeneratorExtensions {
 			if (depl instanceof FDInterface) {
 				var specname = depl.spec.name
 				if(specname != null && specname.contains(selector)) {
-				fdinterfaces.add(depl);
+				    fdinterfaces.add(depl);
 				}
 			}
 		}
@@ -1783,7 +1852,7 @@ class FrancaGeneratorExtensions {
 			if (depl instanceof FDTypes) {
 				var specname = depl.spec?.name
 				if(specname != null && specname.contains(selector)) {
-				fdTypes.add(depl);
+				    fdTypes.add(depl);
 				}
 			}
 		}
@@ -1802,39 +1871,52 @@ class FrancaGeneratorExtensions {
 			if (depl instanceof FDProvider) {
 				var specname = depl.spec?.name
 				if(specname != null && specname.contains(selector)) {
-				fdProviders.add(depl);
+				    fdProviders.add(depl);
 				}
 			}
 		}
 		return fdProviders;
 	}	
-	
+    def List<FDProvider> getAllFDProviders(FDModel fdmodel) {
+        var List<FDProvider> fdProviders = new ArrayList<FDProvider>() 
+        
+        for(depl : fdmodel.getDeployments()) {
+            if (depl instanceof FDProvider) {
+                fdProviders.add(depl);
+            }
+        }
+        return fdProviders;
+    }	
 	/**
 	 * Copy deployment attributes into the destination deployment 
 	 */
-	def mergeDeployments(FDInterface source, FDInterface destination) {
+	def mergeDeployments(FDInterface _source, FDInterface _destination) {
 		
-		if(source.target.equals(destination.target)) {
-			if(source.attributes.size > 0) {
-				if( destination.attributes.size == 0) {
-					// e.g: attribute timeout
-				destination.attributes.addAll(source.attributes)
+		if (_source.target.equals(_destination.target)) {
+			if (_source.attributes.size > 0) {
+				if(_destination.attributes.size == 0) {
+    				_destination.attributes.addAll(_source.attributes)
 				}
 			}			
-			if(source.methods.size > 0) { 
-				destination.methods.addAll(source.methods)
+			if (_source.methods.size > 0) { 
+				_destination.methods.addAll(_source.methods)
 			}			
-			// e.g: EnumBackingType
-			if(source.types.size > 0) {
-				destination.types.addAll(source.types)
-			}
 //    		Not used so far:
 //			if(source.broadcasts != null) {
 //				destination.broadcasts.addAll(source.broadcasts)
 //			}
-		} else {
-			throw new IllegalArgumentException("Cannot merge deployments for different interfaces \n(" + source.target + " != " + destination.target + ")!");
+            if (_source.types.size > 0) {
+                _destination.types.addAll(_source.types)
+            }
 		}
+	}
+	
+	def mergeDeployments(FDTypes _source, FDTypes _destination) {
+	    if (_source.target.equals(_destination.target)) {
+	        if (!_source.types.empty) {
+	            _destination.types.addAll(_source.types)
+	        }
+	    }
 	}	
 
     def public getAllReferencedFInterfaces(FModel fModel)
@@ -1936,4 +2018,64 @@ class FrancaGeneratorExtensions {
             fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
         }
     }
+    def public supportsTypeValidation(FAttribute fAttribute) {
+        fAttribute.type.derived instanceof FEnumerationType
+    }
+    def public validateType(FAttribute fAttribute, FInterface fInterface) {
+        if (fAttribute.type.derived instanceof FEnumerationType && !fAttribute.array) {
+            "_value.validate()"
+        }
+        else "true"
+    }
+    def public supportsValidation(FTypeRef fTtypeRef) {
+        fTtypeRef.derived instanceof FEnumerationType
+    }
+    
+    def public String getCanonical(String _basePath, String _uri) {
+        if (_uri.startsWith("platform:") || _uri.startsWith("file:"))
+            return _uri
+            
+        if (_uri.startsWith(File.separatorChar.toString))
+            return "file:" + _uri
+
+        var char separatorCharacter = File.separatorChar;
+        if (_basePath.startsWith("platform:") || _basePath.startsWith("file:")) {
+            separatorCharacter = '/' 
+        }
+        
+        val String itsCompleteName = _basePath + separatorCharacter + _uri
+        val String[] itsSegments = itsCompleteName.split(separatorCharacter.toString)
+        
+        var int ignore = 0
+        var int i = itsSegments.length - 1
+        var List<String> itsCanonicalName = new ArrayList<String>()
+        
+        /*
+         * Run from the last segment to the first. Identity segments (.) are ignored,
+         * while backward segments (..) let us ignore the next segment that is neither
+         * identify nor backward. Thus, if several backward segments follow on each other
+         * we increase the number of non-identity/non-backward segments we need to ignore.
+         * Whenever we find a "normal" segment and the "ignore counter" is zero, it is
+         * added to the result, otherwise the "ignore counter" is decreased.
+         */
+        while (i >= 0) {
+            var String itsCurrentSegment = itsSegments.get(i)
+            if (itsCurrentSegment == "..") {
+                ignore = ignore + 1
+            } else if (itsCurrentSegment != ".") {
+                if (ignore == 0) {
+                    itsCanonicalName.add(itsCurrentSegment)
+                } else {
+                    ignore = ignore - 1
+                } 
+            }                
+            i = i - 1
+        }
+        
+        /*
+         * As we ran from back to front and added segments, we need to reverse,
+         * before joining the segments
+         */
+        return itsCanonicalName.reverse.join(separatorCharacter.toString)
+    } 
 }

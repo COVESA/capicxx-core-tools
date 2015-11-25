@@ -7,73 +7,73 @@ import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP
 import "E05Manager.fidl"
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Manager {
-	SomeIpServiceID = 4660
+    SomeIpServiceID = 4660
 
-	attribute myDevices {
-		SomeIpGetterID = 3000
-		SomeIpSetterID = 3001
-		SomeIpNotifierID = 33000
-		SomeIpEventGroups = { 17749 }
-	}
+    attribute myDevices {
+        SomeIpGetterID = 3000
+        SomeIpSetterID = 3001
+        SomeIpNotifierID = 33000
+        SomeIpEventGroups = { 17749 }
+    }
 }
 
 define org.genivi.commonapi.someip.deployment for provider Service {
-	instance commonapi.examples.E05Manager {
-		InstanceId = "commonapi.examples.Manager"
-		
-		SomeIpInstanceID = 1000
-	
-		SomeIpUnicastAddress = "127.0.0.1"
-		SomeIpReliableUnicastPort = 30499
-	}
+    instance commonapi.examples.E05Manager {
+        InstanceId = "commonapi.examples.Manager"
+        
+        SomeIpInstanceID = 1000
+    
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpReliableUnicastPort = 30499
+    }
 }
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Device {
-	SomeIpServiceID = 4661
+    SomeIpServiceID = 4661
 
-	method doSomething {
-		SomeIpMethodID = 33001
-	}
+    method doSomething {
+        SomeIpMethodID = 33001
+    }
 }
 
 
 define org.genivi.commonapi.someip.deployment for provider Service {
-	instance commonapi.examples.E05Device {
-		InstanceId = "commonapi.examples.Manager.device01"
-		
-		SomeIpInstanceID = 2000
-	
-		SomeIpUnicastAddress = "127.0.0.1"
-		SomeIpUnreliableUnicastPort = 30500
-	}
+    instance commonapi.examples.E05Device {
+        InstanceId = "commonapi.examples.Manager.device01"
+        
+        SomeIpInstanceID = 2000
+    
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30500
+    }
 }
 
 define org.genivi.commonapi.someip.deployment for provider Service {
-	instance commonapi.examples.E05Device {
-		InstanceId = "commonapi.examples.Manager.device02"
-		
-		SomeIpInstanceID = 2001
-	
-		SomeIpUnicastAddress = "127.0.0.1"
-		SomeIpUnreliableUnicastPort = 30501
-	}
+    instance commonapi.examples.E05Device {
+        InstanceId = "commonapi.examples.Manager.device02"
+        
+        SomeIpInstanceID = 2001
+    
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30501
+    }
 }
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05SpecialDevice {
-	SomeIpServiceID = 4662
+    SomeIpServiceID = 4662
 
-	method doSomethingSpecial {
-		SomeIpMethodID = 33002
-	}
+    method doSomethingSpecial {
+        SomeIpMethodID = 33002
+    }
 }
 
 define org.genivi.commonapi.someip.deployment for provider Service {
-	instance commonapi.examples.E05SpecialDevice {
-		InstanceId = "commonapi.examples.Manager.specialDevice00"
-		
-		SomeIpInstanceID = 3000
-	
-		SomeIpUnicastAddress = "127.0.0.1"
-		SomeIpUnreliableUnicastPort = 30600
-	}
+    instance commonapi.examples.E05SpecialDevice {
+        InstanceId = "commonapi.examples.Manager.specialDevice00"
+        
+        SomeIpInstanceID = 3000
+    
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30600
+    }
 }

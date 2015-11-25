@@ -1,9 +1,17 @@
+/*
+ * Copyright (C) 2013 BMW Group Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de) This Source Code Form is
+ * subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the
+ * MPL was not distributed with this file, You can obtain one at
+ * http://mozilla.org/MPL/2.0/.
+ */
 package org.genivi.commonapi.core.cli;
 
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.genivi.commonapi.console.AbstractCommandLineHandler;
+import org.genivi.commonapi.console.ConsoleLogger;
 import org.genivi.commonapi.console.ICommandLineHandler;
 
 
@@ -33,6 +41,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 		if(parsedArguments.hasOption("ll")) {
 			cliTool.setLogLevel(parsedArguments.getOptionValue("ll"));
 		}		
+		ConsoleLogger.printLog("Executing CommonAPI Core Code Generation...\n");
 
 		if(parsedArguments.hasOption("sk")) {
 			// Switch on generation of skeletons (if this option has a parameter,
@@ -53,12 +62,24 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 				cliTool.setSkeletonPostfix(skArgument);
 			}
 		}			
+		// a search path may be specified, collect all fidl/fdepl files
+		if(parsedArguments.hasOption("sp")) {
+			String searchPath = parsedArguments.getOptionValue("sp");
+			files.addAll(cliTool.searchFidlandFdeplFiles(searchPath));
+		}	
+		
 		// we expect at least the fidel/fdepl file as command line argument
 		if(files.size() > 0 && files.get(0) != null) {
 			String file = files.get(0); 
 			if(file.endsWith(FILE_EXTENSION_FDEPL) || file.endsWith(FILE_EXTENSION_FIDL)) {
 				// handle command line options
 
+				// Switch off generation of common code
+				// -nc --no-common do not generate common code
+				if(parsedArguments.hasOption("nc")) {
+					cliTool.setNoCommonCode();
+				}
+				
 				// Switch off generation of proxy code
 				// -np --no-proxy do not generate proxy code
 				if(parsedArguments.hasOption("np")) {
@@ -88,7 +109,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 
 				// destination: -ds --dest-stub overwrite target directory for stub code
 				if(parsedArguments.hasOption("ds")) {
-					cliTool.setStubtDirectory(parsedArguments.getOptionValue("ds"));
+					cliTool.setStubDirectory(parsedArguments.getOptionValue("ds"));
 				}
 
 				// destination: -dsk --dest-skel overwrite target directory for skeleton code
@@ -107,12 +128,26 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 				if(parsedArguments.hasOption("pre")) {
 					cliTool.setEnumPrefix(parsedArguments.getOptionValue("pre"));
 				}
-
-				// Switch on/off validation
-				if(parsedArguments.hasOption("val")) {
-					cliTool.enableValidation(parsedArguments.getOptionValue("val"));
+				// Switch off validation
+				if(parsedArguments.hasOption("nv")) {
+					cliTool.disableValidation();
 				}
-				
+				// Switch off code generation
+				if(parsedArguments.hasOption("ng")) {
+					cliTool.disableCodeGeneration();
+				}
+				// Don't generate code for included types and interfaces
+				if(parsedArguments.hasOption("wod")) {
+					cliTool.noCodeforDependencies();
+				}
+				// Don't generate synchronous calls
+				if(parsedArguments.hasOption("nsc")) {
+					cliTool.disableSyncCalls();
+				}
+				// print out generated files
+				if(parsedArguments.hasOption("pf")) {
+					cliTool.listGeneratedFiles();
+				}
 				// finally invoke the generator.
 				// the remaining arguments are assumed to be files !
 				cliTool.generateCore(files);

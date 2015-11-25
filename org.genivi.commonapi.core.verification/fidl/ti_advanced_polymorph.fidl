@@ -1,0 +1,98 @@
+/* Copyright (C) 2015 BMW Group
+ * Author: Juergen Gehring (juergen.gehring@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package commonapi.advanced.polymorph
+
+interface TestInterface {
+    version { major 1 minor 0 }
+
+    attribute PStructBase a1
+    
+    method testMethod {
+        in {
+            PStructBase x1
+        }
+        out {
+            PStructBase y1
+        }
+    } 
+
+    broadcast bTest {
+        out {
+            PStructBase ux
+        }
+    }
+
+    typedef MyTypedef is Int32
+
+    enumeration MyEnum {
+        DEFAULT
+        ON
+        OFF
+    }
+
+    union MyUnion {
+        MyTypedef id
+        MyEnum status
+        UInt8 channel
+        String name
+    }
+    
+    struct PStructBase polymorphic {
+    }
+    
+    /* This does not generate code that would compile. 
+    struct PStructBaseInt polymorphic {
+        UInt8 x1
+    }
+    */
+    
+    struct BStruct {
+        UInt8 a1
+        UInt8 a2
+        String s1
+    }
+    
+    struct PStructMyTypedef extends PStructBase {
+        MyTypedef id 
+    }
+    
+    struct PStructMyEnum extends PStructBase {
+        MyEnum status 
+    }
+    
+    struct PStructUInt8 extends PStructBase {
+        UInt8 channel 
+    }
+    
+    struct PStructString extends PStructBase {
+        String name 
+    }
+    
+    /* unions inside polymorphic structures produce compilation errors
+    struct PStructUnion extends PStructBase {
+        MyUnion coll
+    }
+    */
+    
+    struct PStructStruct extends PStructBase {
+        BStruct s
+    }
+    
+    /* using non-empty polymorphic structures do not currently work.
+    struct PStructStruct2 extends PStructBaseInt {
+        BStruct s
+    }
+    
+    struct PStructPStruct extends PStructBase {
+        PStructBaseInt s2
+    }
+    
+    struct PStructPStruct2 extends PStructBase {
+        PStructStruct2 s2
+    }    
+*/    
+}

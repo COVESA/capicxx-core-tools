@@ -112,8 +112,14 @@
 						<configuration>
 							<target>
 								<zip excludesfile="zip.excludes"
+									excludes="commonapi-generator-linux-x86,commonapi-generator-linux-x86_64,commonapi-generator-windows-x86.exe,commonapi-generator-windows-x86_64.exe"
 									destfile="${project.build.directory}/products/commonapi-generator.zip"
-									basedir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all" />
+									basedir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all">
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86" filemode="777"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86_64" filemode="777"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86.exe" filemode="777"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86_64.exe" filemode="777"/>
+								</zip>
 							</target>
 						</configuration>
 						<goals>
@@ -127,7 +133,7 @@
 	<parent>
 		<groupId>commonapi</groupId>
 		<artifactId>org.genivi.commonapi.core.releng</artifactId>
-		<version>3.1.3-SNAPSHOT</version>
+		<version>3.1.4-SNAPSHOT</version>
 		<relativePath>../org.genivi.commonapi.core.releng</relativePath>
 	</parent>
 </project>

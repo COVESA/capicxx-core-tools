@@ -7,10 +7,10 @@
 #ifndef DTADVANCEDSTUB_H_
 #define DTADVANCEDSTUB_H_
 
-#include "v1_0/commonapi/datatypes/advanced/TestInterfaceStubDefault.hpp"
-#include "v1_0/commonapi/datatypes/advanced/TestInterface.hpp"
+#include "v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/datatypes/advanced/TestInterface.hpp"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace advanced {
@@ -35,5 +35,5 @@ public:
 } /* namespace advanced */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */
 #endif /* DTADVANCEDSTUB_H_ */

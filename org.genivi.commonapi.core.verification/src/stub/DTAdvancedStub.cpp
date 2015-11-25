@@ -10,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace advanced {
@@ -31,7 +31,7 @@ void DTAdvancedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
         TestInterface::tMap tMapIn,
         TestInterface::tTypedef tTypedefIn,
         fTestReply_t _reply) {
-
+    (void)clientId;
 
     TestInterface::tArray tArrayOut = tArrayIn;
     TestInterface::tEnumeration tEnumerationOut = tEnumerationIn;
@@ -40,7 +40,7 @@ void DTAdvancedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
     TestInterface::tMap tMapOut = tMapIn;
     TestInterface::tTypedef tTypedefOut = tTypedefIn;
 
-	_reply(tArrayOut, tEnumerationOut, tStructOut, tUnionOut, tMapOut, tTypedefOut);
+    _reply(tArrayOut, tEnumerationOut, tStructOut, tUnionOut, tMapOut, tTypedefOut);
 
     fireBTestEvent(
             tArrayOut,
@@ -55,4 +55,4 @@ void DTAdvancedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
 } /* namespace advanced */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */

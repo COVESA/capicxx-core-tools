@@ -44,11 +44,12 @@ interface TestInterface {
     }
     
     enumeration tEnum {
-        VALUE1= "0"
+        VALUE1= 0
     }
     
     enumeration tEnumExt extends tEnum {
-        VALUE2= "1"
+        VALUE2= 1
+        VALUE3= 2
     }
     
     union tUnion {

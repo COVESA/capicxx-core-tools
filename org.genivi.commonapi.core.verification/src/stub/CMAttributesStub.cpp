@@ -7,7 +7,7 @@
 #include <iostream>
 #include "CMAttributesStub.h"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace communication {
 
@@ -25,7 +25,7 @@ void CMAttributesStub::setTestValues(uint8_t x) {
     setTestCAttribute(x);
 }
 
-} /* namespace v1_0 */
+} /* namespace v1 */
 } /* namespace communication */
 } /* namespace commonapi */
 

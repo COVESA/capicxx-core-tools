@@ -53,6 +53,9 @@ interface TestInterface {
         }
     }
 
+    method fTestEmptyBroadcast {
+    }
+
     broadcast bTest {
         out {
             UInt8 uint8Out
@@ -69,5 +72,8 @@ interface TestInterface {
             String stringOut
             //ByteBuffer byteBufferOut
         }
+    }
+
+    broadcast bTestEmpty {
     }
 }

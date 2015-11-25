@@ -82,7 +82,7 @@
                </adapt>
             </iterate>
          </or>
-      </definition>      
+      </definition>
    </extension>
    <extension
          point="org.eclipse.ui.preferencePages">
@@ -93,7 +93,7 @@
       </page>
    </extension> <extension
          point="org.eclipse.core.runtime.preferences">
-         <initializer 
+         <initializer
             class="org.genivi.commonapi.core.ui.preferences.PreferenceInitializer">
       </initializer>
    </extension>
@@ -102,20 +102,20 @@
                    <page
                          class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
                          id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
-                         name="CommonAPI"
-                         objectClass="org.eclipse.core.resources.IProject">
-                   </page>
-                   <page
-                         class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
-                         id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
-                         name="CommonAPI"
-                         objectClass="org.eclipse.core.resources.IFolder">
-                   </page>
-                   <page
-                         class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
-                         id="org.genivi.commonapi.core.ui.preferences.property.CommonAPIPreferencePage"
-                         name="CommonAPI"
-                         objectClass="org.eclipse.core.resources.IFile">
+                         name="CommonAPI">
+                      <enabledWhen>
+                         <or>
+                            <instanceof
+                                  value="org.eclipse.core.resources.IProject">
+                            </instanceof>
+                            <instanceof
+                                  value="org.eclipse.core.resources.IFolder">
+                            </instanceof>
+                            <instanceof
+                                  value="org.eclipse.core.resources.IFile">
+                            </instanceof>
+                         </or>
+                      </enabledWhen>
                    </page>
                 </extension>
                 <extension

@@ -26,9 +26,9 @@ public:
                                                         const CommonAPI::SelectiveBroadcastSubscriptionEvent);
 
     void setPhoneBookDataFilter(const std::shared_ptr<CommonAPI::ClientId> _client,
-    							E04PhoneBook::elementFilterStruct _elementFilter,
-								std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
-								setPhoneBookDataFilterReply_t _reply);
+                                E04PhoneBook::elementFilterStruct _elementFilter,
+                                std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
+                                setPhoneBookDataFilterReply_t _reply);
 
 private:
     std::unordered_map<std::shared_ptr<CommonAPI::ClientId>, std::vector<E04PhoneBook::phoneBookDataElementMap>> phoneBookClientData;

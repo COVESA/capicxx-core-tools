@@ -10,7 +10,7 @@
 #include <unistd.h>
 #endif
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace primitive {
@@ -35,6 +35,8 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
         double _doubleIn,
         std::string _stringIn,
         fTestReply_t _reply) {
+    (void)_client;
+
     _reply(_uint8In,
            _int8In,
            _uint16In,
@@ -64,7 +66,16 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
     );
 }
 
+void DTPrimitiveStub::fTestEmptyBroadcast(
+        const std::shared_ptr<CommonAPI::ClientId> _client,
+        fTestEmptyBroadcastReply_t _reply) {
+    (void)_client;
+    _reply();
+    fireBTestEmptyEvent();
+}
+
+
 } /* namespace primitive */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */

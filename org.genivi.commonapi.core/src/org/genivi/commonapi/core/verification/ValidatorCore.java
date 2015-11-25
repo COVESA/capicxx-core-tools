@@ -38,7 +38,7 @@ import org.franca.core.franca.FStructType;
 import org.franca.core.franca.FType;
 import org.franca.core.franca.FTypeCollection;
 import org.franca.core.franca.FrancaPackage;
-import org.osgi.framework.BundleReference;
+import org.genivi.commonapi.core.generator.FrancaGeneratorExtensions;
 import org.osgi.framework.Version;
 
 /**
@@ -57,7 +57,8 @@ public class ValidatorCore implements IFrancaExternalValidator {
     public void validateModel(FModel model,
             ValidationMessageAcceptor messageAcceptor) {
 
-    	acceptInfo("model " + model.getName(), messageAcceptor);   
+		// don't log the good case
+    	//acceptInfo("model " + model.getName(), messageAcceptor);   
     	
         List<String> interfaceTypecollectionNames = new ArrayList<String>();
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
@@ -93,11 +94,13 @@ public class ValidatorCore implements IFrancaExternalValidator {
         startI.add(fInterface);
         ArrayList<FInterface> managedList = new ArrayList<FInterface>();
         for (FInterface managedInterface : fInterface.getManagedInterfaces()) {
+        	// check that the interface name is not null
         	if(managedInterface.getName() == null) {
         		acceptError("unknown managed interface: " + managedInterface.getName(), fInterface,
                 FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
         	} else {
-        	 	acceptInfo("managed interface: " + managedInterface.getName(), messageAcceptor);
+        		// don't log the good case
+        	 	//acceptInfo("managed interface: " + managedInterface.getName(), messageAcceptor);
         	}
             findCyclicManagedInterfaces(managedInterface, startI, fInterface,
                     messageAcceptor, index, false);
@@ -112,6 +115,10 @@ public class ValidatorCore implements IFrancaExternalValidator {
         }
     }
 
+    /**
+     * Find interfaces that manage itself
+     *  
+     */
     private void findCyclicManagedInterfaces(FInterface rekInterface,
             ArrayList<FInterface> interfaceList, FInterface fInterface,
             ValidationMessageAcceptor messageAcceptor, int index,
@@ -247,8 +254,8 @@ public class ValidatorCore implements IFrancaExternalValidator {
             ValidationMessageAcceptor messageAcceptor,
             List<String> interfaceTypecollectionNames,
             FTypeCollection fTypeCollection) {
-    	
-    	acceptInfo("type collection: " + fTypeCollection.getName(), messageAcceptor);
+		// don't log the good case
+    	//acceptInfo("type collection: " + fTypeCollection.getName(), messageAcceptor);
     	
         validateName(messageAcceptor,
                 fTypeCollection);
@@ -286,7 +293,8 @@ public class ValidatorCore implements IFrancaExternalValidator {
 
     protected void validateFInterfaceElements(
             ValidationMessageAcceptor messageAcceptor, FInterface fInterface) {
-    	acceptInfo("interface elements: " + fInterface.getName(), messageAcceptor); 
+		// don't log the good case
+    	//acceptInfo("interface elements: " + fInterface.getName(), messageAcceptor); 
         if (fInterface.getVersion() == null)
             acceptError("Missing version! Add: version(major int minor int)",
                     fInterface, FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
@@ -325,8 +333,7 @@ public class ValidatorCore implements IFrancaExternalValidator {
     }
 
     private boolean isFrancaVersionGreaterThan(int major, int minor, int micro) {
-        Version francaVersion = ((BundleReference) FArgument.class
-                .getClassLoader()).getBundle().getVersion();
+    	Version francaVersion = Version.parseVersion(FrancaGeneratorExtensions.getFrancaVersion());
         if (francaVersion.getMajor() > major) {
             return true;
         }

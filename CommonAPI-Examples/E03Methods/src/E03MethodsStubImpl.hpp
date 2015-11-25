@@ -9,7 +9,7 @@
 #define E03METHODSSTUBIMPL_H_
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_2/commonapi/examples/E03MethodsStubDefault.hpp>
+#include <v1/commonapi/examples/E03MethodsStubDefault.hpp>
 
 class E03MethodsStubImpl: public v1_2::commonapi::examples::E03MethodsStubDefault {
 
@@ -18,9 +18,9 @@ public:
     virtual ~E03MethodsStubImpl();
     virtual void incCounter();
     virtual void foo(const std::shared_ptr<CommonAPI::ClientId> _client,
-    		int32_t _x1,
-    		std::string _x2,
-    		fooReply_t _reply);
+            int32_t _x1,
+            std::string _x2,
+            fooReply_t _reply);
 
 private:
     int cnt;

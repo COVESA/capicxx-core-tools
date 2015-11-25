@@ -16,7 +16,7 @@
 #include <gio/gio.h>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E07MainloopProxy.hpp>
+#include <v1/commonapi/examples/E07MainloopProxy.hpp>
 
 using namespace v1_0::commonapi::examples;
 
@@ -34,48 +34,48 @@ void myAttrXCallback(const CommonAPI::CallStatus& callStatus, const int32_t& val
 
 void mySayHelloCallback(const CommonAPI::CallStatus& _callStatus, const std::string& _returnMessage) {
 
-	if (_callStatus != CommonAPI::CallStatus::SUCCESS) {
-		std::cerr << "Remote call failed!\n";
-		return;
-	}
-	std::cout << "Got message: '" << _returnMessage << "'\n";
+    if (_callStatus != CommonAPI::CallStatus::SUCCESS) {
+        std::cerr << "Remote call failed!\n";
+        return;
+    }
+    std::cout << "Got message: '" << _returnMessage << "'\n";
 
 }
 
 gboolean callSetAttrX(void* proxy) {
 
-	std::cout << "callSetAttrX called ..." << std::endl;
+    std::cout << "callSetAttrX called ..." << std::endl;
 
-	E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
-	myProxy->getXAttribute().setValueAsync(gValueForX , myAttrXCallback);
+    E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
+    myProxy->getXAttribute().setValueAsync(gValueForX , myAttrXCallback);
 
-	return false;
+    return false;
 }
 
 gboolean callGetAttrX(void* proxy) {
 
-	std::cout << "callGetAttrX called ..." << std::endl;
+    std::cout << "callGetAttrX called ..." << std::endl;
 
-	E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
-	myProxy->getXAttribute().getValueAsync(myAttrXCallback);
+    E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
+    myProxy->getXAttribute().getValueAsync(myAttrXCallback);
 
-	return false;
+    return false;
 }
 
 gboolean callSayHello(void* proxy) {
 
-	std::cout << "callSayHello called ..." << std::endl;
+    std::cout << "callSayHello called ..." << std::endl;
 
-	static int number = 1;
+    static int number = 1;
 
-	std::stringstream stream;
-	stream << "World (" << number << ")";
+    std::stringstream stream;
+    stream << "World (" << number << ")";
     const std::string name = stream.str();
 
-	E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
-	gFutureCallStatus = myProxy->sayHelloAsync(name, mySayHelloCallback);
+    E07MainloopProxy<>* myProxy = static_cast<E07MainloopProxy<>*>(proxy);
+    gFutureCallStatus = myProxy->sayHelloAsync(name, mySayHelloCallback);
 
-	number++;
+    number++;
 
     return true;
 }
@@ -88,60 +88,60 @@ class GDispatchWrapper: public GSource {
 
 gboolean dispatchPrepare ( GSource* source, gint* timeout ) {
 
-	bool result = false;
-	int64_t eventTimeout;
+    bool result = false;
+    int64_t eventTimeout;
 
-	result = static_cast<GDispatchWrapper*>(source)->dispatchSource_->prepare(eventTimeout);
+    result = static_cast<GDispatchWrapper*>(source)->dispatchSource_->prepare(eventTimeout);
 
-	*timeout = eventTimeout;
+    *timeout = eventTimeout;
 
     return result;
 }
 
 gboolean dispatchCheck ( GSource* source ) {
 
-	return static_cast<GDispatchWrapper*>(source)->dispatchSource_->check();
+    return static_cast<GDispatchWrapper*>(source)->dispatchSource_->check();
 }
 
 gboolean dispatchExecute ( GSource* source, GSourceFunc callback, gpointer userData ) {
 
-	static_cast<GDispatchWrapper*>(source)->dispatchSource_->dispatch();
+    static_cast<GDispatchWrapper*>(source)->dispatchSource_->dispatch();
     return true;
 }
 
 static GSourceFuncs standardGLibSourceCallbackFuncs = {
-	dispatchPrepare,
-	dispatchCheck,
-	dispatchExecute,
-	NULL
+    dispatchPrepare,
+    dispatchCheck,
+    dispatchExecute,
+    NULL
 };
 
 gboolean gWatchDispatcher ( GIOChannel *source, GIOCondition condition, gpointer userData ) {
 
-	CommonAPI::Watch* watch = static_cast<CommonAPI::Watch*>(userData);
+    CommonAPI::Watch* watch = static_cast<CommonAPI::Watch*>(userData);
 
 #ifdef WIN32
-	condition = static_cast<GIOCondition>(POLLIN);
+    condition = static_cast<GIOCondition>(POLLIN);
 #endif
 
-	watch->dispatch(condition);
+    watch->dispatch(condition);
     return true;
 }
 
 gboolean gTimeoutDispatcher ( void* userData ) {
 
-	return static_cast<CommonAPI::DispatchSource*>(userData)->dispatch();
+    return static_cast<CommonAPI::DispatchSource*>(userData)->dispatch();
 }
 
 void watchAddedCallback ( CommonAPI::Watch* watch, const CommonAPI::DispatchPriority dispatchPriority ) {
-	const pollfd& fileDesc = watch->getAssociatedFileDescriptor();
+    const pollfd& fileDesc = watch->getAssociatedFileDescriptor();
 
 #ifdef WIN32
-	channel = g_io_channel_win32_new_socket(fileDesc.fd);
-	GSource* gWatch = g_io_create_watch(channel, GIOCondition::G_IO_IN);
+    channel = g_io_channel_win32_new_socket(fileDesc.fd);
+    GSource* gWatch = g_io_create_watch(channel, GIOCondition::G_IO_IN);
 #else
-	channel = g_io_channel_unix_new(fileDesc.fd); 
-	GSource* gWatch = g_io_create_watch(channel, static_cast<GIOCondition>(fileDesc.events));
+    channel = g_io_channel_unix_new(fileDesc.fd); 
+    GSource* gWatch = g_io_create_watch(channel, static_cast<GIOCondition>(fileDesc.events));
 #endif
 
     g_source_set_callback(gWatch, reinterpret_cast<GSourceFunc>(&gWatchDispatcher), watch, NULL);
@@ -161,7 +161,7 @@ void watchAddedCallback ( CommonAPI::Watch* watch, const CommonAPI::DispatchPrio
 
 void watchRemovedCallback ( CommonAPI::Watch* watch ) {
 
-	g_source_remove_by_user_data(watch);
+    g_source_remove_by_user_data(watch);
 
     if(channel) {
         g_io_channel_unref(channel);
@@ -170,8 +170,8 @@ void watchRemovedCallback ( CommonAPI::Watch* watch ) {
 }
 
 int main() {
-	CommonAPI::Runtime::setProperty("LogContext", "E07C");
-	CommonAPI::Runtime::setProperty("LibraryBase", "E07Mainloop");
+    CommonAPI::Runtime::setProperty("LogContext", "E07C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E07Mainloop");
 
     std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
 
@@ -181,36 +181,36 @@ int main() {
 
     std::shared_ptr<CommonAPI::MainLoopContext> mainloopContext = std::make_shared<CommonAPI::MainLoopContext>(connection);
 
-	std::function<void(CommonAPI::Watch*, const CommonAPI::DispatchPriority)> f_watchAddedCallback = watchAddedCallback;
-	std::function<void(CommonAPI::Watch*)> f_watchRemovedCallback = watchRemovedCallback;
-	mainloopContext->subscribeForWatches(f_watchAddedCallback, f_watchRemovedCallback);
+    std::function<void(CommonAPI::Watch*, const CommonAPI::DispatchPriority)> f_watchAddedCallback = watchAddedCallback;
+    std::function<void(CommonAPI::Watch*)> f_watchRemovedCallback = watchRemovedCallback;
+    mainloopContext->subscribeForWatches(f_watchAddedCallback, f_watchRemovedCallback);
 
     std::shared_ptr<E07MainloopProxy<>> myProxy = runtime->buildProxy<E07MainloopProxy>(domain,
-    		instance, mainloopContext);
+            instance, mainloopContext);
 
     std::cout << "Checking availability" << std::flush;
     static 
-		#ifndef WIN32
-			constexpr
-		#endif
-	bool mayBlock = false;
-		
+        #ifndef WIN32
+            constexpr
+        #endif
+    bool mayBlock = false;
+        
     int count = 0;
     while (!myProxy->isAvailable()) {
-    	if (count % 10 == 0)
-    		std::cout << "." << std::flush;
-    	g_main_context_iteration(NULL, mayBlock);
-    	usleep(50000);
+        if (count % 10 == 0)
+            std::cout << "." << std::flush;
+        g_main_context_iteration(NULL, mayBlock);
+        usleep(50000);
     }
     std::cout << "done." << std::endl;
 
     GMainLoop* mainloop = NULL;
     mainloop = g_main_loop_new(NULL, FALSE);
 
-	void *proxyPtr = (void*)myProxy.get();
-	g_timeout_add(100, callSayHello, proxyPtr);
-	g_timeout_add(5000, callGetAttrX, proxyPtr);
-	g_timeout_add(9000, callSetAttrX, proxyPtr);
+    void *proxyPtr = (void*)myProxy.get();
+    g_timeout_add(100, callSayHello, proxyPtr);
+    g_timeout_add(5000, callGetAttrX, proxyPtr);
+    g_timeout_add(9000, callSetAttrX, proxyPtr);
 
     g_main_loop_run (mainloop);
     g_main_loop_unref (mainloop);

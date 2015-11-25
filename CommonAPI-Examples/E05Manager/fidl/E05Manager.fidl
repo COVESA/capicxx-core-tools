@@ -8,22 +8,22 @@
 package commonapi.examples
 
 interface E05Manager manages E05Device, E05SpecialDevice {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	attribute String [] myDevices
+    attribute String [] myDevices
 
 }
 
 interface E05Device {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	method doSomething {
-	}
+    method doSomething {
+    }
 }
 
 interface E05SpecialDevice extends E05Device {
-	version { major 1 minor 0 }
+    version { major 1 minor 0 }
 
-	method doSomethingSpecial {
-	}
+    method doSomethingSpecial {
+    }
 }

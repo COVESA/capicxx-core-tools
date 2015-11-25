@@ -40,9 +40,9 @@ void E04PhoneBookStubImpl::onPhoneBookDataSetSelectiveSubscriptionChanged(const 
 }
 
 void E04PhoneBookStubImpl::setPhoneBookDataFilter(const std::shared_ptr<CommonAPI::ClientId> _client,
-  												  E04PhoneBook::elementFilterStruct _elementFilter,
-												  std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
-												  setPhoneBookDataFilterReply_t _reply) {
+                                                  E04PhoneBook::elementFilterStruct _elementFilter,
+                                                  std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
+                                                  setPhoneBookDataFilterReply_t _reply) {
     std::shared_ptr < CommonAPI::ClientIdList > clientList = getSubscribersForPhoneBookDataSetSelective();
     std::cout << "setPhoneBookDataFilter called from client " << _client->hashCode() << " of ("
               << clientList->size() << ")" << std::endl;

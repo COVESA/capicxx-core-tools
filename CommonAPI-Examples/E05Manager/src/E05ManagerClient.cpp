@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E05ManagerProxy.hpp>
+#include <v1/commonapi/examples/E05ManagerProxy.hpp>
 
 using namespace v1_0::commonapi::examples;
 
@@ -27,8 +27,8 @@ void newDeviceAvailable(const std::string address, const CommonAPI::Availability
 }
 
 int main() {
-	CommonAPI::Runtime::setProperty("LogContext", "E05C");
-	CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
+    CommonAPI::Runtime::setProperty("LogContext", "E05C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 

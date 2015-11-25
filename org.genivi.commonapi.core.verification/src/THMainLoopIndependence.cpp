@@ -11,8 +11,8 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "utils/VerificationMainLoop.h"
-#include "v1_0/commonapi/threading/TestInterfaceProxy.hpp"
-#include "v1_0/commonapi/threading/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/threading/TestInterfaceProxy.hpp"
+#include "v1/commonapi/threading/TestInterfaceStubDefault.hpp"
 #include "utils/VerificationMainLoop.h"
 
 const std::string domain = "local";
@@ -24,11 +24,11 @@ const std::string mainloopName2 = "service-sample";
 const std::string thirdPartyServiceId = "mainloop-thirdParty";
 
 class PingPongTestStub : public v1_0::commonapi::threading::TestInterfaceStubDefault {
-	virtual void testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
-			uint8_t _x,
-			testMethodReply_t _reply) {
-
-		_reply(_x);
+    virtual void testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
+            uint8_t _x,
+            testMethodReply_t _reply) {
+        (void)_client;
+        _reply(_x);
     }
 };
 
@@ -40,7 +40,7 @@ public:
     }
 
     void setupMainLoopContext(std::promise<bool>& p, std::string mainloopName) {
-    	mainLoopContext_ = std::make_shared<CommonAPI::MainLoopContext>(mainloopName);
+        mainLoopContext_ = std::make_shared<CommonAPI::MainLoopContext>(mainloopName);
         mainLoop_ = new CommonAPI::VerificationMainLoop(mainLoopContext_);
         p.set_value(true);
     }
@@ -143,42 +143,48 @@ protected:
         mainLoopThread1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
         mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
-		for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
-			usleep(10000);
-		}
+        for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
+            usleep(10000);
+        }
 
-		for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
-			usleep(10000);
-		}
+        for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
+            usleep(10000);
+        }
 
-		ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
+        ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
         ASSERT_TRUE(threadCtx2_.proxy_->isAvailable());
 
-        if (threadCtx1_.mainLoop_->isRunning()) {
-        	std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-        	threadCtx1MainStopped.get();
-        }
-        if (threadCtx2_.mainLoop_->isRunning()) {
-        	std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-        	threadCtx2MainStopped.get();
+        // wait until threads are running
+        while (!threadCtx1_.mainLoop_->isRunning() || !threadCtx2_.mainLoop_->isRunning()) {
+            usleep(100);
         }
 
-        mainLoopThread1_.join();
-        mainLoopThread2_.join();
+        std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
+        threadCtx1MainStopped.get();
+        
+        std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
+        threadCtx2MainStopped.get();
+
+        if(mainLoopThread1_.joinable()) {
+            mainLoopThread1_.join();
+        }
+        if(mainLoopThread2_.joinable()) {
+            mainLoopThread2_.join();
+        }
     }
 
     void TearDown() {
-    	threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance6);
-    	threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance7);
-    	threadCtx2_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance8);
+        threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance6);
+        threadCtx1_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance7);
+        threadCtx2_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance8);
 
         if (threadCtx1_.mainLoop_->isRunning()) {
-        	std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-        	//threadCtx1MainStopped.get();
+            std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
+            //threadCtx1MainStopped.get();
         }
         if (threadCtx2_.mainLoop_->isRunning()) {
-        	std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-        	//threadCtx2MainStopped.get();
+            std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
+            //threadCtx2MainStopped.get();
         }
 
         if(mainLoopThread1_.joinable()) {
@@ -197,10 +203,10 @@ protected:
 
 /**
 * @test Proxy Receives Answer Only If Stub MainLoop Runs.
-* 	- start proxy in thread 1 and call testPredefinedTypeMethod
-* 	- proxy should not receive answer, if the stub mainloop does not run
-* 	- run mainloop of stub
-* 	- now the stub mainloop also runs, so the proxy should receive the answer
+*     - start proxy in thread 1 and call testPredefinedTypeMethod
+*     - proxy should not receive answer, if the stub mainloop does not run
+*     - run mainloop of stub
+*     - now the stub mainloop also runs, so the proxy should receive the answer
 */
 TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 
@@ -231,9 +237,9 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 
 /**
 * @test Proxy Receives Just His Own Answers.
-* 	- start 2 proxies in own threads
-* 	- call test method in each proxy
-* 	- now each proxy should have received the answer to his own request
+*     - start 2 proxies in own threads
+*     - call test method in each proxy
+*     - now each proxy should have received the answer to his own request
 */
 TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
     std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
@@ -251,11 +257,6 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
     std::thread mainLoopRunnerProxy2([&]() { threadCtx2_.mainLoop_->run(); });
     mainLoopRunnerProxy1.detach();
     mainLoopRunnerProxy2.detach();
-
-    // wait until threads are running
-    while (!threadCtx1_.mainLoop_->isRunning() || !threadCtx2_.mainLoop_->isRunning()) {
-    	usleep(100);
-    }
 
     while(!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
         usleep(10000);

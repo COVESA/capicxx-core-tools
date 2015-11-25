@@ -17,6 +17,7 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.genivi.commonapi.core.preferences.FPreferences
 import java.util.HashMap
 import org.franca.core.franca.FMethod
+import org.franca.core.franca.FEnumerationType
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
@@ -27,17 +28,30 @@ class FInterfaceStubGenerator {
 
 
     def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, IResource modelid) {
-        fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(modelid))
-        // should skeleton code be generated ?
-        if(FPreferences::instance.getPreference(PreferenceConstants::P_GENERATESKELETON, "false").equals("true"))
-        {
-	        fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultHeader(modelid))
-    	    fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultSource(modelid))
-        }        
+        
+        if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
+            fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(modelid))
+            // should skeleton code be generated ?
+            if(FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_SKELETON, "false").equals("true"))
+            {
+                fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultHeader(modelid))
+                fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultSource(modelid))
+            }        
+        } 
+        else {
+            // feature: suppress code generation
+            fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants::NO_CODE)
+            // should skeleton code be generated ?
+            if(FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_SKELETON, "false").equals("true"))
+            {
+                fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants::NO_CODE)
+                fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants::NO_CODE)
+            }        
+        }
     }
 
     def private generateStubHeader(FInterface fInterface, IResource modelid) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_STUB_HPP_
         #define «fInterface.defineName»_STUB_HPP_
@@ -79,8 +93,8 @@ class FInterfaceStubGenerator {
          * An application developer should not need to bother with this class.
          */
         class «fInterface.stubAdapterClassName»
-            : virtual public CommonAPI::StubAdapter, 
-              public «fInterface.elementName»«IF fInterface.base != null», 
+            : public virtual CommonAPI::StubAdapter, 
+              public virtual «fInterface.elementName»«IF fInterface.base != null», 
               public virtual «fInterface.base.getTypeCollectionName(fInterface)»StubAdapter«ENDIF» {
          public:
             «FOR attribute : fInterface.attributes»
@@ -152,7 +166,7 @@ class FInterfaceStubGenerator {
             «FOR attribute : fInterface.attributes»
                 «IF !attribute.readonly»
                     /// Verification callback for remote set requests on the attribute «attribute.elementName»
-                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «attribute.getTypeName(fInterface, true)» «attribute.elementName») = 0;
+                    virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «attribute.getTypeName(fInterface, true)» _value) = 0;
                     /// Action callback for remote set requests on the attribute «attribute.elementName»
                     virtual void «attribute.stubRemoteEventClassChangedMethodName»() = 0;
                 «ENDIF»
@@ -228,6 +242,8 @@ class FInterfaceStubGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»
 
+        «fInterface.generateMajorVersionNamespace»
+
         #endif // «fInterface.defineName»_STUB_HPP_
     '''
 
@@ -243,7 +259,7 @@ class FInterfaceStubGenerator {
 
 
     def private generateStubDefaultHeader(FInterface fInterface, IResource modelid) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «getHeaderDefineName(fInterface)»_HPP_
         #define «getHeaderDefineName(fInterface)»_HPP_
@@ -350,7 +366,7 @@ class FInterfaceStubGenerator {
 
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
-                «attribute.getTypeName(fInterface, true)» «attribute.stubDefaultClassVariableName»;
+                «attribute.getTypeName(fInterface, true)» «attribute.stubDefaultClassVariableName» {};
             «ENDFOR»            
 
             CommonAPI::Version interfaceVersion_;
@@ -359,11 +375,13 @@ class FInterfaceStubGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»
 
+        «fInterface.generateMajorVersionNamespace»
+
         #endif // «getHeaderDefineName(fInterface)»
     '''
 
     def private generateStubDefaultSource(FInterface fInterface, IResource modelid) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         #include <«fInterface.stubDefaultHeaderPath»>
         #include <assert.h>
 
@@ -375,10 +393,16 @@ class FInterfaceStubGenerator {
                 «IF !fInterface.managedInterfaces.empty»
                     autoInstanceCounter_(0),
                 «ENDIF»
+                «FOR attribute : fInterface.attributes»
+                	«IF attribute.supportsInitialValue»
+                		«attribute.stubDefaultClassVariableName»(«attribute.initialValue(fInterface)»),
+            		«ENDIF»
+            	«ENDFOR»
                 interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) {
         }
 
         const CommonAPI::Version& «fInterface.stubDefaultClassName»::getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> _client) {
+            (void)_client;
             return interfaceVersion_;
         }
 
@@ -395,15 +419,18 @@ class FInterfaceStubGenerator {
             }
 
             const «typeName»& «fInterface.stubDefaultClassName»::«attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client) {
+                (void)_client;
                 return «attribute.stubClassGetMethodName»();
             }
 
             void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«typeName» _value) {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 «IF attribute.isObservable»
-                   if (valueChanged && «fInterface.stubCommonAPIClassName»::stubAdapter_ != NULL) {
-                        «fInterface.stubCommonAPIClassName»::stubAdapter_->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
-                    }
+                if (valueChanged) {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter)
+                        stubAdapter->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                }
                 «ENDIF»
             }
 
@@ -417,11 +444,17 @@ class FInterfaceStubGenerator {
             }
 
             bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassValidateMethodName»(const «typeName» &_value) {
-                return true;
+                (void)_value;
+            	«IF attribute.supportsTypeValidation»
+            		return «attribute.validateType(fInterface)»;
+            	«ELSE»
+            		return true;
+            	«ENDIF»
             }
 
             «IF !attribute.readonly»
                 void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value) {
+                    (void)_client;
                     «attribute.stubDefaultClassSetMethodName»(_value);
                 }
 
@@ -440,6 +473,7 @@ class FInterfaceStubGenerator {
                 }
 
                 bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value) {
+                    (void)_client;
                     return «attribute.stubRemoteEventClassSetMethodName»(_value);
                 }
             «ENDIF»
@@ -449,8 +483,19 @@ class FInterfaceStubGenerator {
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
             void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))») {
+                (void)_client;
+                «IF !method.inArgs.empty»
+                    «method.inArgs.map['(void) _' + it.name].join(";\n")»;
+                «ENDIF»
                 «IF !method.isFireAndForget»
                     «method.generateDummyArgumentDefinitions»
+                    «FOR arg : method.outArgs»
+                        «IF arg.getType.supportsValidation»
+                            if (!«arg.elementName».validate()) {
+                                return;
+                            }
+                        «ENDIF»
+                    «ENDFOR»
                     _reply(«method.generateDummyArgumentList»);
                 «ENDIF»
             }
@@ -461,25 +506,50 @@ class FInterfaceStubGenerator {
             «FTypeGenerator::generateComments(broadcast, false)»
             «IF broadcast.selective»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, false)») {
-                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                    «fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
+                    «FOR arg : broadcast.outArgs»
+                        «IF arg.getType.supportsValidation»
+                            if (!_«arg.elementName».validate()) {
+                                return;
+                            }
+                        «ENDIF»
+                    «ENDFOR»
+                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter)
+                        stubAdapter->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
                 }
                 void «fInterface.stubDefaultClassName»::«broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) {
+                    (void)_client;
+                    (void)_event;
                     // No operation in default
                 }
                 bool «fInterface.stubDefaultClassName»::«broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client) {
+                    (void)_client;
                     // Accept in default
                     return true;
                 }
                 std::shared_ptr<CommonAPI::ClientIdList> const «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassSubscribersMethodName»() {
-                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                    return(«fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassSubscribersMethodName»());
+                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                   	if (stubAdapter)
+                        return(stubAdapter->«broadcast.stubAdapterClassSubscribersMethodName»());
+                    else
+                        return NULL;
                 }
 
             «ELSE»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
-                	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                    «fInterface.stubCommonAPIClassName»::stubAdapter_->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                    «FOR arg : broadcast.outArgs»
+                        «IF arg.getType.supportsValidation»
+                            if (!_«arg.elementName».validate()) {
+                                return;
+                            }
+                        «ENDIF»
+                    «ENDFOR»
+                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                   	if (stubAdapter)
+                        stubAdapter->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
                 }
             «ENDIF»
         «ENDFOR»
@@ -488,22 +558,41 @@ class FInterfaceStubGenerator {
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubFullClassName»> _stub) {
                 autoInstanceCounter_++;
                 std::stringstream ss;
-                ss << «fInterface.stubCommonAPIClassName»::stubAdapter_->getAddress().getInstance() << ".i" << autoInstanceCounter_;
-                std::string instance = ss.str();
-                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubRegisterManagedName»(_stub, instance);
+                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                if (stubAdapter) {
+                    ss << stubAdapter->getAddress().getInstance() << ".i" << autoInstanceCounter_;
+                    std::string instance = ss.str();
+                    return stubAdapter->«managed.stubRegisterManagedName»(_stub, instance);
+                } else {
+                    return false;
+                }
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedMethodImpl» {
-            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubRegisterManagedName»(_stub, _instance);
+                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                if (stubAdapter) 
+                    return stubAdapter->«managed.stubRegisterManagedName»(_stub, _instance);
+                else
+                    return false;
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubDeregisterManagedName»(const std::string &_instance) {
-            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubDeregisterManagedName»(_instance);
+                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                if (stubAdapter) 
+                    return stubAdapter->«managed.stubDeregisterManagedName»(_instance);
+                else
+                    return false;
             }
             std::set<std::string>& «fInterface.stubDefaultClassName»::«managed.stubManagedSetGetterName»() {
-            	assert((«fInterface.stubCommonAPIClassName»::stubAdapter_) !=NULL);
-                return «fInterface.stubCommonAPIClassName»::stubAdapter_->«managed.stubManagedSetGetterName»();
+                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
+                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                if (stubAdapter) {
+                    return stubAdapter->«managed.stubManagedSetGetterName»();
+                } else {
+                    static std::set<std::string> emptySet = std::set<std::string>();
+                    return emptySet;
+                }
             }
         «ENDFOR»
 
@@ -531,4 +620,16 @@ class FInterfaceStubGenerator {
     def private getStubDefaultClassVariableName(FAttribute fAttribute) {
         fAttribute.elementName.toFirstLower + 'AttributeValue_'
     }
+
+    def private supportsInitialValue(FAttribute fAttribute) {
+        fAttribute.type.derived instanceof FEnumerationType && !fAttribute.array
+    }
+    def private initialValue(FAttribute fAttribute, FInterface fInterface) {
+        if (fAttribute.type.derived instanceof FEnumerationType) {
+            val FEnumerationType _enumeration = fAttribute.type.derived as FEnumerationType;
+            fAttribute.getTypeName(fInterface, true) + '::Literal::' + _enumeration.enumerators.get(0).elementName;
+        }
+        else "0"
+    }
+
 }

@@ -6,7 +6,7 @@
 
 #include "DTCombinedStub.h"
 
-namespace v1_0 {
+namespace v1 {
 namespace commonapi {
 namespace datatypes {
 namespace combined {
@@ -22,10 +22,11 @@ DTCombinedStub::~DTCombinedStub(){
 void DTCombinedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
         TestInterface::tStructL3 _tStructL3In, fTestReply_t _reply)
 {
+    (void)_client;
     _reply(_tStructL3In);
 }
 
 } /* namespace combined */
 } /* namespace datatypes */
 } /* namespace commonapi */
-} /* namespace v1_0 */
+} /* namespace v1 */

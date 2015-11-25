@@ -191,9 +191,9 @@ int main() {
     if (myCallStatus != CommonAPI::CallStatus::SUCCESS)
         std::cerr << "Remote call setPhoneBookDataFilter A failed: " << (int) myCallStatus << std::endl;
     else
-    	std::cout << "Remote call setPhoneBookDataFilter A succeeded." << std::endl;
+        std::cout << "Remote call setPhoneBookDataFilter A succeeded." << std::endl;
 
-	std::cout << "Call setPhoneBookDataFilter B ..." << std::endl;
+    std::cout << "Call setPhoneBookDataFilter B ..." << std::endl;
     E04PhoneBook::elementFilterStruct lElementFilterB = {true, false, false, false, false, true};
     std::vector<E04PhoneBook::contentFilterStruct> lContentFilterB = { {E04PhoneBook::phoneBookDataElementEnum::NAME, "*"}};
 
@@ -201,10 +201,10 @@ int main() {
     if (myCallStatus != CommonAPI::CallStatus::SUCCESS)
         std::cerr << "Remote call setPhoneBookDataFilter B failed: " << (int) myCallStatus << std::endl;
     else
-    	std::cout << "Remote call setPhoneBookDataFilter B succeeded." << std::endl;
+        std::cout << "Remote call setPhoneBookDataFilter B succeeded." << std::endl;
 
     while (true) {
-    	std::cout << "Now I am going to sleep for 5 seconds..." << std::endl;
+        std::cout << "Now I am going to sleep for 5 seconds..." << std::endl;
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
     return 0;

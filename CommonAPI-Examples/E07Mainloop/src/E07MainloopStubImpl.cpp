@@ -7,17 +7,17 @@
 #include "E07MainloopStubImpl.hpp"
 
 E07MainloopStubImpl::E07MainloopStubImpl() {
-	setXAttribute(0);
+    setXAttribute(0);
 }
 
 E07MainloopStubImpl::~E07MainloopStubImpl() {
 }
 
 void E07MainloopStubImpl::sayHello(const std::shared_ptr<CommonAPI::ClientId> _client,
-		std::string _name,
-		sayHelloReply_t _reply) {
+                                   std::string _name,
+                                   sayHelloReply_t _reply) {
 
-	std::stringstream messageStream;
+    std::stringstream messageStream;
 
     messageStream << "Hello " << _name << "!";
     std::cout << "sayHello('" << _name << "'): '" << messageStream.str() << "'\n";
@@ -26,8 +26,8 @@ void E07MainloopStubImpl::sayHello(const std::shared_ptr<CommonAPI::ClientId> _c
 }
 
 void E07MainloopStubImpl::incAttrX() {
-	int32_t xValue = getXAttribute();
-	xValue++;
-	setXAttribute((int32_t)xValue);
-	std::cout <<  "New counter value = " << xValue << "!" << std::endl;
+    int32_t xValue = getXAttribute();
+    xValue++;
+    setXAttribute((int32_t)xValue);
+    std::cout <<  "New counter value = " << xValue << "!" << std::endl;
 }

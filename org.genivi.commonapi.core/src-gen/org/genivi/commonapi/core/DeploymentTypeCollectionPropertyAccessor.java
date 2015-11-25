@@ -76,5 +76,25 @@ public class DeploymentTypeCollectionPropertyAccessor
 		return null;
 	}
 	
+	public enum ErrorType {
+		Error, Warning, Info, NoError
+	}
+	public ErrorType getErrorType (FEnumerationType obj) {
+		String e = target.getEnum(obj, "ErrorType");
+		if (e==null) return null;
+		return convertErrorType(e);
+	}
+	private ErrorType convertErrorType (String val) {
+		if (val.equals("Error"))
+			return ErrorType.Error; else 
+		if (val.equals("Warning"))
+			return ErrorType.Warning; else 
+		if (val.equals("Info"))
+			return ErrorType.Info; else 
+		if (val.equals("NoError"))
+			return ErrorType.NoError;
+		return null;
+	}
+	
 	
 }

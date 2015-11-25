@@ -13,8 +13,8 @@
 #include <thread>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "v1_0/commonapi/runtime/TestInterfaceProxy.hpp"
-#include "v1_0/commonapi/runtime/TestInterfaceStubDefault.hpp"
+#include "v1/commonapi/runtime/TestInterfaceProxy.hpp"
+#include "v1/commonapi/runtime/TestInterfaceStubDefault.hpp"
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.runtime.TestInterface";
@@ -90,52 +90,52 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
 
     // first build sequence for proxy and stub
     {
-    	auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
-		ASSERT_TRUE((bool)testStub);
-		ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+        auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+        ASSERT_TRUE((bool)testStub);
+        ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
 
-		auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
-		ASSERT_TRUE((bool)testProxy);
-		testProxy->isAvailableBlocking();
+        auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+        ASSERT_TRUE((bool)testProxy);
+        testProxy->isAvailableBlocking();
 
-		std::cout << "Executing synchronous method calls (for approximately 30 seconds)" << std::endl;
-		for (int i = 0; i < 30; i++) {
-		    CommonAPI::CallStatus callStatus;
-		    testProxy->testMethod(callStatus);
-		    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+        std::cout << "Executing synchronous method calls (for approximately 30 seconds)" << std::endl;
+        for (int i = 0; i < 30; i++) {
+            CommonAPI::CallStatus callStatus;
+            testProxy->testMethod(callStatus);
+            EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
-		    usleep(1 * 1000 * 1000);
-		}
-		std::cout << std::endl;
+            usleep(1 * 1000 * 1000);
+        }
+        std::cout << std::endl;
 
-		ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+        ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
     }
 
     // second build sequence for proxy and stub
     {
-    	auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
-		ASSERT_TRUE((bool)testStub);
-		ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+        auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+        ASSERT_TRUE((bool)testStub);
+        ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
 
-		auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
-		ASSERT_TRUE((bool)testProxy);
+        auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+        ASSERT_TRUE((bool)testProxy);
 
-		int i = 0;
-		while( (i < 100)  && (!testProxy->isAvailable()) ) {
-			if (0 == i) {
-				std::cout << "Wait for proxy available" << std::flush;
-			}
-			std::cout << "." << std::flush;
-			usleep(100 * 1000);
-			i++;
-		}
-		std::cout << std::endl;
+        int i = 0;
+        while( (i < 100)  && (!testProxy->isAvailable()) ) {
+            if (0 == i) {
+                std::cout << "Wait for proxy available" << std::flush;
+            }
+            std::cout << "." << std::flush;
+            usleep(100 * 1000);
+            i++;
+        }
+        std::cout << std::endl;
 
-		ASSERT_TRUE(testProxy->isAvailable());
+        ASSERT_TRUE(testProxy->isAvailable());
 
-		usleep(5 * 1000 * 1000);
+        usleep(5 * 1000 * 1000);
 
-		ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+        ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
     }
 }
 

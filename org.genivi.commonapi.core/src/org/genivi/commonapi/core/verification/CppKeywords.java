@@ -102,6 +102,8 @@ public class CppKeywords {
         keyWords.add("xor_eq");
 
         keyWords.add("AnonymousTypeCollection");
+        keyWords.add("instance");
+        keyWords.add("attributes");
     }
 
 }

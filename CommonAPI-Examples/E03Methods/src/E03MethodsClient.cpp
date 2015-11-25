@@ -12,7 +12,7 @@
 #endif
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_2/commonapi/examples/E03MethodsProxy.hpp>
+#include <v1/commonapi/examples/E03MethodsProxy.hpp>
 
 using namespace v1_2::commonapi::examples;
 
@@ -36,7 +36,7 @@ int main() {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     std::string domain = "local";
-	std::string instance = "commonapi.examples.Methods";
+    std::string instance = "commonapi.examples.Methods";
 
     std::shared_ptr<E03MethodsProxy<>> myProxy = runtime->buildProxy < E03MethodsProxy > (domain, instance, "client-sample");
 

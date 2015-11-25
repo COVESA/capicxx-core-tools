@@ -1,47 +1,47 @@
 {
-	"unicast" : "192.168.0.235",
-	"logging" :
-	{
-		"level" : "info",
-		"console" : "true",
-		"file" : { "enable" : "false", "path" : "/var/log/vsomeip.log" },
-		"dlt" : "false"
-	},
-	"applications" : 
-	[
-		{
-			"name" : "client-sample",
-			"id" : "0x1343"
-		},
-		{
-			"name" : "other-client-sample",
-			"id" : "0x1344"
-		},
-		{
-			"name" : "service-sample",
-			"id" : "0x1277"
-		}			
-	],
-	"servicegroups" :
-	[
-		{
-			"name" : "default",
-			"delays" :
-			{
-				"initial" : { "minimum" : "10", "maximum" : "100" },
-				"repetition-base" : "200",
-				"repetition-max" : "3",
-				"cyclic-offer" : "2000",
-				"cyclic-request" : "2001"
-			}
-		}
-	],
-	"routing" : "client-sample",
-	"service-discovery" :
-	{
-		"enable" : "true",
-		"multicast" : "224.244.224.245",
-		"port" : "30490",
-		"protocol" : "udp"
-	}
+    "unicast" : "192.168.0.235",
+    "logging" :
+    {
+        "level" : "info",
+        "console" : "true",
+        "file" : { "enable" : "false", "path" : "/var/log/vsomeip.log" },
+        "dlt" : "false"
+    },
+    "applications" : 
+    [
+        {
+            "name" : "client-sample",
+            "id" : "0x1343"
+        },
+        {
+            "name" : "other-client-sample",
+            "id" : "0x1344"
+        },
+        {
+            "name" : "service-sample",
+            "id" : "0x1277"
+        }            
+    ],
+    "servicegroups" :
+    [
+        {
+            "name" : "default",
+            "delays" :
+            {
+                "initial" : { "minimum" : "10", "maximum" : "100" },
+                "repetition-base" : "200",
+                "repetition-max" : "3",
+                "cyclic-offer" : "2000",
+                "cyclic-request" : "2001"
+            }
+        }
+    ],
+    "routing" : "client-sample",
+    "service-discovery" :
+    {
+        "enable" : "true",
+        "multicast" : "224.244.224.245",
+        "port" : "30490",
+        "protocol" : "udp"
+    }
 }

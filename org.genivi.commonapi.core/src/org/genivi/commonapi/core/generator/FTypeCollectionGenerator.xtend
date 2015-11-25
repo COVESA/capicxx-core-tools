@@ -14,6 +14,8 @@ import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FStructType
 import org.franca.core.franca.FTypeCollection
 import org.genivi.commonapi.core.deployment.PropertyAccessor
+import org.genivi.commonapi.core.preferences.FPreferences
+import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 class FTypeCollectionGenerator {
     @Inject private extension FTypeGenerator
@@ -25,15 +27,25 @@ class FTypeCollectionGenerator {
                  PropertyAccessor deploymentAccessor,
                  IResource modelid) {
 
-        fileSystemAccess.generateFile(fTypeCollection.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateHeader(modelid, deploymentAccessor))
+        if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
+            fileSystemAccess.generateFile(fTypeCollection.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateHeader(modelid, deploymentAccessor))
 
-        if (fTypeCollection.hasSourceFile) {
-            fileSystemAccess.generateFile(fTypeCollection.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateSource(modelid, deploymentAccessor))
+            if (fTypeCollection.hasSourceFile) {
+                fileSystemAccess.generateFile(fTypeCollection.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateSource(modelid, deploymentAccessor))
+            }
+        } 
+        else {
+            // feature: suppress code generation
+            fileSystemAccess.generateFile(fTypeCollection.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
+
+            if (fTypeCollection.hasSourceFile) {
+                fileSystemAccess.generateFile(fTypeCollection.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
+            }
         }
     }
 
     def private generateHeader(FTypeCollection fTypeCollection, IResource modelid, PropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
         #ifndef «fTypeCollection.defineName»_HPP_
         #define «fTypeCollection.defineName»_HPP_
@@ -92,11 +104,13 @@ class FTypeCollectionGenerator {
             «fTypeCollection.generateHashers(deploymentAccessor)»
         }
 
+        «fTypeCollection.generateMajorVersionNamespace»
+
         #endif // «fTypeCollection.defineName»_HPP_
     '''
 
     def private generateSource(FTypeCollection fTypeCollection, IResource modelid, PropertyAccessor _accessor) '''
-        «generateCommonApiLicenseHeader(fTypeCollection, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fTypeCollection, false)»
         #include "«fTypeCollection.headerFile»"
 

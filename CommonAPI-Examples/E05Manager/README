@@ -80,7 +80,7 @@ The functions for the special device has been omitted for clarity.The implementa
 #include <iostream>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include <v1_0/commonapi/examples/E05ManagerProxy.hpp>
+#include <v1/commonapi/examples/E05ManagerProxy.hpp>
 
 using namespace v1_0::commonapi::examples;
 
@@ -97,28 +97,35 @@ void newDeviceAvailable(const std::string address,
 }
 
 int main() {
+    CommonAPI::Runtime::setProperty("LogContext", "E05C");
+    CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
+
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.Manager";
-    
-    std::shared_ptr<E05ManagerProxyDefault> myProxy =
-    	runtime->buildProxy<E05ManagerProxy>(domain, instance);
-    
-    while (!myProxy->isAvailable()) { usleep(10); }
+    const std::string connectionIdClient = "client-sample";
+
+    std::shared_ptr<E05ManagerProxy<>> myProxy = runtime->buildProxy<E05ManagerProxy>(domain, instance, connectionIdClient);
+    while (!myProxy->isAvailable()) {
+        usleep(10);
+    }
+
+    std::cout << "Proxy available." << std::endl;
 
     CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& deviceEvent =
-    	myProxy->getProxyManagerE05Device().getInstanceAvailabilityStatusChangedEvent();
-    
-	/* special device analogously */
+                    myProxy->getProxyManagerE05Device().getInstanceAvailabilityStatusChangedEvent();
+    CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& specialDeviceEvent =
+                    myProxy->getProxyManagerE05SpecialDevice().getInstanceAvailabilityStatusChangedEvent();
 
-    std::function<void(const std::string, const CommonAPI::AvailabilityStatus)>
-    		newDeviceAvailableFunc = newDeviceAvailable;
+    std::function<void(const std::string, const CommonAPI::AvailabilityStatus)> newDeviceAvailableFunc = newDeviceAvailable;
 
     deviceEvent.subscribe(newDeviceAvailableFunc);
     specialDeviceEvent.subscribe(newDeviceAvailableFunc);
 
-    while (true) { std::this_thread::sleep_for(std::chrono::seconds(5)); }
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
     return 0;
 }
 ----

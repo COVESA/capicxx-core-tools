@@ -8,46 +8,46 @@
 package commonapi.examples
 
 interface E06Unions {
-	version { major 0 minor 0 }
+    version { major 0 minor 0 }
 
-	attribute CommonTypes.SettingsUnion u
-	attribute CommonTypes.SettingsStruct x
+    attribute CommonTypes.SettingsUnion u
+    attribute CommonTypes.SettingsStruct x
 }
 
 typeCollection CommonTypes {
-	version { major 0 minor 0 }
+    version { major 0 minor 0 }
 
-	typedef MyTypedef is Int32
+    typedef MyTypedef is Int32
 
-	enumeration MyEnum {
-		DEFAULT
-		ON
-		OFF
-	}
+    enumeration MyEnum {
+        DEFAULT
+        ON
+        OFF
+    }
 
-	union SettingsUnion {
-		MyTypedef id
-		MyEnum status
-		UInt8 channel
-		String name
-	}
-	
-	struct SettingsStruct polymorphic {
+    union SettingsUnion {
+        MyTypedef id
+        MyEnum status
+        UInt8 channel
+        String name
+    }
+    
+    struct SettingsStruct polymorphic {
     }
     
     struct SettingsStructMyTypedef extends SettingsStruct {
-    	MyTypedef id 
+        MyTypedef id 
     }
     
     struct SettingsStructMyEnum extends SettingsStruct {
-    	MyEnum status 
+        MyEnum status 
     }
     
     struct SettingsStructUInt8 extends SettingsStruct {
-    	UInt8 channel 
+        UInt8 channel 
     }
     
     struct SettingsStructString extends SettingsStruct {
-    	String name 
+        String name 
     }
 }

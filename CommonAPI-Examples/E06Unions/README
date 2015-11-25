@@ -141,15 +141,23 @@ int main() {
 
     const std::string &domain = "local";
     const std::string &instance = "commonapi.examples.Unions";
-    std::shared_ptr<E06UnionsProxyDefault> myProxy =
-    	runtime->buildProxy<E06UnionsProxy>(domain, instance);
+    std::string connection = "client-sample";
 
-    while (!myProxy->isAvailable()) { usleep(10); }
+    std::shared_ptr<E06UnionsProxy<>> myProxy = runtime->buildProxy<E06UnionsProxy>(domain, instance, connection);
 
-	std::function<void (CommonTypes::SettingsUnion)> f = recv_msg;
-	myProxy->getUAttribute().getChangedEvent().subscribe(f);
+    while (!myProxy->isAvailable()) {
+        usleep(10);
+    }
 
-    while (true) { usleep(10); }
+    std::function<void (CommonTypes::SettingsUnion)> f = recv_msg;
+    myProxy->getUAttribute().getChangedEvent().subscribe(f);
+
+    std::function<void (std::shared_ptr<CommonTypes::SettingsStruct>)> f1 = recv_msg1;
+    myProxy->getXAttribute().getChangedEvent().subscribe(f1);
+
+    while (true) {
+        usleep(10);
+    }
 
     return 0;
 }

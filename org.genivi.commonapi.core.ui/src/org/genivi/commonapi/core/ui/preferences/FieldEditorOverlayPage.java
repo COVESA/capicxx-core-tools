@@ -50,10 +50,13 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
 
     private List<Button>        buttons       = new ArrayList<Button>();
 
+    private Button				checkboxcommon = null;
     private Button              checkboxproxy = null;
     private Button              checkboxstub  = null;
     private Button				checkboxProject = null;
-
+    private Button				checkboxIncludes = null;
+    private Button				checkboxSyncCalls = null;
+    
     // Stores owning element of properties
     private IAdaptable          element;
 
@@ -226,36 +229,57 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         checkboxProject = new Button(settingsGroup, SWT.CHECK);
         checkboxProject.setText("Enable project specific settings");
 
+        checkboxcommon = new Button(radioGroup, SWT.CHECK);
+        checkboxcommon.setText(Messages.getString("OverlayPage.Generate_Common"));
         checkboxproxy = new Button(radioGroup, SWT.CHECK);
         checkboxproxy.setText(Messages.getString("OverlayPage.Generate_Proxy"));
         checkboxstub = new Button(radioGroup, SWT.CHECK);
         checkboxstub.setText(Messages.getString("OverlayPage.Generate_Stub"));
+        checkboxIncludes = new Button(radioGroup, SWT.CHECK);
+        checkboxIncludes.setText(Messages.getString("OverlayPage.Generate_Includes"));
+        checkboxSyncCalls = new Button(radioGroup, SWT.CHECK);
+        checkboxSyncCalls.setText(Messages.getString("OverlayPage.Generate_SyncCalls"));
         
+        buttons.add(checkboxcommon);
         buttons.add(checkboxproxy);
-        buttons.add(checkboxproxy);
+        buttons.add(checkboxstub);
         buttons.add(checkboxProject);
+        buttons.add(checkboxIncludes);
+        buttons.add(checkboxSyncCalls);
         
+        String genCommon = TRUE;
         String genProxy = TRUE;
         String genStub = TRUE;
         String project = FALSE;
+        String dependencies = TRUE;
+        String syncCalls = TRUE;
         
         if (isPropertyPage())
         {
         	// get values from the persistent properties of theses resources and set the button states
             try
             {
+            	genCommon = ((IResource) getElement())
+            			.getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_COMMON));
                 genProxy = ((IResource) getElement())
-                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATEPROXY));
+                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_PROXY));
                 genStub = ((IResource) getElement())
-                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATESTUB));
+                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_STUB));
                 project = ((IResource) getElement())
                         .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_USEPROJECTSETTINGS));
+                dependencies = ((IResource) getElement())
+                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_DEPENDENCIES));
+                syncCalls = ((IResource) getElement())
+                        .getPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_SYNC_CALLS));
             }
             catch (CoreException e)
             {
             	// failed to access this resource...
             }
         	// Not all properties are set for this resource
+            if (genCommon == null) {
+            	genCommon = TRUE;
+            }
             if(genProxy == null) {
             	genProxy = TRUE;
             }
@@ -265,22 +289,40 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             if(project == null) {
             	project = FALSE;
             }
+            if(dependencies == null) {
+            	dependencies = TRUE;
+            }
+            if(syncCalls == null) {
+            	syncCalls = TRUE;
+            }
         }
         else // is a preference page
         {
-            genProxy = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATEPROXY, "");
-            genProxy = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATEPROXY, genProxy);
+            genCommon = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_COMMON, TRUE);
+            genCommon = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_COMMON, genCommon);
 
-            genStub = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATESTUB, "");
-            genStub = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATESTUB, genStub);
+            genProxy = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_PROXY, TRUE);
+            genProxy = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_PROXY, genProxy);
 
-            project = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_USEPROJECTSETTINGS, "");
+            genStub = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_STUB, TRUE);
+            genStub = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_STUB, genStub);
+
+            project = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_USEPROJECTSETTINGS, FALSE);
             project = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_USEPROJECTSETTINGS, project);
+
+            dependencies = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_DEPENDENCIES, TRUE);
+            dependencies = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_DEPENDENCIES, dependencies);
+
+            syncCalls = DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_SYNC_CALLS, TRUE);
+            syncCalls = InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).get(PreferenceConstants.P_GENERATE_SYNC_CALLS, syncCalls);
         }
         // set the selection state of the buttons
+        checkboxcommon.setSelection(TRUE.equals(genCommon));
         checkboxproxy.setSelection(TRUE.equals(genProxy));
         checkboxstub.setSelection(TRUE.equals(genStub));
         checkboxProject.setSelection(TRUE.equals(project));
+        checkboxIncludes.setSelection(TRUE.equals(dependencies));
+        checkboxSyncCalls.setSelection(TRUE.equals(syncCalls));
     }
 
     /**
@@ -324,31 +366,39 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
      */
     public boolean performOk()
     {
-        boolean result = super.performOk();
-        String genProxy = (checkboxproxy.getSelection()) ? TRUE : FALSE;
-        String genStub = (checkboxstub.getSelection()) ? TRUE : FALSE;
-        String project = (checkboxProject.getSelection()) ? TRUE : FALSE;
-                
-        if (result && isPropertyPage())
-        {
-            IResource resource = (IResource) getElement();
-            try
-            {
-                resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_USEPROJECTSETTINGS), project);
-                resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATEPROXY), genProxy);
-                resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATESTUB), genStub);
-            }
-            catch (CoreException e)
-            {
-            	result = false;
-            }
-        }
-        else if (result)
-        {
-            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATEPROXY, genProxy);
-            InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATESTUB, genStub);
-        }
-        return result;
+    	boolean result = super.performOk();
+    	String genCommon = (checkboxcommon.getSelection()) ? TRUE : FALSE;
+    	String genProxy = (checkboxproxy.getSelection()) ? TRUE : FALSE;
+    	String genStub = (checkboxstub.getSelection()) ? TRUE : FALSE;
+    	String project = (checkboxProject.getSelection()) ? TRUE : FALSE;
+    	String dependencies = (checkboxIncludes.getSelection()) ? TRUE : FALSE;
+    	String syncCalls = (checkboxSyncCalls.getSelection()) ? TRUE : FALSE;
+
+    	if (result) {
+    		if(isPropertyPage()) {
+    			IResource resource = (IResource) getElement();
+    			try
+    			{
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_USEPROJECTSETTINGS), project);
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_COMMON), genCommon);
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_PROXY), genProxy);
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_STUB), genStub);
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_DEPENDENCIES), dependencies);
+    				resource.setPersistentProperty(new QualifiedName(pageId, PreferenceConstants.P_GENERATE_SYNC_CALLS), syncCalls);
+    			}
+    			catch (CoreException e)
+    			{
+    				result = false;
+    			}
+    		} else { // preference page
+    			InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_COMMON, genCommon);
+    			InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_PROXY, genProxy);
+    			InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_STUB, genStub);
+    			InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_DEPENDENCIES, dependencies);
+    			InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SYNC_CALLS, syncCalls);
+    		}
+    	}
+    	return result;
     }
 
     /**
@@ -357,12 +407,17 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
     protected void performDefaults()
     {
     	enableControls();
+    	checkboxcommon.setSelection(true);
     	checkboxproxy.setSelection(true);
     	checkboxstub.setSelection(true);
     	checkboxProject.setSelection(false);
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATEPROXY, "true");
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATESTUB, "true");    	
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_USEPROJECTSETTINGS, "false");    	
+    	checkboxIncludes.setSelection(true);
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_COMMON, TRUE);
+        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_PROXY, TRUE);
+        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_STUB, TRUE);    	
+        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_USEPROJECTSETTINGS, FALSE);    	
+        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_DEPENDENCIES, TRUE);    	
+        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SYNC_CALLS, TRUE);    	
 
     	super.performDefaults();
     }

@@ -28,7 +28,7 @@ If do not specify any configuration file it is assumed that you want to use the 
 
 * +LD_LIBRARY_PATH+ should contain the path to the _libdbus_ if you use the D-Bus binding with an uninstalled _libdbus_ and should contain the path to your gluecode libraries, e.g. +LD_LIBRARY_PATH=<path to libdbus>/dbus-1.8.20/dbus/.libs:<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/build+
 
-* +VSOMEIP_CONFIGURATION_FILE+ should contain the path to your vsomeip configuration file if you are using the SOME/IP binding, e.g. +VSOMEIP_CONFIGURATION_FILE=<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/vsomeip-local.json+
+* +VSOMEIP_CONFIGURATION+ should contain the path to your vsomeip configuration file if you are using the SOME/IP binding, e.g. +VSOMEIP_CONFIGURATION=<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/vsomeip-local.json+
 
 Here are some hints if you want to configure your eclipse project for the CMake build:
 

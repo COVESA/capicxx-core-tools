@@ -15,6 +15,9 @@ import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FVersion
 import org.genivi.commonapi.core.deployment.PropertyAccessor
+import org.genivi.commonapi.core.preferences.FPreferences
+import org.genivi.commonapi.core.preferences.PreferenceConstants
+import java.util.List
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
@@ -22,14 +25,54 @@ class FInterfaceGenerator {
     @Inject private extension FrancaGeneratorExtensions
 
     def generateInterface(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
-        fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateHeader(modelid, deploymentAccessor))
-
-        if (fInterface.hasSourceFile)
-            fileSystemAccess.generateFile(fInterface.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateSource(modelid, deploymentAccessor))
+        
+        if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
+            fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateHeader(modelid, deploymentAccessor))
+            if (fInterface.hasSourceFile)
+                fileSystemAccess.generateFile(fInterface.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateSource(modelid, deploymentAccessor))
+        } 
+        else {
+            // feature: suppress code generation
+            fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
+            if (fInterface.hasSourceFile)
+                fileSystemAccess.generateFile(fInterface.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
+        }
     }
 
+    def generateInstanceIds(FInterface fInterface, IFileSystemAccess fileSystemAccess,  List<String> deployedInstances) {
+        if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
+            fileSystemAccess.generateFile(fInterface.instanceHeaderPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateInstanceHeader(deployedInstances))
+        }
+    }
+
+    def generateInstanceHeader(FInterface fInterface, List<String> deployedInstances) '''
+        «generateCommonApiLicenseHeader()»
+        «FTypeGenerator::generateComments(fInterface, false)»
+        #ifndef «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
+        #define «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
+
+        «fInterface.generateVersionNamespaceBegin»
+        «fInterface.model.generateNamespaceBeginDeclaration»
+
+        «FOR instanceId : deployedInstances»
+            const std::string «fInterface.elementName»_«instanceId» = "«instanceId»"; 
+        «ENDFOR»
+        
+        const std::string «fInterface.elementName»_INSTANCES[] = {
+            «FOR instanceId : deployedInstances»
+                «fInterface.elementName»_«instanceId»«IF instanceId != deployedInstances.last»,«ENDIF»
+            «ENDFOR»            
+        }; 
+
+        «fInterface.model.generateNamespaceEndDeclaration»
+        «fInterface.generateVersionNamespaceEnd»
+        «fInterface.generateMajorVersionNamespace»
+
+        #endif // «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
+    '''
+
     def private generateHeader(FInterface fInterface, IResource modelid, PropertyAccessor deploymentAccessor) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName.toUpperCase»_HPP_
         #define «fInterface.defineName.toUpperCase»_HPP_
@@ -94,13 +137,15 @@ class FInterfaceGenerator {
             «fInterface.generateVariantComparators»
         }
 
+        «fInterface.generateMajorVersionNamespace»
+
         #endif // «fInterface.defineName.toUpperCase»_HPP_
     '''
 
 
 
     def private generateSource(FInterface fInterface, IResource modelid, PropertyAccessor _accessor) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #include "«fInterface.headerFile»"
 

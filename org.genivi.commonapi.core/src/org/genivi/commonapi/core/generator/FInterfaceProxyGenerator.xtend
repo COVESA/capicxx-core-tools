@@ -16,18 +16,30 @@ import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.preferences.PreferenceConstants
+import org.genivi.commonapi.core.preferences.FPreferences
 
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
+    var boolean generateSyncCalls = true
+
     def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
-        fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyBaseHeader(deploymentAccessor, modelid))
-        fileSystemAccess.generateFile(fInterface.proxyHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyHeader(modelid))
+        val String generateCode = FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true")
+        if(generateCode.equals("true")) {
+            generateSyncCalls = FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_SYNC_CALLS, "true").equals("true")
+            fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyBaseHeader(deploymentAccessor, modelid))
+            fileSystemAccess.generateFile(fInterface.proxyHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, fInterface.generateProxyHeader(modelid))
+        }
+        else {
+            // feature: suppress code generation
+            fileSystemAccess.generateFile(fInterface.proxyBaseHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, PreferenceConstants::NO_CODE)
+            fileSystemAccess.generateFile(fInterface.proxyHeaderPath, PreferenceConstants.P_OUTPUT_PROXIES, PreferenceConstants::NO_CODE)
+        }
     }
 
     def private generateProxyBaseHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_BASE_HPP_
         #define «fInterface.defineName»_PROXY_BASE_HPP_
@@ -106,12 +118,14 @@ class FInterfaceProxyGenerator {
 
             «FOR method : fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
+                «IF generateSyncCalls»
                 «IF method.isFireAndForget»
                     /**
                      * @invariant Fire And Forget
                      */
                 «ENDIF»
                 virtual «method.generateDefinition(true)» = 0;
+                «ENDIF»
                 «IF !method.isFireAndForget»
                     virtual «method.generateAsyncDefinition(true)» = 0;
                 «ENDIF»
@@ -124,11 +138,13 @@ class FInterfaceProxyGenerator {
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»
         
+        «fInterface.generateMajorVersionNamespace»
+        
         #endif // «fInterface.defineName»_PROXY_BASE_HPP_
     '''
 
     def private generateProxyHeader(FInterface fInterface, IResource modelid) '''
-        «generateCommonApiLicenseHeader(fInterface, modelid)»
+        «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_PROXY_HPP_
         #define «fInterface.defineName»_PROXY_HPP_
@@ -192,6 +208,7 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR method : fInterface.methods»
+                «IF generateSyncCalls»
                 /**
                 «FTypeGenerator::generateComments(method, true)»
                  * Calls «method.elementName» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
@@ -203,6 +220,7 @@ class FInterfaceProxyGenerator {
                  * will be set.
                  */
                 virtual «method.generateDefinition(true)»;
+                «ENDIF»
                 «IF !method.isFireAndForget»
                     /**
                      * Calls «method.elementName» with asynchronous semantics.
@@ -282,14 +300,36 @@ class FInterfaceProxyGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
+            «IF generateSyncCalls»
             template <typename ... _AttributeExtensions>
             «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                «FOR arg : method.inArgs»
+                    «IF arg.getType.supportsValidation»
+                        if (!_«arg.elementName».validate()) {
+                            _internalCallStatus = CommonAPI::CallStatus::INVALID_VALUE;
+                            return;
+                        }
+                    «ENDIF»
+                «ENDFOR»
                 delegate_->«method.elementName»(«method.generateSyncVariableList»);
             }
+            «ENDIF»
             «IF !method.isFireAndForget»
 
                 template <typename ... _AttributeExtensions>
                 «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                    «FOR arg : method.inArgs»
+                        «IF arg.getType.supportsValidation»
+                            if (!_«arg.elementName».validate()) {
+                                «method.generateDummyArgumentDefinitions»
+                                 «val callbackArguments = method.generateDummyArgumentList»
+                                _callback(CommonAPI::CallStatus::INVALID_VALUE«IF callbackArguments != ""», «callbackArguments»«ENDIF»);
+                                std::promise<CommonAPI::CallStatus> promise;
+                                promise.set_value(CommonAPI::CallStatus::INVALID_VALUE);
+                                return promise.get_future();
+                            }
+                        «ENDIF»
+                    «ENDFOR»
                     return delegate_->«method.elementName»Async(«method.generateASyncVariableList»);
                 }
             «ENDIF»
@@ -342,6 +382,8 @@ class FInterfaceProxyGenerator {
         }
         «ENDIF»
 
+        «fInterface.generateMajorVersionNamespace»
+        
         #endif // «fInterface.defineName»_PROXY_HPP_
     '''
 
@@ -439,6 +481,10 @@ class FInterfaceProxyGenerator {
     def private generateASyncVariableList(FMethod fMethod) {
         var asyncVariableList = new ArrayList(fMethod.inArgs.map['_' + elementName])
         asyncVariableList.add('_callback')
-        return asyncVariableList.join(', ') + ", _info"
+        if (fMethod.isFireAndForget) {
+            return asyncVariableList.join(', ')
+        } else {
+            return asyncVariableList.join(', ') + ", _info"
+        }
     }
 }

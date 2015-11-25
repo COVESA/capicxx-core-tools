@@ -24,6 +24,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
      * @see org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer#
      * initializeDefaultPreferences()
      */
+    @Override
     public void initializeDefaultPreferences() {
         IPreferenceStore store = CommonApiUiPlugin.getDefault().getPreferenceStore();
         store.setDefault(PreferenceConstants.P_LICENSE, PreferenceConstants.DEFAULT_LICENSE);
@@ -31,11 +32,15 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
         store.setDefault(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
         store.setDefault(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
         store.setDefault(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
-        store.setDefault(PreferenceConstants.P_GENERATEPROXY, true);
-        store.setDefault(PreferenceConstants.P_GENERATESTUB, true);
-        store.setDefault(PreferenceConstants.P_GENERATESKELETON, false);
+        store.setDefault(PreferenceConstants.P_GENERATE_COMMON, true);
+        store.setDefault(PreferenceConstants.P_GENERATE_PROXY, true);
+        store.setDefault(PreferenceConstants.P_GENERATE_STUB, true);
+        store.setDefault(PreferenceConstants.P_GENERATE_SKELETON, false);
         store.setDefault(PreferenceConstants.P_SKELETONPOSTFIX, PreferenceConstants.DEFAULT_SKELETONPOSTFIX);
         store.setDefault(PreferenceConstants.P_USEPROJECTSETTINGS, false);
+        store.setDefault(PreferenceConstants.P_GENERATE_DEPENDENCIES, true);
+        store.setDefault(PreferenceConstants.P_ENABLE_CORE_VALIDATOR, true);
+        store.setDefault(PreferenceConstants.P_GENERATE_SYNC_CALLS, true);
     }
 
 }
