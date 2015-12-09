@@ -393,11 +393,6 @@ class FInterfaceStubGenerator {
                 «IF !fInterface.managedInterfaces.empty»
                     autoInstanceCounter_(0),
                 «ENDIF»
-                «FOR attribute : fInterface.attributes»
-                	«IF attribute.supportsInitialValue»
-                		«attribute.stubDefaultClassVariableName»(«attribute.initialValue(fInterface)»),
-            		«ENDIF»
-            	«ENDFOR»
                 interfaceVersion_(«fInterface.elementName»::getInterfaceVersion()) {
         }
 
@@ -620,16 +615,4 @@ class FInterfaceStubGenerator {
     def private getStubDefaultClassVariableName(FAttribute fAttribute) {
         fAttribute.elementName.toFirstLower + 'AttributeValue_'
     }
-
-    def private supportsInitialValue(FAttribute fAttribute) {
-        fAttribute.type.derived instanceof FEnumerationType && !fAttribute.array
-    }
-    def private initialValue(FAttribute fAttribute, FInterface fInterface) {
-        if (fAttribute.type.derived instanceof FEnumerationType) {
-            val FEnumerationType _enumeration = fAttribute.type.derived as FEnumerationType;
-            fAttribute.getTypeName(fInterface, true) + '::Literal::' + _enumeration.enumerators.get(0).elementName;
-        }
-        else "0"
-    }
-
 }

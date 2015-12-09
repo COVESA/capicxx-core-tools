@@ -111,10 +111,15 @@ class FrancaGenerator implements IGenerator {
                                           IResource _res) {
         val String deploymentName
             = _deployments.entrySet.filter[it.value == _deployment].head.key
-                    
-        var String basePath = deploymentName.substring(
-            0, deploymentName.lastIndexOf(File.separatorChar))
         
+        var int lastIndex = deploymentName.lastIndexOf(File.separatorChar)
+        if (lastIndex == -1) {
+            lastIndex = deploymentName.lastIndexOf('/')
+        }
+
+        var String basePath = deploymentName.substring(
+            0, lastIndex)
+                        
         var Set<String> itsImports = new HashSet<String>()
         for (anImport : _deployment.imports) {
             val String canonical = getCanonical(basePath, anImport.importURI)

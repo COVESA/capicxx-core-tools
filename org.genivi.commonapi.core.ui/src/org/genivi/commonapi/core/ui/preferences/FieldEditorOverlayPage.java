@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IAdaptable;
@@ -59,6 +61,10 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
     
     // Stores owning element of properties
     private IAdaptable          element;
+	private IProject 			eclipseProject;
+    // If the P_USEPROJECTSETTINGS state from the eclipse project is active, 
+	// disable all controls of the property page for files of this project.
+	protected boolean           projectSettingIsActive = false;
 
     // Overlay preference store for property pages
     private IPreferenceStore    overlayStore;
@@ -115,12 +121,25 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
 
     /**
      * Receives the object that owns the properties shown in this property page.
+     * check, if the project settings (P_USEPROJECTSETTINGS) of this file are active.
      * 
      * @see org.eclipse.ui.IWorkbenchPropertyPage#setElement(org.eclipse.core.runtime.IAdaptable)
      */
     public void setElement(IAdaptable element)
     {
         this.element = element;
+        if(element instanceof IFile) {
+        	eclipseProject = ((IFile) element).getProject();
+            if(eclipseProject != null) {
+                try {
+                	QualifiedName projectSettingActive = new QualifiedName(getPageId(), PreferenceConstants.P_USEPROJECTSETTINGS);
+                    projectSettingIsActive =  eclipseProject.getPersistentProperty(projectSettingActive).equals(TRUE);
+				} catch (Exception e) {
+	            	// failed to access the project property P_USEPROJECTSETTINGS.
+					projectSettingIsActive = false;
+				}
+            }        	
+        }
     }
 
     /**
@@ -192,7 +211,7 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             super.createControl(parent);
             // Update state of all subclass controls
             if (isPropertyPage())
-                enableControls();
+                enableControls(projectSettingIsActive == false);
         }
     }
 
@@ -205,7 +224,7 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
     protected Control createContents(Composite parent)
     {
         createButtons(parent);
-        enableControls();
+        enableControls(projectSettingIsActive == false);
         return super.createContents(parent);
     }
 
@@ -217,27 +236,27 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         layout.marginWidth = 0;
         comp.setLayout(layout);
         comp.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        Composite radioGroup = new Composite(comp, SWT.BOTTOM);
-        radioGroup.setLayout(new GridLayout());
-        radioGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        Composite checkboxGroup = new Composite(comp, SWT.BOTTOM);
+        checkboxGroup.setLayout(new GridLayout());
+        checkboxGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
-        Group settingsGroup = new Group(radioGroup, SWT.SHADOW_IN);
+        Group projectSettingsGroup = new Group(checkboxGroup, SWT.SHADOW_IN);
         //settingsGroup.setText("Scope of properties: ");
-        settingsGroup.setLayout(new GridLayout());
-        settingsGroup.setLayoutData(new GridData());        
+        projectSettingsGroup.setLayout(new GridLayout());
+        projectSettingsGroup.setLayoutData(new GridData());        
         
-        checkboxProject = new Button(settingsGroup, SWT.CHECK);
+        checkboxProject = new Button(projectSettingsGroup, SWT.CHECK);
         checkboxProject.setText("Enable project specific settings");
 
-        checkboxcommon = new Button(radioGroup, SWT.CHECK);
+        checkboxcommon = new Button(checkboxGroup, SWT.CHECK);
         checkboxcommon.setText(Messages.getString("OverlayPage.Generate_Common"));
-        checkboxproxy = new Button(radioGroup, SWT.CHECK);
+        checkboxproxy = new Button(checkboxGroup, SWT.CHECK);
         checkboxproxy.setText(Messages.getString("OverlayPage.Generate_Proxy"));
-        checkboxstub = new Button(radioGroup, SWT.CHECK);
+        checkboxstub = new Button(checkboxGroup, SWT.CHECK);
         checkboxstub.setText(Messages.getString("OverlayPage.Generate_Stub"));
-        checkboxIncludes = new Button(radioGroup, SWT.CHECK);
+        checkboxIncludes = new Button(checkboxGroup, SWT.CHECK);
         checkboxIncludes.setText(Messages.getString("OverlayPage.Generate_Includes"));
-        checkboxSyncCalls = new Button(radioGroup, SWT.CHECK);
+        checkboxSyncCalls = new Button(checkboxGroup, SWT.CHECK);
         checkboxSyncCalls.setText(Messages.getString("OverlayPage.Generate_SyncCalls"));
         
         buttons.add(checkboxcommon);
@@ -274,7 +293,7 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
             }
             catch (CoreException e)
             {
-            	// failed to access this resource...
+            	System.out.println("failed to access properties of this file.");
             }
         	// Not all properties are set for this resource
             if (genCommon == null) {
@@ -320,7 +339,7 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
         checkboxcommon.setSelection(TRUE.equals(genCommon));
         checkboxproxy.setSelection(TRUE.equals(genProxy));
         checkboxstub.setSelection(TRUE.equals(genStub));
-        checkboxProject.setSelection(TRUE.equals(project));
+        checkboxProject.setSelection(projectSettingIsActive || TRUE.equals(project));
         checkboxIncludes.setSelection(TRUE.equals(dependencies));
         checkboxSyncCalls.setSelection(TRUE.equals(syncCalls));
     }
@@ -342,18 +361,18 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
     /**
      * Enables the field editors and buttons of this page 
      */
-    protected void enableControls()
+    protected void enableControls(boolean state)
     {
         Composite parent = getFieldEditorParent();
         Iterator<FieldEditor> it = editors.iterator();
         while (it.hasNext())
         {
             FieldEditor editor = it.next();
-            editor.setEnabled(true, parent);
+            editor.setEnabled(state, parent);
         }
         for (Button button : buttons)
         {
-            button.setEnabled(true);
+            button.setEnabled(state);
         }
     }
 
@@ -406,18 +425,18 @@ public abstract class FieldEditorOverlayPage extends FieldEditorPreferencePage i
      */ 
     protected void performDefaults()
     {
-    	enableControls();
+    	enableControls(projectSettingIsActive == false);
     	checkboxcommon.setSelection(true);
     	checkboxproxy.setSelection(true);
     	checkboxstub.setSelection(true);
     	checkboxProject.setSelection(false);
     	checkboxIncludes.setSelection(true);
     	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_COMMON, TRUE);
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_PROXY, TRUE);
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_STUB, TRUE);    	
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_USEPROJECTSETTINGS, FALSE);    	
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_DEPENDENCIES, TRUE);    	
-        InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SYNC_CALLS, TRUE);    	
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_PROXY, TRUE);
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_STUB, TRUE);    	
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_USEPROJECTSETTINGS, FALSE);    	
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_DEPENDENCIES, TRUE);    	
+    	InstanceScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SYNC_CALLS, TRUE);    	
 
     	super.performDefaults();
     }

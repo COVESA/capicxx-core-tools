@@ -34,6 +34,7 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
         float _floatIn,
         double _doubleIn,
         std::string _stringIn,
+        CommonAPI::ByteBuffer _byteBufferIn,
         fTestReply_t _reply) {
     (void)_client;
 
@@ -48,7 +49,8 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
            _booleanIn,
            _floatIn,
            _doubleIn,
-           _stringIn);
+           _stringIn,
+           _byteBufferIn);
 
     fireBTestEvent(
             _uint8In,
@@ -62,7 +64,8 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
             _booleanIn,
             _floatIn,
             _doubleIn,
-            _stringIn
+            _stringIn,
+            _byteBufferIn
     );
 }
 

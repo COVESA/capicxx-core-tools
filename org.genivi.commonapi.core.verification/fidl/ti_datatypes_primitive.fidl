@@ -18,7 +18,7 @@ interface TestInterface {
     attribute Float aFloat
     attribute Double aDouble
     attribute String aString
-    //attribute ByteBuffer aByteBuffer
+    attribute ByteBuffer aByteBuffer
 
     method fTest {
         in {
@@ -34,7 +34,7 @@ interface TestInterface {
             Float floatIn
             Double doubleIn
             String stringIn
-            //ByteBuffer byteBufferIn
+            ByteBuffer byteBufferIn
         }
         out {
             UInt8 uint8Out
@@ -49,7 +49,7 @@ interface TestInterface {
             Float floatOut
             Double doubleOut
             String stringOut
-            //ByteBuffer byteBufferOut
+            ByteBuffer byteBufferOut
         }
     }
 
@@ -70,7 +70,7 @@ interface TestInterface {
             Float floatOut
             Double doubleOut
             String stringOut
-            //ByteBuffer byteBufferOut
+            ByteBuffer byteBufferOut
         }
     }
 

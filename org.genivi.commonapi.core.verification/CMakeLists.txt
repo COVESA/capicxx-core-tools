@@ -270,8 +270,7 @@ if (NOT ${TESTS_BAT})
     add_executable(DTAdvanced
         src/DTAdvanced.cpp
         src/stub/DTAdvancedStub.cpp
-        src-gen/v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.cpp
-        src-gen/v1/commonapi/datatypes/advanced/TestInterface.cpp)
+        src-gen/v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTAdvanced ${TEST_LINK_LIBRARIES})
 
     add_executable(DTDerived
@@ -284,7 +283,6 @@ if (NOT ${TESTS_BAT})
     add_executable(DTCombined
         src/DTCombined.cpp
         src/stub/DTCombinedStub.cpp
-        src-gen/v1/commonapi/datatypes/combined/TestInterface.cpp
         src-gen/v1/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
 
@@ -316,7 +314,6 @@ if (NOT ${TESTS_BAT})
             src/PFComplex.cpp
             src/stub/PFComplexStub.cpp
             src/utils/StopWatch.cpp
-            src-gen/v1/commonapi/performance/complex/TestInterface.cpp
             src-gen/v1/commonapi/performance/complex/TestInterfaceStubDefault.cpp)
         target_link_libraries(PFComplex ${TEST_LINK_LIBRARIES} ${USE_RT})
 

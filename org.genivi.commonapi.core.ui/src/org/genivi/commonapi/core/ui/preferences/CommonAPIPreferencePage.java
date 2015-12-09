@@ -88,23 +88,22 @@ public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements I
     @Override
     protected void performDefaults()
     {
-    	DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_COMMON, "true");
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_PROXY, "true");
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_STUB, "true");
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SKELETON, "false");
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_SKELETONPOSTFIX, "Default");
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_ENUMPREFIX, "");
+    	if(!projectSettingIsActive) {
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_GENERATE_SKELETON, "false");
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_SKELETONPOSTFIX, "Default");
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_ENUMPREFIX, "");
 
-    	DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES,
-                PreferenceConstants.DEFAULT_OUTPUT);
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
-                .put(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
-        		.put(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
-        DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
-        		.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE).put(PreferenceConstants.P_OUTPUT_PROXIES,
+    				PreferenceConstants.DEFAULT_OUTPUT);
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+    		.put(PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants.DEFAULT_OUTPUT);
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+    		.put(PreferenceConstants.P_OUTPUT_COMMON, PreferenceConstants.DEFAULT_OUTPUT);
+    		DefaultScope.INSTANCE.getNode(PreferenceConstants.SCOPE)
+    		.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
 
-        super.performDefaults();
+    		super.performDefaults();
+    	}
     }
 
     @Override
@@ -153,5 +152,14 @@ public class CommonAPIPreferencePage extends FieldEditorOverlayPage implements I
     	// will be disposed from FieldEditorPreferencePage !
     }
 
+    @Override
+    public boolean performOk()
+    {
+    	if(!projectSettingIsActive) {
+    		boolean result = super.performOk();
+    		return result;
+    	}
+    	return true;
+    }
 
 }

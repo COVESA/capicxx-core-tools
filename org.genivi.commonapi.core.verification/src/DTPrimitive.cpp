@@ -111,7 +111,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -125,7 +125,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     float floatResultValue = 0.0;
     double doubleResultValue = 0;
     std::string stringResultValue = "";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferResultValue;
 
     testProxy_->fTest(
             uint8TestValue,
@@ -140,6 +140,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
             floatTestValue,
             doubleTestValue,
             stringTestValue,
+            byteBufferTestValue,
             callStatus,
             uint8ResultValue,
             int8ResultValue,
@@ -152,7 +153,8 @@ TEST_F(DTPrimitive, SendAndReceive) {
             booleanResultValue,
             floatResultValue,
             doubleResultValue,
-            stringResultValue
+            stringResultValue,
+            byteBufferResultValue
     );
 
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -169,6 +171,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     EXPECT_EQ(floatTestValue, floatResultValue);
     EXPECT_EQ(doubleTestValue, doubleResultValue);
     EXPECT_EQ(stringTestValue, stringResultValue);
+    EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
 }
 
 /**
@@ -192,7 +195,7 @@ TEST_F(DTPrimitive, AttributeSet) {
     float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -206,7 +209,7 @@ TEST_F(DTPrimitive, AttributeSet) {
     float floatResultValue = 0.0;
     double doubleResultValue = 0;
     std::string stringResultValue = "";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferResultValue;
 
     testProxy_->getAUint8Attribute().setValue(uint8TestValue, callStatus, uint8ResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -255,6 +258,10 @@ TEST_F(DTPrimitive, AttributeSet) {
     testProxy_->getAStringAttribute().setValue(stringTestValue, callStatus, stringResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(stringTestValue, stringResultValue);
+
+    testProxy_->getAByteBufferAttribute().setValue(byteBufferTestValue, callStatus, byteBufferResultValue);
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
 }
 
 /**
@@ -279,7 +286,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
     float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
     std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -293,7 +300,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
     float floatResultValue = 0.0;
     double doubleResultValue = 0;
     std::string stringResultValue = "";
-    //ByteBuffer byteBufferTestValue
+    CommonAPI::ByteBuffer byteBufferResultValue;
 
     received_ = false;
     testProxy_->getBTestEvent().subscribe([&](
@@ -308,7 +315,8 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             const bool& booleanResultValue,
             const float& floatResultValue,
             const double& doubleResultValue,
-            const std::string& stringResultValue
+            const std::string& stringResultValue,
+            const CommonAPI::ByteBuffer byteBufferResultValue
             ) {
         received_ = true;
         EXPECT_EQ(uint8TestValue, uint8ResultValue);
@@ -323,6 +331,8 @@ TEST_F(DTPrimitive, BroadcastReceive) {
         EXPECT_EQ(floatTestValue, floatResultValue);
         EXPECT_EQ(doubleTestValue, doubleResultValue);
         EXPECT_EQ(stringTestValue, stringResultValue);
+        EXPECT_EQ(stringTestValue, stringResultValue);
+        EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
     });
 
     testProxy_->fTest(
@@ -338,6 +348,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             floatTestValue,
             doubleTestValue,
             stringTestValue,
+            byteBufferTestValue,
             callStatus,
             uint8ResultValue,
             int8ResultValue,
@@ -350,7 +361,8 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             booleanResultValue,
             floatResultValue,
             doubleResultValue,
-            stringResultValue
+            stringResultValue,
+            byteBufferResultValue
     );
 
     usleep(100000);

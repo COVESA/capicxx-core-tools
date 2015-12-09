@@ -97,6 +97,12 @@ public class FDeployManager {
 				absURI.fileExtension()).importsIterator(model); it.hasNext();) {
 			String importURIStr = it.next();
 			if (importURIStr != null) {
+				if(!importURIStr.startsWith("platform")) {
+					String[] splitted = importURIStr.split(":");
+					// there may be a drive letter "C:" under Windows,  
+					// remove it, to get it resolved  
+					importURIStr = splitted[splitted.length -1];
+				}
 				URI importURI = URI.createURI(importURIStr);
 				URI resolvedURI = importURI.resolve(absURI);
 				// add this pair to URI converter so that others can get the URI

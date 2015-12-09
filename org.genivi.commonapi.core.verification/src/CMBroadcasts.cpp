@@ -113,12 +113,12 @@ TEST_F(CMBroadcasts, NormalBroadcast) {
     ) {
         result = y;
     });
-    
+
     // send value '1' via a method call - this tells stub to broadcast
     uint8_t in_ = 1;
     uint8_t out_ = 0;
-    testProxy_->testMethod(in_, callStatus, out_);    
-    
+    testProxy_->testMethod(in_, callStatus, out_);
+
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
@@ -142,11 +142,11 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
     uint8_t result = 0;
     uint8_t in_ = 0;
     uint8_t out_ = 0;
-       
+
     // send value '2' via a method call - this tells stub to stop accepting subs
     in_ = 2;
-    testProxy_->testMethod(in_, callStatus, out_);    
-    
+    testProxy_->testMethod(in_, callStatus, out_);
+
     // subscribe
     subStatus = CommonAPI::CallStatus::UNKNOWN;
     testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
@@ -158,8 +158,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
         const CommonAPI::CallStatus &status
     ) {
         subStatus = status;
-    });    
-    
+    });
+
     // check that subscription failed correctly
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
@@ -171,9 +171,9 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
     // send value '3' via a method call - this tells stub to broadcast through the selective bc
     result = 0;
     in_ = 3;
-    out_ = 0;   
-    testProxy_->testMethod(in_, callStatus, out_);  
-    
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+
     // check that no value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result != 0) break;
@@ -200,9 +200,9 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
     uint8_t out_ = 0;
 
     // send value '4' via a method call - this tells stub to start accepting subs
-    in_ = 4;   
+    in_ = 4;
     testProxy_->testMethod(in_, callStatus, out_);
-    
+
     // subscribe
     subStatus = CommonAPI::CallStatus::UNKNOWN;
     testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
@@ -215,23 +215,221 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
     ) {
         subStatus = status;
     });
-    
+
     // check that no error was received
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
         usleep(10000);
     }
     EXPECT_EQ(subStatus, CommonAPI::CallStatus::UNKNOWN);
-    
+
     // send value '3' via a method call - this tells stub to broadcast through the selective bc
     result = 0;
     in_ = 3;
-    out_ = 0;   
+    out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result != 0) break;
+        usleep(10000);
+    }
+    EXPECT_EQ(result, 1);
+}
+
+/**
+* @test Test BroadcastStubGoesOfflineOnlineAgain.
+*  - service offline
+*  - subscribe to broadcast
+*  - service online
+*  - fire broadcast -> proxy should receive
+*  - service offline
+*  - service online
+*  - fire again -> proxy should receive again
+*/
+TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
+    CommonAPI::CallStatus callStatus;
+    uint8_t result = 0;
+
+    runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
+                            testAddress);
+
+    // wait that proxy is not available
+    int counter = 0;  // counter for avoiding endless loop
+    while ( testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    // subscribe to broadcast
+    testProxy_->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    });
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    // wait that proxy is  available
+    counter = 0;  // counter for avoiding endless loop
+    while ( !testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    // send value '1' via a method call - this tells stub to broadcast
+    uint8_t in_ = 1;
+    uint8_t out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        usleep(10000);
+    }
+    EXPECT_EQ(result, 1);
+
+    runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
+                            testAddress);
+
+    // wait that proxy is not available
+    counter = 0;  // counter for avoiding endless loop
+    while ( testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    // wait that proxy is  available
+    counter = 0;  // counter for avoiding endless loop
+    while ( !testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    result = 0;
+    // send value '1' via a method call - this tells stub to broadcast
+    in_ = 1;
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        usleep(10000);
+    }
+    EXPECT_EQ(result, 1);
+}
+
+/**
+* @test Test SelectiveBroadcastStubGoesOfflineOnlineAgain.
+*  - service offline
+*  - subscribe to selective broadcast
+*  - service online
+*  - fire selective broadcast -> proxy should receive
+*  - service offline
+*  - service online
+*  - fire again -> proxy should receive again
+*/
+TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
+    CommonAPI::CallStatus callStatus;
+    uint8_t result = 0;
+    uint8_t in_ = 1;
+    uint8_t out_ = 0;
+
+    // send value '4' via a method call - this tells stub to start accepting subs
+    in_ = 4;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
+                            testAddress);
+
+    // wait that proxy is not available
+    int counter = 0;  // counter for avoiding endless loop
+    while ( testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    // subscribe to broadcast
+    testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        std::cout << "error handler called: " << (uint32_t)status << std::endl;
+    });
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    // wait that proxy is  available
+    counter = 0;  // counter for avoiding endless loop
+    while ( !testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    // send value '3' via a method call - this tells stub to broadcast selective
+    in_ = 3;
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        usleep(10000);
+    }
+    EXPECT_EQ(result, 1);
+
+    runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
+                            testAddress);
+
+    // wait that proxy is not available
+    counter = 0;  // counter for avoiding endless loop
+    while ( testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    // wait that proxy is  available
+    counter = 0;  // counter for avoiding endless loop
+    while ( !testProxy_->isAvailable() && counter < 10 ) {
+        usleep(100000);
+        counter++;
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    // send value '4' via a method call - this tells stub to start accepting subs
+    in_ = 4;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    result = 0;
+    // send value '3' via a method call - this tells stub to broadcast selective
+    in_ = 3;
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
         usleep(10000);
     }
     EXPECT_EQ(result, 1);

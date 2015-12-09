@@ -18,6 +18,8 @@ import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 import java.util.List
+import org.franca.core.franca.FType
+import org.franca.core.franca.FStructType
 
 class FInterfaceGenerator {
     @Inject private extension FTypeGenerator
@@ -157,7 +159,9 @@ class FInterfaceGenerator {
         «ENDFOR»
 
         «FOR type : fInterface.types»
-           «FTypeGenerator::generateComments(type,false)»
+           «IF(type.needsSourceComment)»
+                «FTypeGenerator::generateComments(type,false)»
+           «ENDIF»
            «type.generateFTypeImplementation(fInterface, _accessor)»
         «ENDFOR»
 
@@ -189,7 +193,13 @@ class FInterfaceGenerator {
 
     def private hasSourceFile(FInterface fInterface) {
         val hasTypeWithImplementation = fInterface.types.exists[hasImplementation]
-        val hasMethodWithError = fInterface.methods.exists[hasError]
-        return (hasTypeWithImplementation || hasMethodWithError) 
+        return (hasTypeWithImplementation)
+    }
+
+    def private needsSourceComment(FType _type) {
+        if (_type instanceof FStructType) {
+            return _type.isPolymorphic
+        }
+        return false
     }
 }

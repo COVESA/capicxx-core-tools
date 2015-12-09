@@ -73,7 +73,7 @@
 								<copy
 									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator"
 									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86" />
-                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86" perm="777" />
+                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86" perm="755" />
 								<copy
 									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator.ini"
 									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86.ini" />
@@ -90,7 +90,7 @@
 								<copy
 									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator"
 									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64" />
-                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64" perm="777" />
+                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64" perm="755" />
 								<copy
 									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator.ini"
 									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64.ini" />
@@ -115,10 +115,10 @@
 									excludes="commonapi-generator-linux-x86,commonapi-generator-linux-x86_64,commonapi-generator-windows-x86.exe,commonapi-generator-windows-x86_64.exe"
 									destfile="${project.build.directory}/products/commonapi-generator.zip"
 									basedir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all">
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86" filemode="777"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86_64" filemode="777"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86.exe" filemode="777"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86_64.exe" filemode="777"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86" filemode="755"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86_64" filemode="755"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86.exe" filemode="755"/>
+									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86_64.exe" filemode="755"/>
 								</zip>
 							</target>
 						</configuration>
@@ -133,7 +133,7 @@
 	<parent>
 		<groupId>commonapi</groupId>
 		<artifactId>org.genivi.commonapi.core.releng</artifactId>
-		<version>3.1.4-SNAPSHOT</version>
+		<version>3.1.5-SNAPSHOT</version>
 		<relativePath>../org.genivi.commonapi.core.releng</relativePath>
 	</parent>
 </project>

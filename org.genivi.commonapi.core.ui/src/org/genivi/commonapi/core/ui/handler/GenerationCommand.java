@@ -113,16 +113,18 @@ public class GenerationCommand extends AbstractHandler {
 				final Resource r = rs.getResource(uri, true);
 
 				project = file.getProject();
+				fileSystemAccess.setProject(project);
 
 				setupPreferences(file);
-
+				// define output directories from the preferences just set before
+				setupOutputDirectories(fileSystemAccess);
+				
 				// Clear any already existing output from a previous command execution (e.g. errors) from the Franca console
 				// by creating a new one or initializing an already existing one.
 				//
                 final SpecificConsole francaConsole = new SpecificConsole("Franca");
                 francaConsole.getOut().println("Loading " + file.getFullPath().toPortableString());
 
-				fileSystemAccess.setProject(project);
 				Job job = new Job("validation and generation") {
 
 					@Override
@@ -188,6 +190,10 @@ public class GenerationCommand extends AbstractHandler {
 				}
 			}
 		}
+	}
+
+	protected void setupOutputDirectories(EclipseResourceFileSystemAccess2 fileSystemAccess) {
+		fileSystemAccess.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
 	}
 
 	protected boolean validate(URI resourcePathUri, SpecificConsole francaConsole)
@@ -513,8 +519,6 @@ public class GenerationCommand extends AbstractHandler {
 	protected EclipseResourceFileSystemAccess2 createFileSystemAccess() {
 
 		final EclipseResourceFileSystemAccess2 fsa = fileAccessProvider.get();
-
-		fsa.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
 
 		fsa.setMonitor(new NullProgressMonitor());
 

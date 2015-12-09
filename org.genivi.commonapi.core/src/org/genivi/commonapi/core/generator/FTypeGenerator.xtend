@@ -7,8 +7,10 @@
 package org.genivi.commonapi.core.generator
 
 import java.util.Collection
+import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
+import java.util.Set
 import javax.inject.Inject
 import org.eclipse.emf.common.util.EList
 import org.franca.core.franca.FAnnotationBlock
@@ -30,6 +32,7 @@ import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 import static com.google.common.base.Preconditions.*
+
 import static extension org.genivi.commonapi.core.generator.FrancaGeneratorExtensions.*
 
 class FTypeGenerator {
@@ -356,7 +359,14 @@ class FTypeGenerator {
 				inline void set«element.elementName.toFirstUpper»(const «typeName» «IF typeName.isComplex»&«ENDIF»_value) { std::get<«k»>(values_) = _value; }
 			«ENDFOR»
 		«ENDIF»
-			bool operator==(const «fStructType.name» &_other) const;
+			inline bool operator==(const «fStructType.name»& _other) const {
+            «IF fStructType.allElements.size > 0»
+                «FOR element : fStructType.allElements BEFORE 
+                'return (' SEPARATOR ' && ' AFTER ');'»get«element.elementName.toFirstUpper»() == _other.get«element.elementName.toFirstUpper»()«ENDFOR»
+            «ELSE»
+                (void) _other;
+                return true;
+            «ENDIF»    }
 			inline bool operator!=(const «fStructType.name» &_other) const {
 				return !((*this) == _other);
 			}
@@ -368,6 +378,31 @@ class FTypeGenerator {
         generateDeclaration(fEnumerationType, fEnumerationType, deploymentAccessor)
     }
 
+    def String getInitialValue(FEnumerationType _enumeration) {
+        if (_enumeration.base != null)
+            return _enumeration.base.getInitialValue()
+        return "Literal::" + _enumeration.enumerators.head.elementName
+    }
+
+    def String generateLiterals(FEnumerationType _enumeration) {
+        var String literals = new String()        
+        if (_enumeration.base != null)
+            literals += _enumeration.base.generateLiterals + ",\n"
+        for (enumerator : _enumeration.enumerators) {
+            literals += enumPrefix + enumerator.elementName + " = " + enumerator.value.enumeratorValue
+            if (enumerator != _enumeration.enumerators.last) literals += ",\n"
+        }
+        return literals
+    }
+    
+    def String generateLiteralValidation(FEnumerationType _enumeration, String backingType, Set<String> _values) '''
+        «IF _enumeration.base!=null»«_enumeration.base.generateLiteralValidation(backingType, _values)»«ENDIF»
+        «FOR enumerator : _enumeration.enumerators»
+            «IF _values.contains(enumerator.value.enumeratorValue)»//«ENDIF»case static_cast<«backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
+            «{_values.add(enumerator.value.enumeratorValue) ""}»
+        «ENDFOR»
+    '''
+
     def generateDeclaration(FEnumerationType _enumeration, FModelElement _parent, PropertyAccessor _accessor) '''
         «_enumeration.setEnumerationValues»
         «IF _enumeration.name == null»
@@ -378,28 +413,25 @@ class FTypeGenerator {
             «ENDIF»
         «ENDIF»
         «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
-        «val baseTypeName = _enumeration.getBaseType(backingType)»
 
-        struct «_enumeration.name» : «baseTypeName» {
+        struct «_enumeration.name» : CommonAPI::Enumeration<«backingType»> {
             enum Literal : «backingType» {
-                «FOR enumerator : _enumeration.enumerators»
-                «enumPrefix»«enumerator.elementName» = «enumerator.value.enumeratorValue»«IF enumerator != _enumeration.enumerators.last»,«ENDIF»
-                «ENDFOR»
+                «_enumeration.generateLiterals»
             };
             
-            «_enumeration.name»()
-                : «baseTypeName»(static_cast<«IF _enumeration.base == null»«backingType»«ELSE»«baseTypeName»::Literal«ENDIF»>(Literal::«_enumeration.enumerators.get(0).elementName»)) {}
-            «generateEnumBaseTypeConstructor(_enumeration, _enumeration.name, baseTypeName, backingType)»
-            «_enumeration.generateBaseTypeAssignmentOperator(_accessor)»
+            «_enumeration.name»() 
+                : CommonAPI::Enumeration<«backingType»>(static_cast<«backingType»>(«_enumeration.initialValue»)) {}
+            «_enumeration.name»(Literal _literal) 
+                : CommonAPI::Enumeration<«backingType»>(static_cast<«backingType»>(_literal)) {}
+            «_enumeration.generateBaseTypeAssignmentOperator(_enumeration, _accessor)»
 
             inline bool validate() const {
                 switch (value_) {
-                «FOR enumerator : _enumeration.enumerators»
-                case static_cast<«backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
-                «ENDFOR»
+                    «var Set<String> values = new HashSet<String>»
+                    «_enumeration.generateLiteralValidation(backingType, values)»
                     return true;
                 default:
-                    return «IF _enumeration.base == null»false;«ELSE»«baseTypeName»::validate();«ENDIF»
+                    return false;
                 }
             }
 
@@ -432,15 +464,15 @@ class FTypeGenerator {
        «ENDIF»
     '''
     
-    def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, PropertyAccessor _accessor) '''
-        «IF _enumeration.base != null»
+    def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, FEnumerationType _other, PropertyAccessor _accessor) '''
+        «IF _other.base != null»
             «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
-            «val baseTypeName = _enumeration.getBaseType(backingType)»
+            «val baseTypeName = _other.getBaseType(backingType)»
             «_enumeration.name» &operator=(const «baseTypeName»::Literal &_value) {
                 value_ = static_cast<«backingType»>(_value);
                 return (*this);
             }
-            «_enumeration.base.generateBaseTypeAssignmentOperator(_accessor)»
+            «_enumeration.generateBaseTypeAssignmentOperator(_other.base, _accessor)»
         «ENDIF»
     '''
 
@@ -482,6 +514,9 @@ class FTypeGenerator {
 	'''
 
     def dispatch generateFTypeImplementation(FStructType fStructType, FModelElement parent, PropertyAccessor _accessor) '''
+        «IF fStructType.isStructEmpty»
+		static_assert(false, "struct «fStructType.name» must not be empty !");
+        «ENDIF»
 		«IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
 		std::shared_ptr<«fStructType.getClassNamespace(parent)»> «fStructType.getClassNamespace(parent)»::create(CommonAPI::Serial _serial) {
 			switch (_serial) {
@@ -502,22 +537,16 @@ class FTypeGenerator {
 		}
 		«ENDIF»
 
-		bool «fStructType.getClassNamespace(parent)»::operator==(const «parent.elementName»::«fStructType.name»& _other) const {
-			«IF fStructType.allElements.size > 0»
-				«FOR element : fStructType.allElements BEFORE 'return (' SEPARATOR ' && ' AFTER ');'»get«element.elementName.toFirstUpper»() == _other.get«element.elementName.toFirstUpper»()«ENDFOR»
-			«ELSE»
-			    (void) _other;
-			    return true;
-			«ENDIF»
-		}
-
     '''
 
     def dispatch generateFTypeImplementation(FUnionType fUnionType, FModelElement parent, PropertyAccessor _accessor) '''
     '''
 
     def hasImplementation(FType fType) {
-        return ((fType instanceof FStructType) || (fType instanceof FEnumerationType))
+        if (fType instanceof FStructType) {
+            return fType.isPolymorphic
+        }
+        return false
     }
     
     def void generateInheritanceIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {

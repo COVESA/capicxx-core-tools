@@ -161,8 +161,6 @@ TEST_F(DTDerived, AttributeSet) {
     structExtTestValue.setBaseMember(42);
     structExtTestValue.setExtendedMember("Hello World");
 
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2;
-
     std::string u = "Hello World";
     unionExtTestValue = u;
 
@@ -180,7 +178,7 @@ TEST_F(DTDerived, AttributeSet) {
     EXPECT_EQ(structExtTestValue, structExtResultValue);
 
     // check initial value of enumeration attribute
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2; // this is the expected default value
+    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE1; // this is the expected default value
     EXPECT_EQ(enumExtTestValue, enumExtResultValue); // the uninitialized enumExtResultValue should have the default value
     enumExtResultValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3; // set to some other value
     testProxy_->getAEnumExtAttribute().getValue(callStatus, enumExtResultValue); // get value of attribute
