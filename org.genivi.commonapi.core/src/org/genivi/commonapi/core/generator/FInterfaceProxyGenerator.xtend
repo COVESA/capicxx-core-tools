@@ -304,7 +304,7 @@ class FInterfaceProxyGenerator {
             template <typename ... _AttributeExtensions>
             «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
                 «FOR arg : method.inArgs»
-                    «IF arg.getType.supportsValidation»
+                    «IF !arg.array && arg.getType.supportsValidation»
                         if (!_«arg.elementName».validate()) {
                             _internalCallStatus = CommonAPI::CallStatus::INVALID_VALUE;
                             return;
@@ -319,7 +319,7 @@ class FInterfaceProxyGenerator {
                 template <typename ... _AttributeExtensions>
                 «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
                     «FOR arg : method.inArgs»
-                        «IF arg.getType.supportsValidation»
+                        «IF !arg.array && arg.getType.supportsValidation»
                             if (!_«arg.elementName».validate()) {
                                 «method.generateDummyArgumentDefinitions»
                                  «val callbackArguments = method.generateDummyArgumentList»

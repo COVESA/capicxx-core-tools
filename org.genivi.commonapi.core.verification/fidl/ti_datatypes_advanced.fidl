@@ -21,6 +21,7 @@ interface TestInterface {
             tUnion tUnionIn
             tMap tMapIn
             tTypedef tTypedefIn
+            tEnumeration [] tEnumerationArrayIn
             }
         out {
             tArray tArrayOut
@@ -29,6 +30,7 @@ interface TestInterface {
             tUnion tUnionOut
             tMap tMapOut
             tTypedef tTypedefOut
+            tEnumeration [] tEnumerationArrayOut
             }
     }
 

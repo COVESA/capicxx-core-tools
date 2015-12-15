@@ -29,6 +29,7 @@ public:
             TestInterface::tStruct tStructIn,
             TestInterface::tUnion tUnionIn, TestInterface::tMap tMapIn,
             TestInterface::tTypedef tTypedefIn,
+            std::vector<TestInterface::tEnumeration> _tEnumerationArrayIn,
             fTestReply_t _reply);
 };
 

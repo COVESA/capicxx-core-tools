@@ -485,7 +485,7 @@ class FInterfaceStubGenerator {
                 «IF !method.isFireAndForget»
                     «method.generateDummyArgumentDefinitions»
                     «FOR arg : method.outArgs»
-                        «IF arg.getType.supportsValidation»
+                        «IF !arg.array && arg.getType.supportsValidation»
                             if (!«arg.elementName».validate()) {
                                 return;
                             }
@@ -502,7 +502,7 @@ class FInterfaceStubGenerator {
             «IF broadcast.selective»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, false)») {
                     «FOR arg : broadcast.outArgs»
-                        «IF arg.getType.supportsValidation»
+                        «IF !arg.array && arg.getType.supportsValidation»
                             if (!_«arg.elementName».validate()) {
                                 return;
                             }
@@ -535,7 +535,7 @@ class FInterfaceStubGenerator {
             «ELSE»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
                     «FOR arg : broadcast.outArgs»
-                        «IF arg.getType.supportsValidation»
+                        «IF !arg.array && arg.getType.supportsValidation»
                             if (!_«arg.elementName».validate()) {
                                 return;
                             }

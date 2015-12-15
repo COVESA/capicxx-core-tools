@@ -30,6 +30,7 @@ void DTAdvancedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
         TestInterface::tUnion tUnionIn,
         TestInterface::tMap tMapIn,
         TestInterface::tTypedef tTypedefIn,
+        std::vector<TestInterface::tEnumeration> _tEnumerationArrayIn,
         fTestReply_t _reply) {
     (void)clientId;
 
@@ -39,8 +40,9 @@ void DTAdvancedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
     TestInterface::tUnion tUnionOut = tUnionIn;
     TestInterface::tMap tMapOut = tMapIn;
     TestInterface::tTypedef tTypedefOut = tTypedefIn;
+    std::vector<TestInterface::tEnumeration> _tEnumerationArrayOut = _tEnumerationArrayIn;
 
-    _reply(tArrayOut, tEnumerationOut, tStructOut, tUnionOut, tMapOut, tTypedefOut);
+    _reply(tArrayOut, tEnumerationOut, tStructOut, tUnionOut, tMapOut, tTypedefOut, _tEnumerationArrayOut);
 
     fireBTestEvent(
             tArrayOut,

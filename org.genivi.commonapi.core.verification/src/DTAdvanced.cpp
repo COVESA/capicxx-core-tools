@@ -137,12 +137,16 @@ TEST_F(DTAdvanced, SendAndReceive) {
 
     typedefTestValue = 64;
 
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
+    enumArrayIn.push_back(enumerationTestValue);
+
     v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefResultValue;
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayOut;
 
     testProxy_->fTest(
             arrayTestValue,
@@ -151,13 +155,15 @@ TEST_F(DTAdvanced, SendAndReceive) {
             unionTestValue,
             mapTestValue,
             typedefTestValue,
+            enumArrayIn,
             callStatus,
             arrayResultValue,
             enumerationResultValue,
             structResultValue,
             unionResultValue,
             mapResultValue,
-            typedefResultValue
+            typedefResultValue,
+            enumArrayOut
     );
 
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -167,6 +173,7 @@ TEST_F(DTAdvanced, SendAndReceive) {
     EXPECT_EQ(unionTestValue, unionResultValue);
     EXPECT_EQ(mapTestValue, mapResultValue);
     EXPECT_EQ(typedefTestValue, typedefResultValue);
+    EXPECT_EQ(enumArrayIn, enumArrayOut);
 }
 
 /*
@@ -203,12 +210,16 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
 
     typedefTestValue = 64;
 
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
+    enumArrayIn.push_back(v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE2);
+
     v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefResultValue;
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayOut;
 
     testProxy_->fTest(
             arrayTestValue,
@@ -217,13 +228,15 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
             unionTestValue,
             mapTestValue,
             typedefTestValue,
+            enumArrayIn,
             callStatus,
             arrayResultValue,
             enumerationResultValue,
             structResultValue,
             unionResultValue,
             mapResultValue,
-            typedefResultValue
+            typedefResultValue,
+            enumArrayOut
     );
 
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
@@ -383,12 +396,16 @@ TEST_F(DTAdvanced, BroadcastReceive) {
 
     typedefTestValue = 64;
 
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
+    enumArrayIn.push_back(enumerationTestValue);
+
     v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefResultValue;
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayOut;
 
     received_ = false;
     testProxy_->getBTestEvent().subscribe([&](
@@ -415,13 +432,15 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             unionTestValue,
             mapTestValue,
             typedefTestValue,
+            enumArrayIn,
             callStatus,
             arrayResultValue,
             enumerationResultValue,
             structResultValue,
             unionResultValue,
             mapResultValue,
-            typedefResultValue
+            typedefResultValue,
+            enumArrayOut
     );
 
     usleep(100000);
