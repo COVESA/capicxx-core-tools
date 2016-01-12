@@ -145,6 +145,14 @@ public class CommandlineToolMain extends CommandlineTool {
 			} else if (isCodeGeneration) {
 				ConsoleLogger.printLog("Generating code for " + file);
 				try {
+					if (FPreferences.getInstance().getPreference(
+							PreferenceConstants.P_OUTPUT_SUBDIRS, "false").equals("true")) {
+						String subdir = (new File(file)).getName();
+						subdir = subdir.replace(".fidl", "");
+						subdir = subdir.replace(".fdepl", "");
+						fsa.setOutputConfigurations(FPreferences.getInstance()
+								.getOutputpathConfiguration(subdir));
+					}
 					francaGenerator.doGenerate(resource, fsa);
 				} catch (Exception e) {
 					System.err.println("Failed to generate code for " + file
@@ -235,6 +243,11 @@ public class CommandlineToolMain extends CommandlineTool {
 		pref.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, optionValue);
 		pref.setPreference(PreferenceConstants.P_OUTPUT_STUBS, optionValue);
 		pref.setPreference(PreferenceConstants.P_OUTPUT_SKELETON, optionValue);
+	}
+
+	public void setDestinationSubdirs() {
+		ConsoleLogger.printLog("Using destination subdirs");
+		pref.setPreference(PreferenceConstants.P_OUTPUT_SUBDIRS, "true");
 	}
 
 	public void setCommonDirectory(String optionValue) {

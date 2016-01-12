@@ -11,6 +11,7 @@ package org.genivi.commonapi.core.preferences;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.io.File;
 
 import org.eclipse.xtext.generator.IFileSystemAccess;
 import org.eclipse.xtext.generator.OutputConfiguration;
@@ -59,6 +60,9 @@ public class FPreferences {
         if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_DEFAULT)) {
             preferences.put(PreferenceConstants.P_OUTPUT_DEFAULT, PreferenceConstants.DEFAULT_OUTPUT);
         }    
+        if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_SUBDIRS)) {
+            preferences.put(PreferenceConstants.P_OUTPUT_SUBDIRS, "false");
+        }
         if (!preferences.containsKey(PreferenceConstants.P_OUTPUT_SKELETON)) {
             preferences.put(PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants.DEFAULT_OUTPUT);
         }    
@@ -122,13 +126,30 @@ public class FPreferences {
      * @return the map of output configurations
      */
     public HashMap<String, OutputConfiguration> getOutputpathConfiguration() {
+        return getOutputpathConfiguration(null);
+    }
+
+    /**
+     * Set the output path configurations (based on stored preference values) for file system access used in the generator.
+     * @subdir the subdir to use, can be null
+     * @return the map of output configurations
+     */
+    public HashMap<String, OutputConfiguration> getOutputpathConfiguration(String subdir) {
 
         String defaultDir = getPreference(PreferenceConstants.P_OUTPUT_DEFAULT, PreferenceConstants.DEFAULT_OUTPUT);
         String outputCommonDir = getPreference(PreferenceConstants.P_OUTPUT_COMMON, defaultDir);
         String outputProxyDir = getPreference(PreferenceConstants.P_OUTPUT_PROXIES, defaultDir);
         String outputStubDir = getPreference(PreferenceConstants.P_OUTPUT_STUBS, defaultDir);
         String outputSkelDir = getPreference(PreferenceConstants.P_OUTPUT_SKELETON, defaultDir);
-    	
+
+        if (null != subdir && getPreference(PreferenceConstants.P_OUTPUT_SUBDIRS, "false").equals("true")) {
+            defaultDir = new File(defaultDir, subdir).getPath();
+            outputCommonDir = new File(outputCommonDir, subdir).getPath();
+            outputProxyDir = new File(outputProxyDir, subdir).getPath();
+            outputStubDir = new File(outputStubDir, subdir).getPath();
+            outputSkelDir = new File(outputSkelDir, subdir).getPath();
+        }
+
         // the map of output directory configurations
         HashMap<String, OutputConfiguration>  outputs = new HashMap<String, OutputConfiguration> ();
 

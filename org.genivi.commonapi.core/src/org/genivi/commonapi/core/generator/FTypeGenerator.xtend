@@ -381,7 +381,7 @@ class FTypeGenerator {
     def String getInitialValue(FEnumerationType _enumeration) {
         if (_enumeration.base != null)
             return _enumeration.base.getInitialValue()
-        return "Literal::" + _enumeration.enumerators.head.elementName
+        return "Literal::" + enumPrefix + _enumeration.enumerators.head.elementName
     }
 
     def String generateLiterals(FEnumerationType _enumeration) {

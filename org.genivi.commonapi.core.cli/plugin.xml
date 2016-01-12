@@ -58,6 +58,15 @@
                   shortName="d">
             </option>
             <option
+                  argCount="0"
+                  description="Use subdir per interface"
+                  hasOptionalArg="false"
+                  id="org.genivi.commonapi.core.cli.option.dir.subdirs"
+                  longName="dest-subdirs"
+                  required="false"
+                  shortName="dsub">
+            </option>
+            <option
                   argCount="1"
                   description="The directory for the common code"
                   hasOptionalArg="false"

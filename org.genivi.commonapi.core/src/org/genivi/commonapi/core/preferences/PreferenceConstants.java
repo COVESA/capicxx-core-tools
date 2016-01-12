@@ -23,6 +23,7 @@ public interface PreferenceConstants
 	public static final String P_OUTPUT_COMMON    		= "outputDirCommon";
 	public static final String P_OUTPUT_SKELETON  		= "outputDirSkeleton";
 	public static final String P_OUTPUT_DEFAULT   		= "outputDirDefault";
+	public static final String P_OUTPUT_SUBDIRS   		= "outputSubdirs";
 	public static final String P_GENERATE_COMMON  		= "generatecommon";
     public static final String P_GENERATE_PROXY    		= "generateproxy";
     public static final String P_GENERATE_STUB     		= "generatestub";
