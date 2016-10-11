@@ -43,7 +43,7 @@ import org.osgi.framework.Version;
 
 /**
  * This validator is used with the command line environment (it is not automatically triggered from the XText editor).
- * It is meant to be called before the actual code generation. The code generation may not be executed if this 
+ * It is meant to be called before the actual code generation. The code generation may not be executed if this
  * validator detects errors.
  *
  */
@@ -58,8 +58,8 @@ public class ValidatorCore implements IFrancaExternalValidator {
             ValidationMessageAcceptor messageAcceptor) {
 
 		// don't log the good case
-    	//acceptInfo("model " + model.getName(), messageAcceptor);   
-    	
+    	//acceptInfo("model " + model.getName(), messageAcceptor);
+
         List<String> interfaceTypecollectionNames = new ArrayList<String>();
         for (FTypeCollection fTypeCollection : model.getTypeCollections()) {
             interfaceTypecollectionNames.add(fTypeCollection.getName());
@@ -117,7 +117,7 @@ public class ValidatorCore implements IFrancaExternalValidator {
 
     /**
      * Find interfaces that manage itself
-     *  
+     *
      */
     private void findCyclicManagedInterfaces(FInterface rekInterface,
             ArrayList<FInterface> interfaceList, FInterface fInterface,
@@ -157,14 +157,14 @@ public class ValidatorCore implements IFrancaExternalValidator {
         }
     }
 
-    // TODO: use it without workspace context 
+    // TODO: use it without workspace context
 //    private void validateImport(FModel model,
 //            ValidationMessageAcceptor messageAcceptor, final IFile file,
 //            IPath filePath, String cwd) {
 //        HashSet<String> importedFiles = new HashSet<String>();
 //        ArrayList<String> importUriAndNamesspace = new ArrayList<String>();
 //        for (Import fImport : model.getImports()) {
-//        	acceptInfo("validateImport: " + fImport.getImportedNamespace());  
+//        	acceptInfo("validateImport: " + fImport.getImportedNamespace());
 //            if (importUriAndNamesspace.contains(fImport.getImportURI() + ","
 //                    + fImport.getImportedNamespace()))
 //                acceptWarning("Multiple times imported!", fImport,
@@ -223,12 +223,8 @@ public class ValidatorCore implements IFrancaExternalValidator {
         Resource resource = null;
 
         if (cwd != null && cwd.length() > 0) {
-            resourceSet
-                    .getURIConverter()
-                    .getURIMap()
-                    .put(fileURI,
-                            URI.createURI((cwdURI.toString() + "/" + fileURI
-                                    .toString()).replaceAll("/+", "/")));
+            fileURI = URI.createURI((cwdURI.toString() + "/" + fileURI
+                    .toString()).replaceAll("/+", "/"));
         }
 
         try {
@@ -256,7 +252,7 @@ public class ValidatorCore implements IFrancaExternalValidator {
             FTypeCollection fTypeCollection) {
 		// don't log the good case
     	//acceptInfo("type collection: " + fTypeCollection.getName(), messageAcceptor);
-    	
+
         validateName(messageAcceptor,
                 fTypeCollection);
         if (!isFrancaVersionGreaterThan(0, 8, 9)) {
@@ -294,7 +290,7 @@ public class ValidatorCore implements IFrancaExternalValidator {
     protected void validateFInterfaceElements(
             ValidationMessageAcceptor messageAcceptor, FInterface fInterface) {
 		// don't log the good case
-    	//acceptInfo("interface elements: " + fInterface.getName(), messageAcceptor); 
+    	//acceptInfo("interface elements: " + fInterface.getName(), messageAcceptor);
         if (fInterface.getVersion() == null)
             acceptError("Missing version! Add: version(major int minor int)",
                     fInterface, FrancaPackage.Literals.FMODEL_ELEMENT__NAME,
@@ -368,9 +364,9 @@ public class ValidatorCore implements IFrancaExternalValidator {
         messageAcceptor.acceptWarning(message, object,
                 feature, index, null);
     }
-    
+
     protected void acceptInfo(String message, ValidationMessageAcceptor messageAcceptor) {
         messageAcceptor.acceptInfo(message, null, null, 0, null);
-    }    
-    
+    }
+
 }

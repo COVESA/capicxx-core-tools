@@ -20,4 +20,10 @@ interface TestInterface {
             UInt8 y
         }
     }
+
+    broadcast secondTestBroadcast selective {
+        out {
+            UInt32 z
+        }
+    }
 }

@@ -180,14 +180,14 @@ int main() {
 
     std::shared_ptr < E04PhoneBookProxy<> > myProxyA = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, connection);
     while (!myProxyA->isAvailable()) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
     std::cout << "Service for Proxy A is available!" << std::endl;
 
     const CommonAPI::ConnectionId_t otherConnection = "other-client-sample";
     std::shared_ptr < E04PhoneBookProxy<> > myProxyB = runtime->buildProxy < E04PhoneBookProxy > (domain, instance, otherConnection);
     while (!myProxyB->isAvailable()) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
     std::cout << "Service for Proxy B is available!" << std::endl;
 

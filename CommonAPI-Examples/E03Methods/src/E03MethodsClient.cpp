@@ -42,7 +42,7 @@ int main() {
     std::shared_ptr<E03MethodsProxy<>> myProxy = runtime->buildProxy < E03MethodsProxy > (domain, instance, "client-sample");
 
     while (!myProxy->isAvailable()) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     // Subscribe to broadcast

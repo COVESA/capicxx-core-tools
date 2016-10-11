@@ -201,7 +201,7 @@ int main() {
         if (count % 10 == 0)
             std::cout << "." << std::flush;
         g_main_context_iteration(NULL, mayBlock);
-        usleep(50000);
+        std::this_thread::sleep_for(std::chrono::microseconds(50000));
     }
     std::cout << "done." << std::endl;
 

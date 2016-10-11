@@ -81,7 +81,7 @@ With the instantiation of the proxy, the client is set up and ready to use. In t
 [source,{cppstr}]
 ----
 while (!myProxy->isAvailable())
-    usleep(10);
+    std::this_thread::sleep_for(std::chrono::microseconds(10));
 
 
 const std::string name = "World";

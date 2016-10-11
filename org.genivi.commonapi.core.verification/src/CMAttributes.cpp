@@ -23,7 +23,7 @@ const std::string clientId = "client-sample";
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.communication.TestInterface";
-const int tasync = 100000;
+const int tasync = 10000;
 
 using namespace v1_0::commonapi::communication;
 
@@ -55,28 +55,19 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::condition_variable cv;
-        bool proxyAvailable = false;
 
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
         testStub_ = std::make_shared<CMAttributesStub>();
         bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
         ASSERT_TRUE(serviceRegistered);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
+        testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t1.join();
         ASSERT_TRUE(testProxy_->isAvailable());
+
+        value_ = 0;
     }
 
     void TearDown() {
@@ -88,8 +79,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
             counter++;
         }
 
@@ -162,28 +153,37 @@ TEST_F(CMAttributes, AttributeGetAsynchronous) {
     uint8_t x = 5;
     testStub_->setTestValues(x);
     testProxy_->getTestAttributeAttribute().getValueAsync(myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 
     x = 6;
-    value_ = x;
     testStub_->setTestValues(x);
     testProxy_->getTestAttributeAttribute().getValueAsync(myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 
     x = 7;
-    value_ = x;
     testStub_->setTestValues(x);
     testProxy_->getTestAttributeAttribute().getValueAsync(myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 
     x = 8;
-    value_ = x;
     testStub_->setTestValues(x);
     testProxy_->getTestAttributeAttribute().getValueAsync(myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 }
 
@@ -228,12 +228,18 @@ TEST_F(CMAttributes, AttributeSetAsynchronous) {
 
     uint8_t x = 5;
     testProxy_->getTestAttributeAttribute().setValueAsync(x, myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 
     x = 6;
     testProxy_->getTestBAttribute().setValueAsync(x, myCallback);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 }
 
@@ -262,12 +268,18 @@ TEST_F(CMAttributes, AttributeSubscription) {
 
     testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
     testStub_->setTestValues(x);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 
     x = 6;
     testProxy_->getTestAttributeAttribute().setValue(x, callStatus, y);
-    usleep(100000);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     EXPECT_EQ(x, value_);
 }
 

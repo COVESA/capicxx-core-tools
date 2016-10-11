@@ -23,6 +23,8 @@ const std::string testAddress = "commonapi.advanced.polymorph.TestInterface";
 const std::string connectionId_client = "client-sample";
 const std::string connectionId_service = "service-sample";
 
+const int tasync = 10000;
+
 class Environment: public ::testing::Environment {
 public:
     virtual ~Environment() {
@@ -43,28 +45,16 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::condition_variable cv;
-        bool proxyAvailable = false;
-
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, connectionId_client);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
 
         testStub_ = std::make_shared<AFPolymorphStub>();
         serviceRegistered_ = runtime_->registerService(domain, testAddress, testStub_, connectionId_service);
         ASSERT_TRUE(serviceRegistered_);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
+        testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, connectionId_client);
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t1.join();
         ASSERT_TRUE(testProxy_->isAvailable());
     }
 
@@ -305,9 +295,9 @@ TEST_F(AFPolymorph, Broadcast) {
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(result, 1);    
+    EXPECT_EQ(result, 1);
 
 }
 int main(int argc, char** argv) {

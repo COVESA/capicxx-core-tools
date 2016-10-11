@@ -33,24 +33,42 @@ typedef pollfd DemoMainLoopPollFd;
 
 class VerificationMainLoopEventQueue {
 public:
+
+    VerificationMainLoopEventQueue() :
+        running_(false) {
+        stopPromise = new std::promise<bool>;
+    }
+
+    ~VerificationMainLoopEventQueue() {
+        delete stopPromise;
+    }
+
     void run(const int64_t& timeoutInterval = TIMEOUT_INFINITE) {
             (void)timeoutInterval;
         running_ = true;
+        std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
         while (running_) {
-            std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
             queueCondition_.wait(queueUniqueLock);
 
             for (unsigned int i = 0; i < queue_.size(); i++) {
                 queue_.at(i)();
             }
+        }
 
-            queueUniqueLock.unlock();
-            queueCondition_.notify_one();
+        if (stopPromise) {
+            stopPromise->set_value(true);
         }
     }
 
-    void stop() {
+    std::future<bool> stop() {
+        delete stopPromise;
+        stopPromise = new std::promise<bool>;
+
+        std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
         running_ = false;
+        queueCondition_.notify_one();
+
+        return stopPromise->get_future();
     }
 
     void pushToQueue(std::function<void()> func) {
@@ -64,6 +82,7 @@ private:
     std::vector<std::function<void()>> queue_;
     std::condition_variable queueCondition_;
     std::mutex queueLock_;
+    std::promise<bool>* stopPromise;
 };
 
 class VerificationMainLoop {
@@ -109,6 +128,8 @@ class VerificationMainLoop {
                         std::placeholders::_1));
         wakeupListenerSubscription_ = context_->subscribeForWakeupEvents(
                 std::bind(&VerificationMainLoop::wakeup, this));
+
+        stopPromise = new std::promise<bool>;
     }
 
      ~VerificationMainLoop() {
@@ -129,6 +150,7 @@ class VerificationMainLoop {
           close(wakeFd_.fd);
     #endif
 
+          delete stopPromise;
           cleanup();
     }
 
@@ -145,12 +167,23 @@ class VerificationMainLoop {
         while(!hasToStop_) {
             doSingleIteration(timeoutInterval);
         }
+        if (stopPromise) {
+            stopPromise->set_value(true);
+        }
         running_ = false;
     }
 
-    void stop() {
-        hasToStop_ = false;
+    std::future<bool> stop() {
+        // delete old promise to secure, that always a new future object is returned
+        delete stopPromise;
+        stopPromise = new std::promise<bool>;
+
+        hasToStop_ = true;
         wakeup();
+
+        eventQueue_->stop().get();
+
+        return stopPromise->get_future();
     }
 
     /**
@@ -720,9 +753,10 @@ class VerificationMainLoop {
     }
 
     void unregisterWatch(Watch* watch) {
+        unregisterFileDescriptor(watch->getAssociatedFileDescriptor());
+
         std::lock_guard<std::mutex> itsLock(watchesMutex_);
 
-        unregisterFileDescriptor(watch->getAssociatedFileDescriptor());
     #ifdef WIN32
         unregisterEvent(watch->getAssociatedEvent());
     #endif
@@ -856,6 +890,8 @@ class VerificationMainLoop {
 
 
     std::shared_ptr<VerificationMainLoopEventQueue> eventQueue_;
+
+    std::promise<bool>* stopPromise;
 };
 
 

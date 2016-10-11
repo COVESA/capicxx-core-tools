@@ -24,6 +24,8 @@ const std::string testAddress = "commonapi.datatypes.advanced.TestInterface";
 const std::string connectionIdService = "service-sample";
 const std::string connectionIdClient = "client-sample";
 
+const int tasync = 10000;
+
 class Environment: public ::testing::Environment {
 public:
     virtual ~Environment() {
@@ -55,28 +57,16 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::condition_variable cv;
-        bool proxyAvailable = false;
-
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::advanced::TestInterfaceProxy>(domain, testAddress, connectionIdClient);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
 
         testStub_ = std::make_shared<v1_0::commonapi::datatypes::advanced::DTAdvancedStub>();
         serviceRegistered_ = runtime_->registerService(domain, testAddress, testStub_, connectionIdService);
         ASSERT_TRUE(serviceRegistered_);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
+        testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::advanced::TestInterfaceProxy>(domain, testAddress, connectionIdClient);
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t1.join();
         ASSERT_TRUE(testProxy_->isAvailable());
     }
 
@@ -85,8 +75,8 @@ protected:
         
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
             counter++;
         }
 
@@ -395,7 +385,7 @@ TEST_F(DTAdvanced, AttributeSetAsyncInvalid) {
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
 
     testProxy_->getAEnumerationAttribute().setValueAsync(enumerationTestValue, myCallback);
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
 }
 
 
@@ -528,13 +518,13 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             const v1_0::commonapi::datatypes::advanced::TestInterface::tMap& mapResultValue,
             const v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef& typedefResultValue
             ) {
-        received_ = true;
         EXPECT_EQ(arrayTestValue, arrayResultValue);
         EXPECT_EQ(enumerationTestValue, enumerationResultValue);
         EXPECT_EQ(structTestValue, structResultValue);
         EXPECT_EQ(unionTestValue, unionResultValue);
         EXPECT_EQ(mapTestValue, mapResultValue);
         EXPECT_EQ(typedefTestValue, typedefResultValue);
+        received_ = true;
     });
 
     testProxy_->fTest(
@@ -555,7 +545,10 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             enumArrayOut
     );
 
-    usleep(100000);
+    for (int i = 0; i < 100; ++i) {
+        if (received_) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     ASSERT_TRUE(received_);
     received_ = false;
 
@@ -581,7 +574,10 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             enumArrayOut
     );
 
-    usleep(100000);
+    for (int i = 0; i < 100; ++i) {
+        if (received_) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     ASSERT_TRUE(received_);
     received_ = false;
 
@@ -607,7 +603,10 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             enumArrayOut
     );
 
-    usleep(100000);
+    for (int i = 0; i < 100; ++i) {
+        if (received_) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     ASSERT_TRUE(received_);
 }
 

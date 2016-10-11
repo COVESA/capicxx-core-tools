@@ -23,7 +23,7 @@ const std::string otherclientId = "other-client-sample";
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.advanced.bselective.TestInterface";
-const int tasync = 100000;
+const int tasync = 10000;
 
 using namespace v1_0::commonapi::advanced::bselective;
 
@@ -51,47 +51,23 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::mutex availabilityMutex2;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::unique_lock<std::mutex> lock2(availabilityMutex2);
-        std::condition_variable cv;
-        std::condition_variable cv2;        
-        bool proxyAvailable = false;
-        bool proxy2Available = false;
-
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
-        
-        std::thread t2([this, &proxy2Available, &cv2, &availabilityMutex2]() {
-            std::lock_guard<std::mutex> lock2(availabilityMutex2);
-            testProxy2_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, otherclientId);
-            testProxy2_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy2_);
-            proxy2Available = true;
-            cv2.notify_one();
-        });        
         
         testStub_ = std::make_shared<AFSelectiveStub>();
         bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
         ASSERT_TRUE(serviceRegistered);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
+        testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t1.join();
         ASSERT_TRUE(testProxy_->isAvailable());
         
-        while(!proxy2Available) {
-            cv2.wait(lock2);
+        testProxy2_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, otherclientId);
+        i = 0;
+        while(!testProxy2_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t2.join();
         ASSERT_TRUE(testProxy2_->isAvailable());        
     }
 
@@ -104,15 +80,15 @@ protected:
 
          // wait that proxies are not available
          int counter = 0;  // counter for avoiding endless loop
-         while ( testProxy_->isAvailable() && counter < 10 ) {
-             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+         while ( testProxy_->isAvailable() && counter < 100 ) {
+             std::this_thread::sleep_for(std::chrono::milliseconds(10));
              counter++;
          }
          ASSERT_FALSE(testProxy_->isAvailable());
 
          counter = 0;  // counter for avoiding endless loop
-         while ( testProxy2_->isAvailable() && counter < 10 ) {
-             std::this_thread::sleep_for(std::chrono::milliseconds(100));
+         while ( testProxy2_->isAvailable() && counter < 100 ) {
+             std::this_thread::sleep_for(std::chrono::milliseconds(10));
              counter++;
          }
          ASSERT_FALSE(testProxy2_->isAvailable());
@@ -161,7 +137,7 @@ TEST_F(AFSelective, SelectiveBroadcastRejected) {
     // check that subscription failed correctly
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUBSCRIPTION_REFUSED);
 
@@ -170,12 +146,8 @@ TEST_F(AFSelective, SelectiveBroadcastRejected) {
     in_ = 3;
     out_ = 0;   
     testProxy_->testMethod(in_, callStatus, out_);  
-    
-    // check that no value was correctly received
-    for (int i = 0; i < 100; i++) {
-        if (result != 0) break;
-        usleep(10000);
-    }
+
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     uint8_t expected = 0;
     EXPECT_EQ(expected, result);
 
@@ -217,7 +189,7 @@ TEST_F(AFSelective, SelectiveBroadcast) {
     // check that no error was received
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
     
@@ -230,7 +202,7 @@ TEST_F(AFSelective, SelectiveBroadcast) {
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result != 0) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     uint8_t expected = 1;
     EXPECT_EQ(expected, result);
@@ -273,7 +245,7 @@ TEST_F(AFSelective, SelectiveMultiBroadcast) {
     // check that no error was received
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
@@ -293,7 +265,7 @@ TEST_F(AFSelective, SelectiveMultiBroadcast) {
     // check that no error was received
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
     
@@ -306,7 +278,7 @@ TEST_F(AFSelective, SelectiveMultiBroadcast) {
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result != 0) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     uint8_t expected = 1;
     EXPECT_EQ(expected, result);
@@ -314,7 +286,7 @@ TEST_F(AFSelective, SelectiveMultiBroadcast) {
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result2 != 0) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     uint8_t expected2 = 1;
     EXPECT_EQ(expected2, result2);
@@ -368,7 +340,7 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
         });
 
         while (callStatus != CommonAPI::CallStatus::SUCCESS) {
-            usleep(100);
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
         // send value '3' via a method call - this tells stub to broadcast through the selective bc
 
@@ -379,7 +351,7 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
         // check that value was correctly received
         for (int i = 0; i < 100; i++) {
             if (result != 0) break;
-            usleep(10000);
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
         uint8_t expected = 1;
         EXPECT_EQ(expected, result);
@@ -404,7 +376,7 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
         });
 
         while (callStatus != CommonAPI::CallStatus::SUCCESS) {
-            usleep(100);
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
         // send value '3' via a method call - this tells stub to broadcast through the selective bc
@@ -416,14 +388,14 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
         // check that value was correctly received
         for (int i = 0; i < 100; i++) {
             if (result != 0) break;
-            usleep(10000);
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
         uint8_t expected = 1;
         EXPECT_EQ(expected, result);
     }
 }
  
-TEST_F(AFSelective, DISABLED_SelectiveRejectedMultiBroadcast) {
+TEST_F(AFSelective, SelectiveRejectedMultiBroadcast) {
 
     CommonAPI::CallStatus callStatus;
     CommonAPI::CallStatus subStatus;
@@ -433,10 +405,34 @@ TEST_F(AFSelective, DISABLED_SelectiveRejectedMultiBroadcast) {
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
+    // send value '2' via a method call - this tells stub to stop accepting subs
+    in_ = 2;
+    testProxy2_->testMethod(in_, callStatus, out_);
+
+    // subscribe
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy2_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result2 = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // check that subscription failed correctly
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUBSCRIPTION_REFUSED) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUBSCRIPTION_REFUSED);
+
     // send value '4' via a method call - this tells stub to start accepting subs
-    in_ = 4;   
+    in_ = 4;
     testProxy_->testMethod(in_, callStatus, out_);
-    
+
     // subscribe
     subStatus = CommonAPI::CallStatus::UNKNOWN;
     testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
@@ -452,10 +448,10 @@ TEST_F(AFSelective, DISABLED_SelectiveRejectedMultiBroadcast) {
     
     // check that no error was received
     for (int i = 0; i < 100; i++) {
-        if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(CommonAPI::CallStatus::UNKNOWN, subStatus);
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     // subscribe from another proxy
     subStatus = CommonAPI::CallStatus::UNKNOWN;
@@ -469,39 +465,14 @@ TEST_F(AFSelective, DISABLED_SelectiveRejectedMultiBroadcast) {
     ) {
         subStatus = status;
     });
-    
+
     // check that no error was received
     for (int i = 0; i < 100; i++) {
-        if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(CommonAPI::CallStatus::UNKNOWN, subStatus);
-    
-    // send value '2' via a method call - this tells stub to stop accepting subs
-    in_ = 2;
-    testProxy2_->testMethod(in_, callStatus, out_);    
-    
-    // subscribe
-    subStatus = CommonAPI::CallStatus::UNKNOWN;
-    testProxy2_->getBTestSelectiveSelectiveEvent().subscribe([&](
-        const uint8_t &y
-    ) {
-        result2 = y;
-    },
-    [&](
-        const CommonAPI::CallStatus &status
-    ) {
-        subStatus = status;
-    });    
-    
-    // check that subscription failed correctly
-    for (int i = 0; i < 100; i++) {
-        if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
-    }
-    EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUBSCRIPTION_REFUSED);
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
-    
     // send value '3' via a method call - this tells stub to broadcast through the selective bc
     result = 0;
     in_ = 3;
@@ -510,8 +481,8 @@ TEST_F(AFSelective, DISABLED_SelectiveRejectedMultiBroadcast) {
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
-        if (result != 0) break;
-        usleep(10000);
+        if (result != 0 && result3 != 0) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     uint8_t expected = 1;
     EXPECT_EQ(expected, result);
@@ -550,7 +521,7 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
         ++counter;
     });
     uint8_t result11 = 0;
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
     my_proxy1->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -609,7 +580,7 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
             callStatus2 != CommonAPI::CallStatus::SUCCESS ||
             callStatus22 != CommonAPI::CallStatus::SUCCESS ||
             callStatus3 != CommonAPI::CallStatus::SUCCESS) {
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
         if (count++ == 10000) {
             break;
         }
@@ -632,7 +603,7 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
             result2 != 1 ||
             result22 != 1 ||
             result3 != 1) {
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
         if (count++ == 10000) {
             break;
         }
@@ -643,6 +614,63 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     EXPECT_EQ(expected, result2);
     EXPECT_EQ(expected, result22);
     EXPECT_EQ(expected, result3);
+}
+
+TEST_F(AFSelective, Fire_Selective_Within_Subscription_Changed_Hook) {
+    CommonAPI::CallStatus callStatus, subStatus;
+    uint8_t out_ = 0;
+    uint8_t result = 0;
+
+    // send value '5' via a method call - this tells stub to fire in changed hook
+    uint8_t in_ = 5;
+    testProxy2_->testMethod(in_, callStatus, out_);
+
+    // subscribe
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result != 0 && subStatus != CommonAPI::CallStatus::UNKNOWN) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+    EXPECT_EQ(1, result);
+
+    // No unregister the service and register again to ensure
+    // fire an event from the changed hook still works
+
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    result = 0;
+
+    bool serviceUnregistered =
+            runtime_->unregisterService(domain, AFSelectiveStub::StubInterface::getInterface(),
+                    testAddress);
+     ASSERT_TRUE(serviceUnregistered);
+
+     std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+
+     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+     ASSERT_TRUE(serviceRegistered);
+
+     // check that value was correctly received
+     for (int i = 0; i < 100; i++) {
+         if (result != 0 && subStatus != CommonAPI::CallStatus::UNKNOWN) break;
+         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+     }
+
+     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+     EXPECT_EQ(1, result);
 }
 
 int main(int argc, char** argv) {

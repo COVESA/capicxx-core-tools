@@ -64,7 +64,12 @@ protected:
             stubStopped.get();
         }
 
-        usleep(200);
+        testProxy_.reset();
+
+        std::this_thread::sleep_for(std::chrono::microseconds(200));
+
+        delete mainLoopForProxy_;
+        delete mainLoopForStub_;
     }
 
     bool serviceRegistered_;
@@ -112,11 +117,11 @@ TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
@@ -146,11 +151,11 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
@@ -176,7 +181,7 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
     // 1. just dispatch watches (reads transport)
     mainLoopForStub_->runVerification(1, true, false);
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
     EXPECT_EQ(testStub_->x_, 0);
 
     // 2. just dispatch dispatchSources. This should dispatch the messages already read from transport in 1.
@@ -194,15 +199,14 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 
     std::thread stubThread = std::thread([&](){ mainLoopForStub_->run(3000); });
-
     // wait until thread is running
     while (!mainLoopForStub_->isRunning()) {
-        usleep(100);
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
 
     for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
-        mainLoopForProxy_->doSingleIteration(3000);
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        mainLoopForProxy_->doSingleIteration(30);
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
@@ -210,17 +214,17 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
     broadcastEvent.subscribe(std::bind(&THMainLoopIntegration::broadcastCallback, this, std::placeholders::_1));
 
     uint8_t x = 5;
-    uint8_t y = 0;
-    CommonAPI::CallStatus callStatus;
 
-    testProxy_->testMethod(x, callStatus, y);
+    // TODO: Why sync call blocks here!?
+    testProxy_->testMethodAsync(x, [&](const CommonAPI::CallStatus& status, uint8_t y) {
+        (void) status;
+        (void) y;
+    });
 
-    for(unsigned int i = 0; i < 100; ++i) {
+    for(unsigned int i = 0; i < 10; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
         mainLoopForProxy_->doSingleIteration(30);
-        usleep(10000);
     }
-
-    usleep(2);
 
     if (mainLoopForStub_->isRunning()) {
         std::future<bool> stubStopped = mainLoopForStub_->stop();
@@ -233,6 +237,83 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 
     // in total 5 broadcasts should have been arrived
     ASSERT_EQ(lastBroadcastNumber_, 5);
+}
+
+/**
+* @test Verifies SelectiveError Handler is called correctly when used with mainloop
+*   - get proxy with available flag = true
+*   - Subscribe for selective Event and register error handler
+*   - Stub fires event upon subscription
+*   - Check that subscription handler and error handler were both called once
+*   - Unregister Service and register Service again
+*   - Check that subscription error handler was called again after service went
+*     offline and came online again (resubscription took place) and that the
+*     event was received a second time
+*/
+TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
+
+    std::thread proxyThread;
+    std::thread stubThread;
+    proxyThread = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread = std::thread([&](){ mainLoopForStub_->run(); });
+    proxyThread.detach();
+    stubThread.detach();
+
+    // wait until threads are running
+    while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
+    }
+
+    for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    std::uint32_t broadcastTestValue(1234);
+    std::uint32_t selectiveHandlerCalled(0);
+    std::uint32_t selectiveErrorHandlerCalled(0);
+
+    testStub_->setSecondTestBroadcastValueToFireOnSubscription_(broadcastTestValue);
+
+    testProxy_->getSecondTestBroadcastSelectiveEvent().subscribe(
+        [&](const uint32_t _value) {
+            EXPECT_EQ(broadcastTestValue, _value);
+            ++selectiveHandlerCalled;
+        },
+        [&](const CommonAPI::CallStatus _callStatus) {
+            EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, _callStatus);
+            ++selectiveErrorHandlerCalled;
+        }
+    );
+    // Stub will fire SecondTestBroadcast once the subscription happened
+    for (int i = 0; i < 200; ++i) {
+        if (selectiveHandlerCalled == 1 && selectiveErrorHandlerCalled == 1) {
+            break;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+    EXPECT_EQ(1u, selectiveHandlerCalled);
+    EXPECT_EQ(1u, selectiveErrorHandlerCalled);
+
+    bool serviceDeregistered =
+            runtime_->unregisterService(domain,
+                    v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(),
+                    instance);
+    ASSERT_TRUE(serviceDeregistered);
+    serviceRegistered_ = runtime_->registerService(domain, instance, testStub_,
+            contextForStub_);
+    ASSERT_TRUE(serviceRegistered_);
+    // Stub will fire SecondTestBroadcast once the resubscription happened
+    for (int i = 0; i < 200; ++i) {
+        if (selectiveHandlerCalled == 2 && selectiveErrorHandlerCalled == 2) {
+            break;
+        } else {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    }
+    EXPECT_EQ(2u, selectiveHandlerCalled);
+    EXPECT_EQ(2u, selectiveErrorHandlerCalled);
 }
 
 int main(int argc, char** argv) {

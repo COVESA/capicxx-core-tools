@@ -21,11 +21,14 @@ void CMMethodCallsStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _c
                                    testMethodReply_t _reply) {
     (void)_client;
 
-    uint8_t y;
-
-    std::cout << "testMethod called." << std::endl;
-    y = _x;
+    uint8_t y = _x;
     _reply(y);
+}
+
+void CMMethodCallsStub::testMethodTimeout(const std::shared_ptr<CommonAPI::ClientId> _client,
+                                          testMethodReply_t _reply) {
+    (void)_client;
+    (void)_reply;
 }
 
 } /* namespace v1 */

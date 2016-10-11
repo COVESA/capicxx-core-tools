@@ -29,7 +29,7 @@ const std::string domain = "local";
 const std::string testAddress = "commonapi.communication.TestInterface";
 const std::string daemonAddress = "commonapi.communication.Daemon";
 
-const unsigned int wt = 100000;
+const unsigned int wt = 10000;
 
 typedef std::shared_ptr<v1_0::commonapi::communication::TestInterfaceProxy<>> ProxyPtr;
 
@@ -115,12 +115,12 @@ public:
 
     bool wait_Attribute(uint8_t expected) {
         uint8_t count = 0;
-        while (count++ < 50) {
+        while (count++ < 100) {
             if (testAttribute_ == expected) {
-                usleep(wt); // Wait a while to ensure its not (unwanted) changed
+                std::this_thread::sleep_for(std::chrono::microseconds(wt)); // Wait a while to ensure its not (unwanted) changed
                 return true;
             }
-            usleep(100000);
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
         }
         return false;
     }
@@ -166,24 +166,24 @@ public:
 
     bool wait_OkAttribute(uint8_t expected) {
         uint8_t count = 0;
-        while (count++ < 50) {
+        while (count++ < 100) {
             if (okAttribute_ == expected) {
-                usleep(wt); // Wait a while to ensure its not (unwanted) changed
+                std::this_thread::sleep_for(std::chrono::microseconds(wt)); // Wait a while to ensure its not (unwanted) changed
                 return true;
             }
-            usleep(100000);
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
         }
         return false;
     }
 
     bool wait_NotOkAttribute(uint8_t expected) {
         uint8_t count = 0;
-        while (count++ < 50) {
+        while (count++ < 100) {
             if (notOkAttribute_ == expected) {
-                usleep(wt); // Wait a while to ensure its not (unwanted) changed
+                std::this_thread::sleep_for(std::chrono::microseconds(wt)); // Wait a while to ensure its not (unwanted) changed
                 return true;
             }
-            usleep(100000);
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
         }
         return false;
     }
@@ -246,12 +246,12 @@ public:
 
     bool waitCallbacks() {
         uint8_t count = 0;
-        while (count++ < 50) {
+        while (count++ < 100) {
             if (callbackCounter_1_ > 0 && callbackCounter_2_ > 0 && callbackCounter_3_ > 0) {
-                usleep(wt); // Sleep to ensure that it not called again in the meanwhile
+                std::this_thread::sleep_for(std::chrono::microseconds(wt)); // Sleep to ensure that it not called again in the meanwhile
                 return true;
             }
-            usleep(100000);
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
         }
         return false;
     }
@@ -279,8 +279,8 @@ void testSubscription(ProxyPtr pp) {
     while (!(subscriptionHandler.getSubscriptedTestAttribute() > 0
             && subscriptionHandler.getAvailabilityStatus()
                     == CommonAPI::AvailabilityStatus::NOT_AVAILABLE)
-            && cnt < 1000) {
-        usleep(10000);
+            && cnt < 100) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
         cnt++;
     }
 
@@ -315,8 +315,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
             counter++;
         }
 
@@ -384,11 +384,11 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
 
     const uint8_t testNumber = 10;
     for (uint8_t i=1; i<testNumber+1; i++) {
-        usleep(100000);
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
         testStub_->setTestAttributeAttribute(i);
     }
 
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     ASSERT_EQ(subscriptionHandler.myQueue_.size(), std::deque<uint8_t>::size_type(testNumber + 1)); // + 1 due to the reason, that by subscribtion the current value is returned
 
     uint8_t t = 0;
@@ -408,7 +408,7 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(isUnregistered);
 
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     deregisterService_ = !isUnregistered;
 }
@@ -432,7 +432,7 @@ TEST_F(CMAttributeSubscription, SubscriptionOnAvailable) {
     testProxy_->getProxyStatusEvent().subscribe(callbackAvailabilityStatus);
 
     testStub_->setTestAttributeAttribute(1);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
 
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -448,11 +448,11 @@ TEST_F(CMAttributeSubscription, SubscriptionOnAvailable) {
     bool serviceUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     ASSERT_EQ(subscriptionHandler.getAvailabilityStatus(), CommonAPI::AvailabilityStatus::NOT_AVAILABLE);
 
     testStub_->setTestAttributeAttribute(3);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     ASSERT_EQ(subscriptionHandler.getSubscriptedTestAttribute(), 2);
 }
 
@@ -481,10 +481,10 @@ TEST_F(CMAttributeSubscription, SubscriptionMultithreading) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     testStub_->setTestAttributeAttribute(1);
 
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     bool serviceUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -552,10 +552,10 @@ TEST_F(CMAttributeSubscription, SubscriptionUnsubscribeFromCallback) {
     EXPECT_EQ(99, subscriptionHandler.getSubscriptedTestAttribute());
 
     subscriptionHandler.cancelSubscribe();
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     testStub_->setTestAttributeAttribute(250);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(99, subscriptionHandler.getSubscriptedTestAttribute());
 
     bool isUnregistered = runtime_->unregisterService(domain,
@@ -588,7 +588,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
     subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
 
     testStub_->setTestAttributeAttribute(1);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(0, subUnsubHandler.getSubscribedOkAttribute());
     EXPECT_EQ(0, subUnsubHandler.getSubscribedNotOkAttribute());
 
@@ -608,13 +608,12 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListenerCallNotOk);
 
     testStub_->setTestAttributeAttribute(3);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(2, subUnsubHandler.getSubscribedOkAttribute());
     EXPECT_EQ(2, subUnsubHandler.getSubscribedNotOkAttribute());
 
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
-    usleep(wt);
 }
 
 /**
@@ -679,7 +678,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
 //
 //    bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
 //    ASSERT_TRUE(serviceUnregistered);
-//    usleep(wt);
+//    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 //}
 
 /**
@@ -735,13 +734,12 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeSequentially) {
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListenerCallNotOk);
 
     testStub_->setTestAttributeAttribute(16);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(12, subUnsubHandler.getSubscribedOkAttribute());
     EXPECT_EQ(14, subUnsubHandler.getSubscribedNotOkAttribute());
 
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
-    usleep(wt);
 }
 
 /**
@@ -806,13 +804,12 @@ TEST_F(CMAttributeSubscription, DISABLED_SubscribeAndUnsubscribeImplicitWithCrea
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListenerCallNotOk);
 
     testStub_->setTestAttributeAttribute(16);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(12, subUnsubHandler.getSubscribedOkAttribute());
     EXPECT_EQ(14, subUnsubHandler.getSubscribedNotOkAttribute());
 
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
-    usleep(wt);
 }
 
 /**
@@ -862,7 +859,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeUnsubscribe) {
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
     testStub_->setTestAttributeAttribute(24);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     // value must not be changed
     EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
@@ -870,14 +867,13 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeUnsubscribe) {
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
     testStub_->setTestAttributeAttribute(26);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     // value must not be changed
     EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
 
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
-    usleep(wt);
 }
 
 /**
@@ -908,7 +904,7 @@ TEST_F(CMAttributeSubscription, SubscribeServiceNotAvailable) {
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
 
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
 
     // register service
@@ -990,7 +986,7 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     deregisterService_ = !isUnregistered;
 
     testStub_->setTestAttributeAttribute(secondValue);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     EXPECT_EQ(firstValue, subscriptionHandler.getSubscriptedTestAttribute());
 
@@ -1062,11 +1058,11 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     bool isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(isUnregistered);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     subscriptionHandler.resetSubcriptedTestAttribute();
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     // register service
     serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -1193,10 +1189,10 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceNotAvailable) {
 
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
 
@@ -1242,7 +1238,7 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     ThreeCallbackHandler threeCallbackHandler;
 
     testStub_->setTestAttributeAttribute(defaultValue);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
 
     // register service
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -1260,10 +1256,10 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
 
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
-    usleep(wt);
+    std::this_thread::sleep_for(std::chrono::microseconds(wt));
     CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
 

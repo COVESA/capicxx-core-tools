@@ -1,0 +1,70 @@
+/* Copyright (C) 2016 BMW Group
+ * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
+ * Author: Juergen Gehring (juergen.gehring@bmw.de)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package commonapi.advanced.extended
+
+interface AFExtendedBase {
+    version { major 1 minor 0 }
+
+    method doSomething {
+      in {
+          UInt8 x
+      }
+      out {
+          UInt8 y
+      }
+    }
+
+    attribute UInt32 baseAttribute
+
+    broadcast bBase {
+        out {
+            UInt8 ux
+        }
+    }
+}
+
+interface AFExtendedOnce extends AFExtendedBase {
+    version { major 1 minor 0 }
+
+    method doSomethingSpecial {
+        in {
+            UInt8 x
+        }
+        out {
+            UInt8 y
+        }
+    }
+
+    attribute UInt32 specialAttribute
+
+    broadcast bSpecial {
+        out {
+            UInt8 ux
+        }
+    }
+}
+
+interface AFExtendedTwice extends AFExtendedOnce {
+    version { major 1 minor 0 }
+
+    method doSomethingExtraSpecial {
+        in {
+            UInt8 x
+        }
+        out {
+            UInt8 y
+        }
+    }
+    attribute UInt32 extraSpecialAttribute
+
+    broadcast bExtraSpecial {
+        out {
+            UInt8 ux
+        }
+    }
+}

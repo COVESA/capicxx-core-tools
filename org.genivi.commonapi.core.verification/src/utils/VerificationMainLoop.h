@@ -129,13 +129,17 @@ class VerificationMainLoop {
 
     void runVerification(const long& timeoutInterval, bool dispatchTimeoutAndWatches = false, bool dispatchDispatchSources = false) {
         running_ = true;
+        hasToStop_ = false;
 
         prepare(maxTimeout);
         long ti = timeoutInterval*((long)(1000/currentMinimalTimeoutInterval_));
 
-        while (ti>0) {
+        while (ti>0 && !hasToStop_) {
             ti--;
             doVerificationIteration(dispatchTimeoutAndWatches, dispatchDispatchSources);
+        }
+        if ( hasToStop_ && stopPromise) {
+            stopPromise->set_value(true);
         }
         running_ = false;
         wakeup();
@@ -739,9 +743,9 @@ class VerificationMainLoop {
     }
 
     void unregisterWatch(Watch* watch) {
-        std::lock_guard<std::mutex> itsLock(watchesMutex_);
-
         unregisterFileDescriptor(watch->getAssociatedFileDescriptor());
+
+        std::lock_guard<std::mutex> itsLock(watchesMutex_);
     #ifdef WIN32
         unregisterEvent(watch->getAssociatedEvent());
     #endif

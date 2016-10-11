@@ -21,6 +21,18 @@ public:
     void testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, uint8_t x, testMethodReply_t _reply);
 
     uint8_t x_;
+
+    void onSecondTestBroadcastSelectiveSubscriptionChanged(
+            const std::shared_ptr<CommonAPI::ClientId> _client,
+            const CommonAPI::SelectiveBroadcastSubscriptionEvent _event);
+
+    bool onSecondTestBroadcastSelectiveSubscriptionRequested(
+            const std::shared_ptr<CommonAPI::ClientId> _client);
+
+
+    void setSecondTestBroadcastValueToFireOnSubscription_(std::uint32_t _value);
+private:
+    std::uint32_t secondTestBroadcastValueToFireOnSubscription_;
 };
 
 } /* namespace threading */

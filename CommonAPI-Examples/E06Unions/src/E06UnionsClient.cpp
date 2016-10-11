@@ -168,7 +168,7 @@ int main() {
     std::shared_ptr<E06UnionsProxy<>> myProxy = runtime->buildProxy<E06UnionsProxy>(domain, instance, connection);
 
     while (!myProxy->isAvailable()) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     std::function<void (CommonTypes::SettingsUnion)> f = recv_msg;
@@ -178,7 +178,7 @@ int main() {
     myProxy->getXAttribute().getChangedEvent().subscribe(f1);
 
     while (true) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     return 0;

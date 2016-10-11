@@ -66,6 +66,10 @@ public class ValidatorCoreUi extends ValidatorCore {
             ex.printStackTrace();
             throw ex;
         }
+        finally {
+            importList.clear();
+            hasChanged = false;
+        }
     }
 
     protected void validateImport(FModel model,

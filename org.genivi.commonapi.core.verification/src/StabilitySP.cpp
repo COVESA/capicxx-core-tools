@@ -99,8 +99,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000));
             counter++;
         }
 
@@ -270,7 +270,7 @@ public:
             }
 
             for (unsigned int wait = 0; !proxy_[proxycount]->isAvailable() && wait < 100; ++wait) {
-                usleep(10000);
+                std::this_thread::sleep_for(std::chrono::microseconds(10000));
             }
 
             if (!proxy_[proxycount]->isAvailable())
@@ -320,7 +320,7 @@ public:
                 if (previousCount != asyncCounter) {
                     break;
                 }
-                usleep(10000);
+                std::this_thread::sleep_for(std::chrono::microseconds(10000));
             }
             if (previousCount == asyncCounter) {
                 break;
@@ -926,7 +926,7 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
     arrayTestValue.clear();
     testMultiRegisterStub_->setTestValues(arrayTestValue);
     // sleep here a while to let the subscriptions sink in
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
 
     for (unsigned int threadcount = 0; threadcount < MAXTHREADCOUNT; threadcount++) {
         proxyrunners[threadcount]->asyncCounter = 0;

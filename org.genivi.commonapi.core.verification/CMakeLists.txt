@@ -261,10 +261,24 @@ if (NOT ${TESTS_BAT})
         src/stub/AFManagedStub.cpp
         src/stub/DeviceStubImpl.cpp
         src/stub/SpecialDeviceStubImpl.cpp
+        src/stub/HLevelTopStubImpl.cpp
+        src/stub/HLevelMiddleStubImpl.cpp
+        src/stub/HLevelBottomStubImpl.cpp
+        src-gen/v1/commonapi/advanced/managed/HLevelTopStubDefault.cpp
+        src-gen/v1/commonapi/advanced/managed/HLevelMiddleStubDefault.cpp
+        src-gen/v1/commonapi/advanced/managed/HLevelBottomStubDefault.cpp
         src-gen/v1/commonapi/advanced/managed/DeviceStubDefault.cpp
         src-gen/v1/commonapi/advanced/managed/SpecialDeviceStubDefault.cpp
         src-gen/v1/commonapi/advanced/managed/ManagerStubDefault.cpp)
     target_link_libraries(AFManaged ${TEST_LINK_LIBRARIES})
+
+    add_executable(AFExtended
+        src/AFExtended.cpp
+        src/stub/AFExtendedStub.cpp
+        src-gen/v1/commonapi/advanced/extended/AFExtendedBaseStubDefault.cpp
+        src-gen/v1/commonapi/advanced/extended/AFExtendedOnceStubDefault.cpp
+        src-gen/v1/commonapi/advanced/extended/AFExtendedTwiceStubDefault.cpp)
+    target_link_libraries(AFExtended ${TEST_LINK_LIBRARIES})
 
     add_executable(AFPolymorph
         src/AFPolymorph.cpp
@@ -358,6 +372,7 @@ if (NOT ${TESTS_BAT})
     add_dependencies(RTLoadingRuntime gtest)
     add_dependencies(RTBuildProxiesAndStubs gtest)
 endif()
+
 add_dependencies(CMMethodCalls gtest)
 add_dependencies(CMAttributes gtest)
 add_dependencies(CMAttributeSubscription gtest)
@@ -365,6 +380,7 @@ add_dependencies(CMBroadcasts gtest)
 if (NOT ${TESTS_BAT})
     add_dependencies(AFSelective gtest)
     add_dependencies(AFManaged gtest)
+    add_dependencies(AFExtended gtest)
     add_dependencies(AFPolymorph gtest)
     add_dependencies(DTPrimitive gtest)
     add_dependencies(DTAdvanced gtest)
@@ -393,6 +409,7 @@ add_dependencies(check CMBroadcasts)
 if (NOT ${TESTS_BAT})
     add_dependencies(check AFSelective)
     add_dependencies(check AFManaged)
+    add_dependencies(check AFExtended)
     add_dependencies(check AFPolymorph)
     add_dependencies(check DTPrimitive)
     add_dependencies(check DTAdvanced)
@@ -438,6 +455,8 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
         set_property(TEST AFSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME AFManagedDBus COMMAND AFManaged)
         set_property(TEST AFManagedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+        add_test(NAME AFExtendedDBus COMMAND AFExtended)
+        set_property(TEST AFExtendedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME AFPolymorphDBus COMMAND AFPolymorph)
         set_property(TEST AFPolymorphDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME DTPrimitiveDBus COMMAND DTPrimitive)
@@ -504,6 +523,8 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
         set_property(TEST AFSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME AFManagedSomeIP COMMAND AFManaged)
         set_property(TEST AFManagedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+        add_test(NAME AFExtendedSomeIP COMMAND AFExtended)
+        set_property(TEST AFExtendedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME AFPolymorphSomeIP COMMAND AFPolymorph)
         set_property(TEST AFPolymorphSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME DTPrimitiveSomeIP COMMAND DTPrimitive)

@@ -20,6 +20,12 @@ interface TestInterface {
             UInt8 y
         }
     }
+
+    method testMethodTimeout {
+	out {
+	    UInt8 result
+	}
+    }
     
     broadcast bTestSelective selective {
         out {

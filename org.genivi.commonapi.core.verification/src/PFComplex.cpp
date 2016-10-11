@@ -23,7 +23,6 @@ const std::string clientId = "client-sample";
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.performance.complex.TestInterface";
-const int tasync = 100000;
 
 // Define the max. array size to test
 const int maxArraySize = 4096 / 16;
@@ -52,7 +51,6 @@ public:
          EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
          callCount_++;
          if (callCount_ == loopCountPerPaylod) {
-             callCount_ = 0;
              condVar_.notify_one();
          }
      }
@@ -69,7 +67,10 @@ protected:
         testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, "client-sample");
         ASSERT_TRUE((bool)testProxy_);
 
-        testProxy_->isAvailableBlocking();
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
         ASSERT_TRUE(testProxy_->isAvailable());
 
         callCount_ = 0;
@@ -80,8 +81,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000));
             counter++;
         }
 
@@ -186,8 +187,6 @@ TEST_F(PFComplex, Ping_Pong_Complex_Synchronous) {
 TEST_F(PFComplex, Ping_Pong_Complex_Asynchronous) {
     myCallback_ = std::bind(&PFComplex::recvArray, this, std::placeholders::_1, std::placeholders::_2);
 
-    std::unique_lock<std::mutex> uniqueLock(synchLock_);
-
     watch_.reset();
 
     // Loop until maxPrimitiveArraySize
@@ -225,7 +224,13 @@ TEST_F(PFComplex, Ping_Pong_Complex_Asynchronous) {
             testProxy_->testMethodAsync(in, myCallback_);
 #endif
         }
-        condVar_.wait(uniqueLock);
+        {
+            std::unique_lock<std::mutex> uniqueLock(synchLock_);
+            while (callCount_ != loopCountPerPaylod) {
+                condVar_.wait(uniqueLock);
+            }
+            callCount_ = 0;
+        }
         watch_.stop();
 
         // Printing results

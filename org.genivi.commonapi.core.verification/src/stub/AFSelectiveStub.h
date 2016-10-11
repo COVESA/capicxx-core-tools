@@ -21,9 +21,12 @@ public:
     void testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, uint8_t x, 
         testMethodReply_t _reply);
     virtual bool onBTestSelectiveSelectiveSubscriptionRequested(const std::shared_ptr<CommonAPI::ClientId> _client);
+    virtual void onBTestSelectiveSelectiveSubscriptionChanged(const std::shared_ptr<CommonAPI::ClientId> _client,
+            const CommonAPI::SelectiveBroadcastSubscriptionEvent _event);
         
 private:
     bool acceptSubscriptions;
+    bool fireInChangedHook_;
 };
 
 

@@ -23,7 +23,8 @@ const std::string clientId = "client-sample";
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.communication.TestInterface";
-const int tasync = 100000;
+
+const int tasync = 10000;
 
 using namespace v1_0::commonapi::communication;
 
@@ -51,27 +52,16 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::condition_variable cv;
-        bool proxyAvailable = false;
 
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
         testStub_ = std::make_shared<CMBroadcastsStub>();
         bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
         ASSERT_TRUE(serviceRegistered);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
+        testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+        int i = 0;
+        while(!testProxy_->isAvailable() && i++ < 100) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-        t1.join();
         ASSERT_TRUE(testProxy_->isAvailable());
     }
 
@@ -84,8 +74,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
             counter++;
         }
 
@@ -118,11 +108,12 @@ TEST_F(CMBroadcasts, NormalBroadcast) {
     uint8_t in_ = 1;
     uint8_t out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
 }
@@ -146,6 +137,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
     // send value '2' via a method call - this tells stub to stop accepting subs
     in_ = 2;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // subscribe
     subStatus = CommonAPI::CallStatus::UNKNOWN;
@@ -163,22 +155,20 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
     // check that subscription failed correctly
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     // The following does not happen in SOME/IP, so it's commented out.
-    //EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUBSCRIPTION_REFUSED);
+    EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUBSCRIPTION_REFUSED);
 
     // send value '3' via a method call - this tells stub to broadcast through the selective bc
     result = 0;
     in_ = 3;
     out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that no value was correctly received
-    for (int i = 0; i < 100; i++) {
-        if (result != 0) break;
-        usleep(10000);
-    }
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     EXPECT_EQ(result, 0);
 
 }
@@ -202,6 +192,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
     // send value '4' via a method call - this tells stub to start accepting subs
     in_ = 4;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // subscribe
     subStatus = CommonAPI::CallStatus::UNKNOWN;
@@ -219,7 +210,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
     // check that no error was received
     for (int i = 0; i < 100; i++) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUCCESS);
 
@@ -228,11 +219,12 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
     in_ = 3;
     out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result != 0) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
 }
@@ -256,8 +248,8 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is not available
     int counter = 0;  // counter for avoiding endless loop
-    while ( testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_FALSE(testProxy_->isAvailable());
@@ -274,8 +266,8 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is  available
     counter = 0;  // counter for avoiding endless loop
-    while ( !testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( !testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_TRUE(testProxy_->isAvailable());
@@ -284,11 +276,12 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
     uint8_t in_ = 1;
     uint8_t out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
 
@@ -297,8 +290,8 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is not available
     counter = 0;  // counter for avoiding endless loop
-    while ( testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
 
@@ -309,8 +302,8 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is  available
     counter = 0;  // counter for avoiding endless loop
-    while ( !testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( !testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_TRUE(testProxy_->isAvailable());
@@ -320,11 +313,12 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
     in_ = 1;
     out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
 }
@@ -348,14 +342,15 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     // send value '4' via a method call - this tells stub to start accepting subs
     in_ = 4;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
                             testAddress);
 
     // wait that proxy is not available
     int counter = 0;  // counter for avoiding endless loop
-    while ( testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_FALSE(testProxy_->isAvailable());
@@ -379,8 +374,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is  available
     counter = 0;  // counter for avoiding endless loop
-    while ( !testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( !testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_TRUE(testProxy_->isAvailable());
@@ -389,11 +384,12 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     in_ = 3;
     out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
 
@@ -402,8 +398,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is not available
     counter = 0;  // counter for avoiding endless loop
-    while ( testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_FALSE(testProxy_->isAvailable());
@@ -413,8 +409,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
 
     // wait that proxy is  available
     counter = 0;  // counter for avoiding endless loop
-    while ( !testProxy_->isAvailable() && counter < 10 ) {
-        usleep(100000);
+    while ( !testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         counter++;
     }
     ASSERT_TRUE(testProxy_->isAvailable());
@@ -422,17 +418,19 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     // send value '4' via a method call - this tells stub to start accepting subs
     in_ = 4;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     result = 0;
     // send value '3' via a method call - this tells stub to broadcast selective
     in_ = 3;
     out_ = 0;
     testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that value was correctly received
     for (int i = 0; i < 100; i++) {
         if (result == 1) break;
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(result, 1);
     EXPECT_EQ(errorHandlerCount, 2u);

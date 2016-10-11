@@ -52,10 +52,19 @@ protected:
 
     void TearDown() {
         runtime_->unregisterService(domain, stub_->getStubAdapter()->getInterface(), instance);
-        mainLoop_->stop();
-        //mainLoopThread_->join();
+        mainLoop_->stop().get();
 
-        usleep(1000000);
+        proxy_.reset();
+
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+
+        delete mainLoop_;
+
+        mainLoopThread_->join();
+        delete mainLoopThread_;
+
+        eventQueueThread_->join();
+        delete eventQueueThread_;
     }
 
     std::shared_ptr<CommonAPI::Runtime> runtime_;

@@ -41,7 +41,7 @@ int main() {
 
     std::cout << "Waiting for service to become available." << std::endl;
     while (!myProxy->isAvailable()) {
-        usleep(10);
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
     CommonAPI::CallStatus callStatus;
@@ -96,6 +96,6 @@ int main() {
         } else {
             std::cout << "Got cached attribute error value[" << (int)valueCached << "]: " << valueCached << std::endl;
         }
-        usleep(1000000);
+        std::this_thread::sleep_for(std::chrono::microseconds(1000000));
     }
 }

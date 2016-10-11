@@ -145,7 +145,15 @@ class FrancaGeneratorExtensions {
         return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.elementName
     }
 
-     def String getFullyQualifiedCppName(FModelElement fModelElement) {
+    def String getInterfaceVersion(FInterface _interface) {
+    	return "v" + _interface.version.major + "_" +_interface.version.minor
+    }
+
+    def String getFullyQualifiedNameWithVersion(FInterface _interface) {
+        return _interface.getFullyQualifiedName + ":" + getInterfaceVersion(_interface)
+    }   
+
+    def String getFullyQualifiedCppName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel) {
             val containerName = (fModelElement.eContainer as FModel).name
             var prefix = "::"
@@ -691,7 +699,6 @@ class FrancaGeneratorExtensions {
 
     def generateAsyncDefinitionWithin(FMethod fMethod, String parentClassName, boolean _isDefault) {
         var definition = 'std::future<CommonAPI::CallStatus> '
-
         if (FTypeGenerator::isdeprecated(fMethod.comment))
             definition = "COMMONAPI_DEPRECATED " + definition
 
@@ -895,13 +902,13 @@ class FrancaGeneratorExtensions {
     def generateGetMethodDefinitionWithin(FAttribute fAttribute, String parentClassName) {
         var definition = fAttribute.className + '& '
 
-        if (FTypeGenerator::isdeprecated(fAttribute.comment))
-            definition = "COMMONAPI_DEPRECATED " + definition
-
         if (!parentClassName.nullOrEmpty)
             definition = parentClassName + '::' + definition + parentClassName + '::'
 
         definition = definition + 'get' + fAttribute.className + '()'
+
+        if (FTypeGenerator::isdeprecated(fAttribute.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
 
         return definition
     }
@@ -952,13 +959,13 @@ class FrancaGeneratorExtensions {
     def generateGetMethodDefinitionWithin(FBroadcast fBroadcast, String parentClassName) {
         var definition = fBroadcast.className + '& '
 
-        if (FTypeGenerator::isdeprecated(fBroadcast.comment))
-            definition = "COMMONAPI_DEPRECATED " + definition
-
         if (!parentClassName.nullOrEmpty)
             definition = parentClassName + '::' + definition + parentClassName + '::'
 
         definition = definition + 'get' + fBroadcast.className + '()'
+	
+        if (FTypeGenerator::isdeprecated(fBroadcast.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
 
         return definition
     }

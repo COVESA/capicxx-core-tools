@@ -38,3 +38,32 @@ interface SpecialDevice extends Device {
     method doSomethingSpecial {
     }
 }
+
+
+
+interface HLevelTop manages HLevelMiddle {
+    version { major 1  minor 0 }
+    method test {
+        in {
+            EN x
+        }
+        out {
+            UInt8 a
+        }
+    }
+
+    enumeration EN {
+        DEFAULT
+        NEW
+    }
+}
+
+interface HLevelMiddle manages HLevelBottom {
+	version { major 1 minor 0 }
+    attribute UInt16 a
+}
+
+interface HLevelBottom {
+	version { major 1 minor 0 }
+    attribute UInt8 a
+}

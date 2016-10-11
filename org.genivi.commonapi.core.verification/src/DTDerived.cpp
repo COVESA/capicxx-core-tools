@@ -24,6 +24,8 @@ const std::string testAddress = "commonapi.datatypes.derived.TestInterface";
 const std::string connectionId_client = "client-sample";
 const std::string connectionId_service = "service-sample";
 
+const int tasync = 10000;
+
 class Environment: public ::testing::Environment {
 public:
     virtual ~Environment() {
@@ -42,28 +44,15 @@ protected:
     void SetUp() {
         runtime_ = CommonAPI::Runtime::get();
         ASSERT_TRUE((bool)runtime_);
-        std::mutex availabilityMutex;
-        std::unique_lock<std::mutex> lock(availabilityMutex);
-        std::condition_variable cv;
-        bool proxyAvailable = false;
-
-        std::thread t1([this, &proxyAvailable, &cv, &availabilityMutex]() {
-            std::lock_guard<std::mutex> lock(availabilityMutex);
-            testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::derived::TestInterfaceProxy>(domain, testAddress, connectionId_client);
-            testProxy_->isAvailableBlocking();
-            ASSERT_TRUE((bool)testProxy_);
-            proxyAvailable = true;
-            cv.notify_one();
-        });
 
         testStub_ = std::make_shared<v1_0::commonapi::datatypes::derived::DTDerivedStub>();
         serviceRegistered_ = runtime_->registerService(domain, testAddress, testStub_, connectionId_service);
         ASSERT_TRUE(serviceRegistered_);
 
-        while(!proxyAvailable) {
-            cv.wait(lock);
-        }
-        t1.join();
+        testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::derived::TestInterfaceProxy>(domain, testAddress, connectionId_client);
+        ASSERT_TRUE((bool)testProxy_);
+
+        testProxy_->isAvailableBlocking();
         ASSERT_TRUE(testProxy_->isAvailable());
     }
 
@@ -72,8 +61,8 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            usleep(100000);
+        while ( testProxy_->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
             counter++;
         }
 
@@ -242,7 +231,6 @@ TEST_F(DTDerived, BroadcastReceive) {
             const v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt& unionExtResultValue,
             const std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct>& baseStructResultValue
             ) {
-        received_ = true;
         EXPECT_EQ(structExtTestValue, structExtResultValue);
         EXPECT_EQ(enumExtTestValue, enumExtResultValue);
         EXPECT_EQ(unionExtTestValue, unionExtResultValue);
@@ -250,6 +238,7 @@ TEST_F(DTDerived, BroadcastReceive) {
         std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_twoResult =
                 std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue);
         EXPECT_EQ(l_twoResult->getName(), "ABC");
+        received_ = true;
     });
 
     testProxy_->fTest(
@@ -264,7 +253,10 @@ TEST_F(DTDerived, BroadcastReceive) {
             baseStructResultValue
     );
 
-    usleep(100000);
+    for (int i = 0; i < 100; ++i) {
+        if (received_) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     ASSERT_TRUE(received_);
 }
 

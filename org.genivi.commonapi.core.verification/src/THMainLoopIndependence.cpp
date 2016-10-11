@@ -23,6 +23,8 @@ const std::string mainloopName1 = "client-sample";
 const std::string mainloopName2 = "service-sample";
 const std::string thirdPartyServiceId = "mainloop-thirdParty";
 
+const int tasync = 10000;
+
 class PingPongTestStub : public v1_0::commonapi::threading::TestInterfaceStubDefault {
     virtual void testMethod(const std::shared_ptr<CommonAPI::ClientId> _client,
             uint8_t _x,
@@ -144,11 +146,11 @@ protected:
         mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
         for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
-            usleep(10000);
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
 
         for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
-            usleep(10000);
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
 
         ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
@@ -156,7 +158,7 @@ protected:
 
         // wait until threads are running
         while (!threadCtx1_.mainLoop_->isRunning() || !threadCtx2_.mainLoop_->isRunning()) {
-            usleep(100);
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
         std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
@@ -180,11 +182,11 @@ protected:
 
         if (threadCtx1_.mainLoop_->isRunning()) {
             std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-            //threadCtx1MainStopped.get();
+            threadCtx1MainStopped.get();
         }
         if (threadCtx2_.mainLoop_->isRunning()) {
             std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-            //threadCtx2MainStopped.get();
+            threadCtx2MainStopped.get();
         }
 
         if(mainLoopThread1_.joinable()) {
@@ -193,8 +195,15 @@ protected:
         if(mainLoopThread2_.joinable()) {
             mainLoopThread2_.join();
         }
+        threadCtx1_.proxy_.reset();
+        threadCtx1_.proxyThirdParty_.reset();
+        threadCtx2_.proxy_.reset();
+        threadCtx2_.proxyThirdParty_.reset();
 
-        usleep(20000);
+        std::this_thread::sleep_for(std::chrono::microseconds(20000));
+
+        delete threadCtx1_.mainLoop_;
+        delete threadCtx2_.mainLoop_;
     }
 
     MainLoopThreadContext threadCtx1_, threadCtx2_;
@@ -222,14 +231,17 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
     mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxy_->testMethod(x, callStatus, y); });
     mainLoopThread1_.detach();
 
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     // proxy should not receive answer, if the stub mainloop does not run
     ASSERT_EQ(0, y);
 
     mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
     mainLoopThread2_.detach();
 
-    usleep(1000000);
+    for (int i = 0; i < 100; ++i) {
+        if (y == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
 
     // now the stub mainloop also runs, so the proxy should receive the answer
     ASSERT_EQ(1, y);
@@ -259,7 +271,7 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
     mainLoopRunnerProxy2.detach();
 
     while(!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
 
     mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxyThirdParty_->testMethod(x1, callStatusProxy1, y1); });
@@ -267,7 +279,10 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
     mainLoopThread1_.detach();
     mainLoopThread2_.detach();
 
-    usleep(1000000);
+    for (int i = 0; i < 100; ++i) {
+        if (y1 == 1 && y2 == 2) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
     // now each proxy should have received the answer to his own request
     ASSERT_EQ(1, y1);
     ASSERT_EQ(2, y2);

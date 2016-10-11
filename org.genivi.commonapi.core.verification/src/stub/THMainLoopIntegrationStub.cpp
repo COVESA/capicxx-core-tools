@@ -11,8 +11,9 @@ namespace v1 {
 namespace commonapi {
 namespace threading {
 
-THMainLoopIntegrationStub::THMainLoopIntegrationStub() {
-    x_ = 0;
+THMainLoopIntegrationStub::THMainLoopIntegrationStub() :
+    x_(0),
+    secondTestBroadcastValueToFireOnSubscription_(0) {
 }
 
 THMainLoopIntegrationStub::~THMainLoopIntegrationStub() {
@@ -36,6 +37,25 @@ void THMainLoopIntegrationStub::testMethod(const std::shared_ptr<CommonAPI::Clie
     fireTestBroadcastEvent(broadcastNumber);
 
     _reply(y);
+}
+
+void THMainLoopIntegrationStub::onSecondTestBroadcastSelectiveSubscriptionChanged(
+        const std::shared_ptr<CommonAPI::ClientId> _client,
+        const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) {
+    (void) _client;
+    if(_event == CommonAPI::SelectiveBroadcastSubscriptionEvent::SUBSCRIBED) {
+        fireSecondTestBroadcastSelective(secondTestBroadcastValueToFireOnSubscription_);
+    }
+}
+
+bool THMainLoopIntegrationStub::onSecondTestBroadcastSelectiveSubscriptionRequested(
+        const std::shared_ptr<CommonAPI::ClientId> _client) {
+    (void) _client;
+    return true;
+}
+
+void THMainLoopIntegrationStub::setSecondTestBroadcastValueToFireOnSubscription_(std::uint32_t _value) {
+    secondTestBroadcastValueToFireOnSubscription_ = _value;
 }
 
 } /* namespace threading */

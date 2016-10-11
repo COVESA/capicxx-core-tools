@@ -14,6 +14,7 @@ namespace bselective {
     
 AFSelectiveStub::AFSelectiveStub() {
     acceptSubscriptions = true;
+    fireInChangedHook_ = false;
 }
 
 AFSelectiveStub::~AFSelectiveStub() {
@@ -22,6 +23,19 @@ AFSelectiveStub::~AFSelectiveStub() {
 bool AFSelectiveStub::onBTestSelectiveSelectiveSubscriptionRequested(const std::shared_ptr<CommonAPI::ClientId> _client) {
     (void)_client;
     return acceptSubscriptions;
+}
+
+void AFSelectiveStub::onBTestSelectiveSelectiveSubscriptionChanged(
+        const std::shared_ptr<CommonAPI::ClientId> _client,
+        const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) {
+
+    (void)_client;
+    (void)_event;
+
+    if (fireInChangedHook_ &&
+            _event == CommonAPI::SelectiveBroadcastSubscriptionEvent::SUBSCRIBED) {
+        fireBTestSelectiveSelective(1);
+    }
 }
 
 
@@ -42,6 +56,9 @@ void AFSelectiveStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _cli
         break;    
     case 4: // start accepting subscriptions
         acceptSubscriptions = true;
+        break;
+    case 5:
+        fireInChangedHook_ = true;
         break;
     default:
         break;

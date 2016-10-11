@@ -18,7 +18,10 @@ public:
     CMMethodCallsStub();
     virtual ~CMMethodCallsStub();
 
-    void testMethod(const std::shared_ptr<CommonAPI::ClientId> clientId, uint8_t x, 
+    void testMethod(const std::shared_ptr<CommonAPI::ClientId> _clientId, uint8_t _x,
+        testMethodReply_t _reply);
+
+    void testMethodTimeout(const std::shared_ptr<CommonAPI::ClientId> _clientId,
         testMethodReply_t _reply);
 };
 
