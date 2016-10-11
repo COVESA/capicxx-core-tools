@@ -62,7 +62,7 @@ class FInterfaceGenerator {
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         «FOR instanceId : deployedInstances»
-            const char * «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')» = "«instanceId»";
+            const char * const «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')» = "«instanceId»";
         «ENDFOR»
 
         const std::string «fInterface.elementName»_INSTANCES[] = {
