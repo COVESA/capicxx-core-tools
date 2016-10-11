@@ -17,7 +17,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
     }
     
     method sayHello {
-        SomeIpMethodID = 33000
+        SomeIpMethodID = 3002
         
         in {
             name {

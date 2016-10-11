@@ -145,8 +145,8 @@ TEST_F(DTCombined, SendAndReceive) {
     TestInterface::tMapStruct mapStructTV0 = {{"Hello", structTV0}};
     TestInterface::tMapStruct mapStructTV1 = {{"Hello", structTV0}, {"World", structTV1}};
     TestInterface::tMapStruct mapStructTV2 = {{"Hello", structTV0}, {"World", structTV1}, {"JG", structTV0}};
-    TestInterface::tMapUnion mapUnionTV0 = {{1.23456789, unionTV2}, {9.87654321, unionTV3}};
-    TestInterface::tMapUnion mapUnionTV1 = {{3.123, unionTV0}, {0.111111, unionTV1}};
+    TestInterface::tMapUnion mapUnionTV0 = {{1.23456789f, unionTV2}, {9.87654321f, unionTV3}};
+    TestInterface::tMapUnion mapUnionTV1 = {{3.123f, unionTV0}, {0.111111f, unionTV1}};
     TestInterface::tMapMap mapMapTV0 = {{-1, mapTV0}, {-2, mapTV1}};
 
 
@@ -219,6 +219,102 @@ TEST_F(DTCombined, SendAndReceive) {
     EXPECT_EQ(tStructL3TV, tStructL3RV);
 }
 
+/**
+* @test Test that combined types are properly initialized
+*/
+TEST_F(DTCombined, CheckInitialValue) {
+
+    TestInterface::tEnum e1;
+    // check contents of e1
+    EXPECT_EQ(e1, TestInterface::tEnum::VALUE1);
+
+    TestInterface::tArray a1;
+    // check that a1 is empty (no values)
+    EXPECT_EQ(a1.size(), 0u);
+
+    TestInterface::tStruct s1;
+    // check that the elements of s1 are initialized
+    EXPECT_EQ(s1.getBooleanMember(), false);
+    EXPECT_EQ(s1.getUint8Member(), 0);
+    EXPECT_EQ(s1.getStringMember().size(), 0u);
+    EXPECT_EQ(s1.getEnumMember(), TestInterface::tEnum::VALUE1);
+
+    TestInterface::tUnion u1;
+    TestInterface::tUnion u2;
+    u2 = false;
+    // check that the union contains a good value
+    // union is initialized with the first kind of value.
+    // here, that is a boolean, and its value type is '4' - the number
+    //  of types in the union.
+    EXPECT_EQ(u1.getValueType(), 4);
+    EXPECT_EQ(u1, u2);
+
+    TestInterface::tMap m1;
+    // check that the map is empty
+    EXPECT_EQ(m1.size(), 0u);
+
+    // Level1
+    TestInterface::tStructL1 s_l1;
+    // check that the elements of s_l1 are initialized
+    EXPECT_EQ(s_l1.getEnumMember(), TestInterface::tEnum::VALUE1);
+    EXPECT_EQ(s_l1.getArrayMemner().size(), 0u);
+    EXPECT_EQ(s_l1.getStructMember().getBooleanMember(), false);
+    EXPECT_EQ(s_l1.getStructMember().getUint8Member(), 0);
+    EXPECT_EQ(s_l1.getStructMember().getStringMember().size(), 0u);
+    EXPECT_EQ(s_l1.getStructMember().getEnumMember(), TestInterface::tEnum::VALUE1);
+    EXPECT_EQ(s_l1.getUnionMember().getValueType(), 4);
+    EXPECT_EQ(s_l1.getUnionMember(), u2);
+    EXPECT_EQ(s_l1.getMapMember().size(), 0u);
+
+    // Level2
+    TestInterface::tStructL2 s_l2;
+    // check that the elements of s_l2 are initialized
+    EXPECT_EQ(s_l2.getArrayEnumMember().size(), 0u);
+    EXPECT_EQ(s_l2.getArrayArrayMember().size(), 0u);
+    EXPECT_EQ(s_l2.getArrayStructMember().size(), 0u);
+    EXPECT_EQ(s_l2.getArrayUnionMember().size(), 0u);
+    EXPECT_EQ(s_l2.getArrayMapMember().size(), 0u);
+    EXPECT_EQ(s_l2.getStructL1Member().getEnumMember(), TestInterface::tEnum::VALUE1);
+    EXPECT_EQ(s_l2.getStructL1Member().getArrayMemner().size(), 0u);
+    EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getBooleanMember(), false);
+    EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getUint8Member(), 0);
+    EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getStringMember().size(), 0u);
+    EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getEnumMember(), TestInterface::tEnum::VALUE1);
+    EXPECT_EQ(s_l2.getStructL1Member().getUnionMember().getValueType(), 4);
+    EXPECT_EQ(s_l2.getStructL1Member().getUnionMember(), u2);
+    EXPECT_EQ(s_l2.getStructL1Member().getMapMember().size(), 0u);
+    EXPECT_EQ(s_l2.getUnionL1Member().getValueType(), 5);
+    TestInterface::tUnionL1 u_l1(TestInterface::tEnum::VALUE1);
+    EXPECT_EQ(s_l2.getUnionL1Member(), u_l1);
+    EXPECT_EQ(s_l2.getMapEnumMember().size(), 0u);
+    EXPECT_EQ(s_l2.getMapArrayMember().size(), 0u);
+    EXPECT_EQ(s_l2.getMapStructMember().size(), 0u);
+    EXPECT_EQ(s_l2.getMapUnionMember().size(), 0u);
+    EXPECT_EQ(s_l2.getMapMapMember().size(), 0u);
+
+}
+class DTCombined2: public ::testing::Test {
+protected:
+    void SetUp() {
+    }
+
+    void TearDown() {
+    }
+};
+TEST_F(DTCombined2, VariantWithLiteralEnum) {
+      TestInterface::tUnion u_l1(TestInterface::tEnum::VALUE2);
+      TestInterface::tUnion u_l2(TestInterface::tEnum::VALUE2);
+      TestInterface::tUnion u_l3(TestInterface::tEnum::VALUE2);
+      TestInterface::tEnum e(TestInterface::tEnum::VALUE2);
+      EXPECT_EQ(u_l1, u_l2);
+      u_l2 = static_cast<TestInterface::tEnum>(TestInterface::tEnum::VALUE2);
+      u_l2 = TestInterface::tEnum::VALUE2;
+      u_l3 = e;
+      EXPECT_EQ(u_l1, u_l2);
+      EXPECT_EQ(u_l1, u_l3);
+      EXPECT_EQ(u_l2, u_l3);
+      u_l2 = (uint8_t)5;
+}
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::AddGlobalTestEnvironment(new Environment());

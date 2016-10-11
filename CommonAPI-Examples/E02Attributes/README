@@ -72,15 +72,6 @@ Now see the implementation of the client. The simplest case is to get the curren
 #include <v1/commonapi/examples/E02AttributesProxy.hpp>
 using namespace v1::commonapi::examples;
 
-template<typename _AttributeType>
-class AttrExt : public CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>
-{
-public:
-    AttrExt(_AttributeType& baseAttribute) :
-        CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>(baseAttribute) {
-    };
-};
-
 void recv_cb(const CommonAPI::CallStatus& callStatus, const int32_t& val) {
     std::cout << "Receive callback: " << val << std::endl;
 }
@@ -98,7 +89,7 @@ int main() {
     std::string domain = "local";
     std::string instance = "commonapi.examples.Attributes"; 
     std::string connection = "client-sample";
-    auto myProxy = runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttrExt>(domain, instance, connection);
+    auto myProxy = runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, CommonAPI::Extensions::AttributeCacheExtension>(domain, instance, connection);
 
     std::cout << "Waiting for service to become available." << std::endl;
     while (!myProxy->isAvailable()) {

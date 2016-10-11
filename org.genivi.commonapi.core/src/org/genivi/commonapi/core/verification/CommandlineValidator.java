@@ -7,15 +7,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.emf.common.util.BasicDiagnostic;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.xtext.diagnostics.Severity;
 import org.eclipse.xtext.resource.IResourceServiceProvider;
 import org.eclipse.xtext.util.IAcceptor;
+import org.eclipse.xtext.validation.AbstractValidationMessageAcceptor;
 import org.eclipse.xtext.validation.CheckMode;
 import org.eclipse.xtext.validation.DiagnosticConverterImpl;
 import org.eclipse.xtext.validation.IResourceValidator;
@@ -25,9 +28,9 @@ import org.franca.core.dsl.FrancaIDLRuntimeModule;
 import org.franca.core.dsl.FrancaImportsProvider;
 import org.franca.core.franca.FModel;
 import org.franca.core.franca.Import;
-import org.franca.core.utils.ModelPersistenceHandler;
 import org.franca.deploymodel.dsl.FDeployImportsProvider;
 import org.franca.deploymodel.dsl.fDeploy.FDModel;
+import org.genivi.commonapi.core.generator.StandaloneModelPersistenceHandler;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -196,17 +199,78 @@ public class CommandlineValidator {
         {
             // Load the FIDL and all imported FIDL files, or the FDEPL and all imported FDEPL/FIDL files.
             //
-            ModelPersistenceHandler.registerFileExtensionHandler("fidl", new FrancaImportsProvider());
-            ModelPersistenceHandler.registerFileExtensionHandler("fdepl", new FDeployImportsProvider());
+            StandaloneModelPersistenceHandler.registerFileExtensionHandler("fidl", new FrancaImportsProvider());
+            StandaloneModelPersistenceHandler.registerFileExtensionHandler("fdepl", new FDeployImportsProvider());
             Injector injector = Guice.createInjector(new FrancaIDLRuntimeModule());
-            ModelPersistenceHandler modelPersistenceHandler = new ModelPersistenceHandler(injector.getInstance(ResourceSet.class));
+            StandaloneModelPersistenceHandler modelPersistenceHandler = new StandaloneModelPersistenceHandler(injector.getInstance(ResourceSet.class));
+            modelPersistenceHandler.setIgnoreMissingDeploymentSpecs(true);
+
+            final BasicDiagnostic diagnostics = new BasicDiagnostic();
+            ValidationMessageAcceptor messageAcceptor = new AbstractValidationMessageAcceptor() {
+                @Override
+                public void acceptInfo(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+                    diagnostics.add(new BasicDiagnostic(Diagnostic.INFO, null, 0, message, null));
+                }
+
+                @Override
+                public void acceptWarning(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+                    diagnostics.add(new BasicDiagnostic(Diagnostic.WARNING, null, 0, message, null));
+                }
+
+                @Override
+                public void acceptError(String message, EObject object, EStructuralFeature feature, int index, String code, String... issueData) {
+                    diagnostics.add(new BasicDiagnostic(Diagnostic.ERROR, null, 0, message, null));
+                }
+            };
+            modelPersistenceHandler.setMessageAcceptor(messageAcceptor);
+
             URI rootPathUri = URI.createPlatformResourceURI("/", true);
             modelPersistenceHandler.loadModel(resourcePathUri, rootPathUri);
+            if (!outputDiagnostics(diagnostics.getChildren(), false))
+                return false;
 
+            // Validate FDEPL/FIDL files with registered XText validators
+            //
+            if (!validate(modelPersistenceHandler.getResourceSet()))
+                return false;
+
+            // Perform deployment specific validation which is not handled by XText/Franca validators
+            //
             if (!validateDeployment(modelPersistenceHandler.getResourceSet()))
                 return false;
         }
         return true;
+    }
+
+	protected boolean validate(ResourceSet resourceSet)
+    {
+        boolean hasValidationError = false;
+        for (Resource resource : resourceSet.getResources())
+        {
+            if (!validate(resource))
+                hasValidationError = true;
+        }
+        return !hasValidationError;
+    }
+
+	protected boolean validate(Resource resource)
+    {
+        boolean hasValidationError = false;
+        IResourceServiceProvider resourceServiceProvider = IResourceServiceProvider.Registry.INSTANCE.getResourceServiceProvider(resource.getURI());
+        if (resourceServiceProvider != null)
+        {
+            IResourceValidator resourceValidator = resourceServiceProvider.getResourceValidator();
+            Collection<Issue> issues = resourceValidator.validate(resource, CheckMode.ALL, null);
+            ArrayList<Issue> filtered = new ArrayList<Issue>();
+            for (Issue issue : issues)
+            {
+                if (!isErrorToIgnore(issue))
+                    filtered.add(issue);
+            }
+            if (!outputIssues(filtered))
+                hasValidationError = true;
+        }
+        return !hasValidationError;
     }
 
     protected boolean validateDeployment(ResourceSet resourceSet)
@@ -228,31 +292,41 @@ public class CommandlineValidator {
         List<Diagnostic> diags = validateDeployment(fdeplModels);
         if (diags != null)
         {
-            int numErrors = 0, numWarnings = 0;
-            final List<Issue> issues = new ArrayList<Issue>();
-            IAcceptor<Issue> acceptor = new IAcceptor<Issue>()
-            {
-                @Override
-                public void accept(Issue issue)
-                {
-                    issues.add(issue);
-                }
-            };
-            DiagnosticConverterImpl converter = new DiagnosticConverterImpl();
-            for (Diagnostic diag : diags)
-            {
-                converter.convertValidatorDiagnostic(diag, acceptor);
-                if (diag.getSeverity() == Diagnostic.ERROR) {
-                    numErrors++;
-                    hasValidationError = true;
-                }
-                else if (diag.getSeverity() == Diagnostic.WARNING)
-                    numWarnings++;
-            }
-            if (!outputIssues(issues))
-                hasValidationError = true;
-            showInfo("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
+            hasValidationError = !outputDiagnostics(diags, true);
         }
+
+        return !hasValidationError;
+    }
+
+    private boolean outputDiagnostics(List<Diagnostic> diags, boolean showResultMessage)
+    {
+        boolean hasValidationError = false;
+
+        int numErrors = 0, numWarnings = 0;
+        final List<Issue> issues = new ArrayList<Issue>();
+        IAcceptor<Issue> acceptor = new IAcceptor<Issue>()
+        {
+            @Override
+            public void accept(Issue issue)
+            {
+                issues.add(issue);
+            }
+        };
+        DiagnosticConverterImpl converter = new DiagnosticConverterImpl();
+        for (Diagnostic diag : diags)
+        {
+            converter.convertValidatorDiagnostic(diag, acceptor);
+            if (diag.getSeverity() == Diagnostic.ERROR) {
+                numErrors++;
+                hasValidationError = true;
+            }
+            else if (diag.getSeverity() == Diagnostic.WARNING)
+                numWarnings++;
+        }
+        if (!outputIssues(issues))
+            hasValidationError = true;
+        if (showResultMessage)
+            showInfo("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
 
         return !hasValidationError;
     }

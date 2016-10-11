@@ -20,7 +20,7 @@ import org.franca.deploymodel.dsl.fDeploy.Import;
  * The FDeployManager loads models from fdepl files and from fidl files that are
  * imported in a fdepl file. It continues to import files even it could not find
  * all of them (e.g an unknown deployment specification).
- * 
+ *
  * @author gutknecht
  *
  */
@@ -49,10 +49,10 @@ public class FDeployManager {
 	}
 
 	/**
-	 * 
+	 *
 	 * Load the model found in the fileName. Its dependencies (imports) can be
 	 * loaded subsequently.
-	 * 
+	 *
 	 * @param uri
 	 *            the URI to be loaded
 	 * @param root
@@ -66,15 +66,17 @@ public class FDeployManager {
 				|| fidlModels.keySet().contains(uri.toString())) {
 			return null;
 		}
-		
+
 		URI absURI = uri.resolve(root);
-		
-		if (!uri.equals(absURI)) {
-			// add this pair to URI converter so that others can get the URI by
-			// its relative path
-			resourceSet.getURIConverter().getURIMap().put(uri, absURI);
-		}
-		
+
+        // Do not put relative paths into that 'URIMap'. See also: https://github.com/franca/franca/issues/180
+		//
+//		if (!uri.equals(absURI)) {
+//			// add this pair to URI converter so that others can get the URI by
+//			// its relative path
+//			resourceSet.getURIConverter().getURIMap().put(uri, absURI);
+//		}
+
 		// load root model
 		Resource resource = null;
 		try {
@@ -86,10 +88,10 @@ public class FDeployManager {
 		} catch (Exception e) {
 			// Don't show an error message here, because code may be generated
 			// from an included fidl file.
-			// System.err.println("Failed to load model from : " + absURI + "(" + e.getMessage() +")"); 
+			// System.err.println("Failed to load model from : " + absURI + "(" + e.getMessage() +")");
 			return null;
 		}
-		
+
 		EObject model = resource.getContents().get(0);
 
 		// load all its imports recursively
@@ -99,16 +101,18 @@ public class FDeployManager {
 			if (importURIStr != null) {
 				if(!importURIStr.startsWith("platform")) {
 					String[] splitted = importURIStr.split(":");
-					// there may be a drive letter "C:" under Windows,  
-					// remove it, to get it resolved  
+					// there may be a drive letter "C:" under Windows,
+					// remove it, to get it resolved
 					importURIStr = splitted[splitted.length -1];
 				}
 				URI importURI = URI.createURI(importURIStr);
 				URI resolvedURI = importURI.resolve(absURI);
-				// add this pair to URI converter so that others can get the URI
-				// by its relative path
-				resourceSet.getURIConverter().getURIMap()
-						.put(importURI, resolvedURI);
+		        // Do not put relative paths into that 'URIMap'. See also: https://github.com/franca/franca/issues/180
+		        //
+//				// add this pair to URI converter so that others can get the URI
+//				// by its relative path
+//				resourceSet.getURIConverter().getURIMap()
+//						.put(importURI, resolvedURI);
 				String uriName = resolvedURI.toString();
 				EObject importModel = loadModel(resolvedURI, root);
 				if (importModel != null) {
@@ -133,7 +137,7 @@ public class FDeployManager {
 
 	/**
 	 * Load the model from fdepl that has an fidl file import
-	 * 
+	 *
 	 * @param fdmodel
 	 *            - the deployment model from fdepl
 	 * @param input
@@ -160,7 +164,7 @@ public class FDeployManager {
 		}
 		return null;
 	}
-	
+
 	public Map<String, FDModel> getDeploymentModels() {
 		return deploymentModels;
 	}

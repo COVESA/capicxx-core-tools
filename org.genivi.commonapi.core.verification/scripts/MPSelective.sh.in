@@ -1,0 +1,22 @@
+#!/bin/bash
+# run the multiprocess test
+# the ini and json files must be preset
+# run this from the build directory
+# start client
+./MPSelectiveClient &
+sleep 0.1
+CPID=`pidof MPSelectiveClient`
+#
+# start service
+# wait a while to let subscriptions etc. settle
+# kill the service you started, nicely
+# client determines if the test was successful
+while [ -d /proc/$CPID ]
+do
+  ./MPSelectiveService >/dev/null &
+  PID=$!
+  disown $PID
+  sleep 0.15
+  kill $PID
+done
+wait $CPID

@@ -1,0 +1,65 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+package commonapi.datatypes.deployment
+
+interface TestInterface {
+    version { major 1 minor 0 }
+    // IsZero = set to zero in deployment
+    // 1
+    attribute UInt32 myAttrGetterIsZeroSetterIsZeroNotifierIsZero
+    // 2
+    attribute UInt32 myAttrGetterIsZeroSetterIsZeroNotifierIsNotZero_ReadOnly readonly  // only this is valid
+    attribute UInt32 myAttrGetterIsZeroSetterIsZeroNotifierIsNotZero
+    attribute UInt32 myAttrGetterIsZeroSetterIsZeroNotifierIsNotZero_NoSub noSubscriptions
+    attribute UInt32 myAttrGetterIsZeroSetterIsZeroNotifierIsNotZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // 3
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsZero_NoSub noSubscriptions // only this is valid
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsZero
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsZero_ReadOnly readonly
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // 4
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsNotZero // only this is valid
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsNotZero_NoSub noSubscriptions
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsNotZero_ReadOnly readonly
+    attribute UInt32 myAttrGetterIsZeroSetterIsNotZeroNotifierIsNotZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // 5
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsZero_ReadOnlyNoSub readonly noSubscriptions // only this is valid
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsZero
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsZero_ReadOnly readonly
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsZero_NoSub noSubscriptions
+
+    // 6
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsNotZero_ReadOnly readonly // only this is valid
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsNotZero
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsNotZero_NoSub noSubscriptions
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsZeroNotifierIsNotZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // 7
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsZero_NoSub noSubscriptions // only this is valid
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsZero
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsZero_ReadOnly readonly
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // 8
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsNotZero  // only this is valid
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsNotZero_NoSub noSubscriptions
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsNotZero_ReadOnly readonly
+    attribute UInt32 myAttrGetterIsNotZeroSetterIsNotZeroNotifierIsNotZero_ReadOnlyNoSub readonly noSubscriptions
+
+    // partial not deployed attributes
+    // NotDeployed = not deployed in deployment
+
+    // comment in to check if deployment warnings are displayed but code won't be compilable anymore
+//    attribute UInt32 myAttrGetterIsNotDeployedSetterIsNotDeployedNotifierIsNotDeployed
+//    attribute UInt32 myAttrGetterIsNotDeployedSetterIsNotDeployedNotifierIsDeployed
+//    attribute UInt32 myAttrGetterIsNotDeployedSetterIsDeployedNotifierIsNotDeployed
+//    attribute UInt32 myAttrGetterIsNotDeployedSetterIsDeployedNotifierIsDeployed
+//    attribute UInt32 myAttrGetterIsDeployedSetterIsNotDeployedNotifierIsNotDeployed
+//    attribute UInt32 myAttrGetterIsDeployedSetterIsNotDeployedNotifierIsDeployed
+//    attribute UInt32 myAttrGetterIsDeployedSetterIsDeployedNotifierIsNotDeployed
+    attribute UInt32 myAttrGetterIsDeployedSetterIsDeployedNotifierIsDeployed
+}

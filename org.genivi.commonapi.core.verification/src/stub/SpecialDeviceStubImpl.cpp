@@ -17,7 +17,5 @@ void SpecialDeviceStubImpl::doSomethingSpecial(
         const std::shared_ptr<CommonAPI::ClientId> _client,
         doSomethingSpecialReply_t _reply) {
     (void)_client;
-    std::cout << "SpecialDeviceStubImpl::doSomethingSpecial() called."
-            << std::endl;
     _reply();
 }

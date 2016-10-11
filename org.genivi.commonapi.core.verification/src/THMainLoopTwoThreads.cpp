@@ -75,20 +75,20 @@ protected:
 * @test Proxy Receives Available when MainLoop Dispatched sourced out to other thread.
 */
 TEST_F(THMainLoopTwoThreads, ProxyGetsAvailableStatus) {
-    std::condition_variable available;
+    std::shared_ptr<std::condition_variable> sptrAvailable(new std::condition_variable());
     std::mutex m;
-    bool isAvailable(false);
+    std::shared_ptr<bool> sptrIsAvailable(new bool(false));
     
-    proxy_->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& val) {
+    proxy_->getProxyStatusEvent().subscribe([=](const CommonAPI::AvailabilityStatus& val) {
         if (val == CommonAPI::AvailabilityStatus::AVAILABLE) {
-            isAvailable = true;
-            available.notify_one();
+            *sptrIsAvailable = true;
+            sptrAvailable->notify_one();
         }
     });
 
-    if (!isAvailable) {
+    if (!*sptrIsAvailable) {
         std::unique_lock<std::mutex> uniqueLock(m);
-        available.wait_for(uniqueLock, std::chrono::seconds(10));
+        sptrAvailable->wait_for(uniqueLock, std::chrono::seconds(10));
     }
     
     ASSERT_TRUE(proxy_->isAvailable());
@@ -98,20 +98,20 @@ TEST_F(THMainLoopTwoThreads, ProxyGetsAvailableStatus) {
 * @test Proxy gets function response when MainLoop Dispatched sourced out to other thread.
 */
 TEST_F(THMainLoopTwoThreads, ProxyGetsFunctionResponse) {
-    std::condition_variable available;
+    std::shared_ptr<std::condition_variable> sptrAvailable(new std::condition_variable());
     std::mutex m;
-    bool isAvailable(false);
+    std::shared_ptr<bool> sptrIsAvailable(new bool(false));
 
-    proxy_->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& val) {
+    proxy_->getProxyStatusEvent().subscribe([=](const CommonAPI::AvailabilityStatus& val) {
         if (val == CommonAPI::AvailabilityStatus::AVAILABLE) {
-            isAvailable = true;
-            available.notify_one();
+            *sptrIsAvailable = true;
+            sptrAvailable->notify_one();
         }
     });
 
-    if (!isAvailable) {
+    if (!*sptrIsAvailable) {
         std::unique_lock<std::mutex> uniqueLock(m);
-        available.wait_for(uniqueLock, std::chrono::seconds(10));
+        sptrAvailable->wait_for(uniqueLock, std::chrono::seconds(10));
     }
 
     ASSERT_TRUE(proxy_->isAvailable());

@@ -1,0 +1,17 @@
+Set WshShell = CreateObject("WScript.Shell")
+
+Set cstatus = WshShell.Exec( "@CMAKE_BUILD_TYPE@\MPSelectiveClient.exe" )
+Set cStdOut = cstatus.StdOut
+
+Do Until cstatus.Status = 1
+  Set sstatus = WshShell.Exec( "@CMAKE_BUILD_TYPE@\MPSelectiveService.exe" )
+  Do Until sstatus.Status = 1
+      WScript.Sleep(50)
+  Loop
+  Set sstatus = Nothing
+Loop
+While Not cStdOut.AtEndOfStream
+    strLine = cStdOut.ReadLine
+	WScript.Echo strLine
+Wend
+WScript.Quit cstatus.ExitCode

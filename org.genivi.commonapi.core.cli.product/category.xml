@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/org.genivi.commonapi.console.feature_3.1.5.qualifier.jar" id="org.genivi.commonapi.console.feature" version="3.1.5.qualifier">
+   <feature url="features/org.genivi.commonapi.console.feature_3.1.8.qualifier.jar" id="org.genivi.commonapi.console.feature" version="3.1.8.qualifier">
       <category name="GENIVI CommonAPI Console"/>
    </feature>
-   <feature url="features/org.genivi.commonapi.console.franca.feature_3.1.5.qualifier.jar" id="org.genivi.commonapi.console.franca.feature" version="3.1.5.qualifier">
+   <feature url="features/org.genivi.commonapi.console.franca.feature_3.1.8.qualifier.jar" id="org.genivi.commonapi.console.franca.feature" version="3.1.8.qualifier">
       <category name="GENIVI CommonAPI Console"/>
    </feature>
    <category-def name="GENIVI CommonAPI Console" label="GENIVI CommonAPI Console Generators">

@@ -32,7 +32,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
     SomeIpServiceID = 4661
 
     method doSomething {
-        SomeIpMethodID = 33001
+        SomeIpMethodID = 30001
     }
 }
 
@@ -63,7 +63,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
     SomeIpServiceID = 4662
 
     method doSomethingSpecial {
-        SomeIpMethodID = 33002
+        SomeIpMethodID = 30002
     }
 }
 

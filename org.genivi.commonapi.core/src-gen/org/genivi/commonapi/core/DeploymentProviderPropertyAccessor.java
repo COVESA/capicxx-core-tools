@@ -27,8 +27,8 @@ public class DeploymentProviderPropertyAccessor
 		return target.getInterfaceArray(obj, "ClientInstanceReferences");
 	}
 	
-	public String getProject (FDProvider obj) {
-		return target.getString(obj, "Project");
+	public List<String> getProjectVariants (FDProvider obj) {
+		return target.getStringArray(obj, "ProjectVariants");
 	}
 	
 	public String getDomain (FDInterfaceInstance obj) {

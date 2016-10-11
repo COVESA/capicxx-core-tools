@@ -73,9 +73,9 @@ import static com.google.common.base.Preconditions.*
 import static extension java.lang.Integer.*
 
 class FrancaGeneratorExtensions {
-    
+
     def boolean isComplex(String _typeName) {
-        if (_typeName == "bool" || 
+        if (_typeName == "bool" ||
             _typeName == "int8" ||
             _typeName == "int16" ||
             _typeName == "int32" ||
@@ -89,6 +89,37 @@ class FrancaGeneratorExtensions {
         return true
     }
 
+    def String isSigned(String _typeName) {
+        if (_typeName == "Int8" ||
+            _typeName == "Int16" ||
+            _typeName == "Int32" ||
+            _typeName == "Int64") {
+            return "true"
+        }
+        return "false"
+    }
+
+    def String getBitWidth(FBasicTypeId _typeId) {
+        if (_typeId == FBasicTypeId.BOOLEAN ||
+            _typeId == FBasicTypeId.INT8 ||
+            _typeId == FBasicTypeId.UINT8)
+            return "8"
+
+        if (_typeId == FBasicTypeId.INT16 ||
+            _typeId == FBasicTypeId.UINT16)
+            return "16"
+
+        if (_typeId == FBasicTypeId.INT32 ||
+            _typeId == FBasicTypeId.UINT32)
+            return "32"
+
+        if (_typeId == FBasicTypeId.INT64 ||
+            _typeId == FBasicTypeId.UINT64)
+            return "64"
+
+        return ""
+    }
+
     def String generateIndent(int _indent) {
         var String  empty = ""
         var int i = 0
@@ -98,7 +129,7 @@ class FrancaGeneratorExtensions {
         }
         return empty
     }
-    
+
     def String getRelativeName(FModelElement _element) {
         if (_element instanceof FTypeCollection)
             return ""
@@ -113,7 +144,7 @@ class FrancaGeneratorExtensions {
             return (fModelElement.eContainer as FModel).name + '.' + fModelElement.elementName
         return (fModelElement.eContainer as FModelElement).fullyQualifiedName + '.' + fModelElement.elementName
     }
-    
+
      def String getFullyQualifiedCppName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel) {
             val containerName = (fModelElement.eContainer as FModel).name
@@ -128,7 +159,7 @@ class FrancaGeneratorExtensions {
         }
         return ((fModelElement.eContainer as FModelElement).fullyQualifiedCppName + "::" + fModelElement.elementName).replace(".", "::")
     }
-    
+
     def splitCamelCase(String string) {
         string.split("(?<!(^|[A-Z]))(?=[A-Z])|(?<!^)(?=[A-Z][a-z])")
     }
@@ -169,8 +200,8 @@ class FrancaGeneratorExtensions {
         var definePrefix = ""
         if (fModelElement instanceof FTypeCollection)
             if (fModelElement.version != null)
-                definePrefix = "V" + fModelElement.version.major.toString() + "_" 
-        
+                definePrefix = "V" + fModelElement.version.major.toString() + "_"
+
         val defineSuffix = '_' + fModelElement.elementName.splitCamelCase.join('_')
 
         if (fModelElement.eContainer instanceof FModelElement)
@@ -238,7 +269,7 @@ class FrancaGeneratorExtensions {
     def getInstanceHeaderFile(FTypeCollection fTypeCollection) {
         fTypeCollection.elementName + "InstanceIds.hpp"
     }
-    
+
     def getHeaderPath(FTypeCollection fTypeCollection) {
         fTypeCollection.versionPathPrefix + fTypeCollection.model.directoryPath + '/' + fTypeCollection.headerFile
     }
@@ -282,7 +313,7 @@ class FrancaGeneratorExtensions {
     def getSkeletonNamePostfix() {
         FPreferences::instance.getPreference(PreferenceConstants::P_SKELETONPOSTFIX, "Default")
     }
-    
+
     def getHeaderDefineName(FInterface fInterface) {
         fInterface.defineName + "_STUB_" + skeletonNamePostfix.toUpperCase()
     }
@@ -310,7 +341,7 @@ class FrancaGeneratorExtensions {
     def getStubAdapterClassName(FInterface fInterface) {
         fInterface.elementName + 'StubAdapter'
     }
-    
+
     def getStubCommonAPIClassName(FInterface fInterface) {
         'CommonAPI::Stub<' + fInterface.stubAdapterClassName + ', ' + fInterface.stubRemoteEventClassName + '>'
     }
@@ -344,7 +375,7 @@ class FrancaGeneratorExtensions {
     def getStubClassName(FInterface fInterface) {
         fInterface.elementName + 'Stub'
     }
-    
+
     def getStubFullClassName(FInterface fInterface) {
         fInterface.getFullName + 'Stub'
     }
@@ -430,13 +461,13 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         signature = signature + fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
-        
+
         if (!fMethod.isFireAndForget) {
             if (signature != "")
                 signature = signature + ", ";
             signature = signature + fMethod.elementName + "Reply_t _reply";
         }
-        
+
         return signature
     }
 
@@ -447,16 +478,16 @@ class FrancaGeneratorExtensions {
             signature = signature + ', '
 
         signature = signature + fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
-        
+
         if (!fMethod.isFireAndForget) {
             if (signature != "")
                 signature = signature + ", ";
             signature = signature + methodName + "Reply_t _reply";
         }
-        
+
         return signature
     }
-    
+
     def generateStubReplySignature(FMethod fMethod) {
         var signature = ''
 
@@ -470,7 +501,31 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
+    def String generateDummyValue(FTypeRef typeRef) {
+        var String retval = ""
+        if (typeRef.derived == null && typeRef.predefined != null) {
+            retval +=
+                switch typeRef.predefined {
+                    case FBasicTypeId::BOOLEAN:     "false"
+                    case FBasicTypeId::INT8:        "0"
+                    case FBasicTypeId::UINT8:       "0u"
+                    case FBasicTypeId::INT16:       "0"
+                    case FBasicTypeId::UINT16:      "0u"
+                    case FBasicTypeId::INT32:       "0"
+                    case FBasicTypeId::UINT32:      "0ul"
+                    case FBasicTypeId::INT64:       "0"
+                    case FBasicTypeId::UINT64:      "0ull"
+                    case FBasicTypeId::FLOAT:       "0.0f"
+                    case FBasicTypeId::DOUBLE:      "0.0"
+                    case FBasicTypeId::STRING:      "\"\""
+                    case FBasicTypeId::BYTE_BUFFER: "CommonAPI::ByteBuffer()"
+                    default: ""
+                }
+        }
+        return retval
+    }
+
     def String generateDummyArgumentInitializations(FMethod fMethod) {
        var String retval = ""
        for(list_element : fMethod.outArgs) {
@@ -480,7 +535,7 @@ class FrancaGeneratorExtensions {
        }
        return retval
     }
-    
+
     private def String generateDummyArgumentInitialization(FTypeRef typeRef, FArgument list_element, FMethod fMethod) {
         if (list_element.array) {
             " = {}"
@@ -492,7 +547,7 @@ class FrancaGeneratorExtensions {
             ""
         }
     }
-    
+
     private def generateDummyArgumentInitialization(FType type, FArgument list_element, FMethod fMethod) {
         if ((type instanceof FArrayType) || (type instanceof FCompoundType)) {
             " = {}"
@@ -511,7 +566,7 @@ class FrancaGeneratorExtensions {
             ""
         }
     }
-    
+
     private def generateDummyArgumentInitialization(FBasicTypeId basicType) {
         switch basicType {
             case FBasicTypeId::BOOLEAN:     " = false"
@@ -530,7 +585,7 @@ class FrancaGeneratorExtensions {
             default: ""
         }
     }
-        
+
     def generateDummyArgumentDefinitions(FMethod fMethod) {
       var definition = ''
       if (fMethod.hasError)
@@ -594,7 +649,7 @@ class FrancaGeneratorExtensions {
 
     def generateArgumentsToStub(FMethod fMethod) {
         var arguments = ' _client'
-        
+
         if (!fMethod.inArgs.empty)
             arguments = arguments + ', ' + fMethod.inArgs.map[elementName].join(', ')
 
@@ -603,7 +658,7 @@ class FrancaGeneratorExtensions {
 
         if (fMethod.hasError)
             arguments = arguments + '_error'
-            
+
         if (fMethod.hasError && !fMethod.outArgs.empty)
             arguments = arguments + ', '
 
@@ -637,6 +692,9 @@ class FrancaGeneratorExtensions {
     def generateAsyncDefinitionWithin(FMethod fMethod, String parentClassName, boolean _isDefault) {
         var definition = 'std::future<CommonAPI::CallStatus> '
 
+        if (FTypeGenerator::isdeprecated(fMethod.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
+
         if (!parentClassName.nullOrEmpty) {
             definition = definition + parentClassName + '::'
         }
@@ -651,17 +709,17 @@ class FrancaGeneratorExtensions {
         if (!fMethod.inArgs.empty) {
             signature = signature + ', '
         }
-        
+
         signature += fMethod.asyncCallbackClassName + ' _callback'
         if (_isDefault)
             signature += " = nullptr"
         signature += ", const CommonAPI::CallInfo *_info"
         if (_isDefault)
             signature += " = nullptr"
-          
+
         return signature
     }
-    
+
     def getErrorType(FMethod _method) {
         var errorType = ""
         if (_method.hasError) {
@@ -673,21 +731,21 @@ class FrancaGeneratorExtensions {
     def getInTypeList(FMethod _method) {
         return _method.inArgs.map[getTypeName(_method, true)].join(', ')
     }
-    
+
     def getOutTypeList(FMethod _method) {
         return _method.outArgs.map[getTypeName(_method, true)].join(', ')
     }
-    
+
     def getErrorAndOutTypeList(FMethod _method) {
         val errorType = _method.errorType
         val outTypes = _method.outTypeList
-        
+
         var errorAndOutTypes = errorType
-        if (errorType != "" && outTypes != "") 
+        if (errorType != "" && outTypes != "")
             errorAndOutTypes = errorAndOutTypes + ", "
-        errorAndOutTypes = errorAndOutTypes + outTypes    
-            
-        return errorAndOutTypes    
+        errorAndOutTypes = errorAndOutTypes + outTypes
+
+        return errorAndOutTypes
     }
 
     def private String getBasicMangledName(FBasicTypeId basicType) {
@@ -837,6 +895,9 @@ class FrancaGeneratorExtensions {
     def generateGetMethodDefinitionWithin(FAttribute fAttribute, String parentClassName) {
         var definition = fAttribute.className + '& '
 
+        if (FTypeGenerator::isdeprecated(fAttribute.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
+
         if (!parentClassName.nullOrEmpty)
             definition = parentClassName + '::' + definition + parentClassName + '::'
 
@@ -883,13 +944,16 @@ class FrancaGeneratorExtensions {
     def generateGetMethodDefinition(FBroadcast fBroadcast) {
         fBroadcast.generateGetMethodDefinitionWithin(null)
     }
-    
+
     def String getTypes(FBroadcast _broadcast) {
         return _broadcast.outArgs.map[getTypeName(_broadcast, true)].join(', ')
     }
 
     def generateGetMethodDefinitionWithin(FBroadcast fBroadcast, String parentClassName) {
         var definition = fBroadcast.className + '& '
+
+        if (FTypeGenerator::isdeprecated(fBroadcast.comment))
+            definition = "COMMONAPI_DEPRECATED " + definition
 
         if (!parentClassName.nullOrEmpty)
             definition = parentClassName + '::' + definition + parentClassName + '::'
@@ -941,17 +1005,17 @@ class FrancaGeneratorExtensions {
 
     def String getTypeName(FTypedElement _element, FModelElement _source, boolean _isOther) {
         var String typeName = _element.type.getElementType(_source, _isOther)
-        
+
         if (_element.type.derived instanceof FStructType && (_element.type.derived as FStructType).hasPolymorphicBase)
-            typeName = 'std::shared_ptr<' + typeName + '>'
+            typeName = 'std::shared_ptr< ' + typeName + '>'
 
         if (_element.array) {
-            typeName = 'std::vector<' + typeName + '>'
+            typeName = 'std::vector< ' + typeName + ' >'
         }
 
         return typeName
     }
-    
+
     def String getElementType(FTypeRef _typeRef, FModelElement _container, boolean _isOther) {
         var String typeName
         if (_typeRef.derived != null) {
@@ -1037,13 +1101,13 @@ class FrancaGeneratorExtensions {
         var int maximum = 0;
         for (literal : _enumeration.enumerators) {
             if (literal.value != null && literal.value != "") {
-                val int literalValue = Integer.parseInt(literal.value.enumeratorValue) 
+                val int literalValue = Integer.parseInt(literal.value.enumeratorValue)
                 if (maximum < literalValue)
                     maximum = literalValue
             }
         }
         return maximum
-    } 
+    }
 
     def void setEnumerationValues(FEnumerationType _enumeration) {
         var int currentValue = 0
@@ -1125,26 +1189,26 @@ class FrancaGeneratorExtensions {
 
     def String createSerials(FStructType fStructType) {
         var String serials;
-        serials = "static const CommonAPI::Serial " 
+        serials = "static const CommonAPI::Serial "
                   + fStructType.elementName.toUpperCase() + "_SERIAL = 0x"
                   + getSerialId(fStructType).toHexString.toUpperCase() + ";\n";
         for (derived : fStructType.derivedFStructTypes)
             serials = serials + createSerials(derived)
         return serials
     }
-    
+
     def String generateCases(FStructType fStructType, FModelElement parent, boolean qualified) {
         var String itsCases = "case ";
-            
+
         //if (parent != null)
         //    itsCases = itsCases + parent.elementName + "::"
-                    
+
         if (qualified) {
-             itsCases = itsCases 
+             itsCases = itsCases
              if (fStructType.containingInterface != null)
                  itsCases = itsCases + fStructType.containingInterface.elementName  + "::";
         }
-        
+
         itsCases = itsCases + fStructType.elementName.toUpperCase() + "_SERIAL:\n";
 
         for (derived : fStructType.derivedFStructTypes)
@@ -1202,7 +1266,7 @@ class FrancaGeneratorExtensions {
         val backingType = fEnumerationType.getBackingType(deploymentAccessor)
         if (backingType != FBasicTypeId.UNDEFINED)
             return backingType.basicTypeStreamSignature
-    
+
         return FBasicTypeId.INT32.basicTypeStreamSignature
     }
 
@@ -1272,7 +1336,7 @@ class FrancaGeneratorExtensions {
 
         return fStructType.base != null && fStructType.base.hasPolymorphicBase
     }
-    
+
     def boolean hasDerivedTypes(FStructType fStructType) {
         return !fStructType.derivedFStructTypes.empty
     }
@@ -1338,7 +1402,7 @@ class FrancaGeneratorExtensions {
         return EcoreUtil.UsageCrossReferencer::find(fStructType, fStructType.model.eResource.resourceSet).map[EObject].
             filter[it instanceof FStructType].map[it as FStructType].filter[base == fStructType]
     }
-    
+
     def boolean isStructEmpty(FStructType fStructType) {
         if(!fStructType.elements.empty || fStructType.polymorphic) {
             return false
@@ -1348,7 +1412,7 @@ class FrancaGeneratorExtensions {
         }
         return true
     }
-    
+
     def generateCppNamespace(FModel fModel) '''
     «fModel.namespaceAsList.map[toString].join("::")»::'''
 
@@ -1365,19 +1429,19 @@ class FrancaGeneratorExtensions {
     '''
 
     def generateMajorVersionNamespace(FTypeCollection _tc) '''
-        
+
         «var FVersion itsVersion = _tc.version»
         «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
         // Compatibility
         namespace v«itsVersion.major.toString»_«itsVersion.minor.toString» = v«itsVersion.major.toString»;
-        «ENDIF» 
+        «ENDIF»
     '''
 
     def generateVersionNamespaceBegin(FTypeCollection _tc) '''
         «var FVersion itsVersion = _tc.version»
         «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
             namespace v«itsVersion.major.toString» {
-        «ENDIF»  
+        «ENDIF»
     '''
 
     def generateVersionNamespaceEnd(FTypeCollection _tc) '''
@@ -1394,7 +1458,7 @@ class FrancaGeneratorExtensions {
     def generateDeploymentNamespaceEnd(FTypeCollection _tc) '''
         } // namespace «_tc.elementName»_
     '''
-    
+
     def getVersionPrefix(FTypeCollection _tc) {
         var String prefix = "::"
         var FVersion itsVersion = _tc.version
@@ -1412,7 +1476,7 @@ class FrancaGeneratorExtensions {
         }
         return prefix
     }
-    
+
     def getFilePath(Resource resource) {
         if (resource.URI.file)
             return resource.URI.toFileString
@@ -1506,12 +1570,20 @@ class FrancaGeneratorExtensions {
     }
 
     def stubRegisterManagedMethod(FInterface fInterface) {
-        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.getStubFullClassName + '>, const std::string&)'
+        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr< ' + fInterface.getStubFullClassName + '>, const std::string&)'
+    }
+
+    def stubRegisterManagedMethodWithInstanceNumber(FInterface fInterface) {
+        'bool ' + fInterface.stubRegisterManagedName + '(std::shared_ptr< ' + fInterface.getStubFullClassName + '>, const uint32_t)'
     }
 
     def stubRegisterManagedMethodImpl(FInterface fInterface) {
-        fInterface.stubRegisterManagedName + '(std::shared_ptr<' + fInterface.getStubFullClassName + '> _stub, const std::string &_instance)'
-    }    
+        fInterface.stubRegisterManagedName + '(std::shared_ptr< ' + fInterface.getStubFullClassName + '> _stub, const std::string &_instance)'
+    }
+
+    def stubRegisterManagedMethodWithInstanceNumberImpl(FInterface fInterface) {
+        fInterface.stubRegisterManagedName + '(std::shared_ptr< ' + fInterface.getStubFullClassName + '> _stub, const uint32_t _instanceNumber)'
+    }
 
     def stubDeregisterManagedName(FInterface fInterface) {
         'deregisterManagedStub' + fInterface.elementName
@@ -1524,7 +1596,7 @@ class FrancaGeneratorExtensions {
     def proxyManagerMemberName(FInterface fInterface) {
         'proxyManager' + fInterface.elementName + '_'
     }
-    
+
     def List<FInterface> getBaseInterfaces(FInterface _interface) {
         val List<FInterface> baseInterfaces = new ArrayList<FInterface>()
         if (_interface.base != null) {
@@ -1534,22 +1606,22 @@ class FrancaGeneratorExtensions {
         }
         return baseInterfaces
     }
-    
+
     def generateBaseInstantiations(FInterface _interface) {
         val List<FInterface> baseInterfaces = getBaseInterfaces(_interface)
         return baseInterfaces.map[getTypeCollectionName(_interface) + "(_address, _connection)"].join(',\n')
     }
-    
+
     def generateDBusBaseInstantiations(FInterface _interface) {
         val List<FInterface> baseInterfaces = getBaseInterfaces(_interface)
         return baseInterfaces.map[getTypeCollectionName(_interface) + "DBusProxy(_address, _connection)"].join(',\n')
     }
-    
+
     def generateSomeIPBaseInstantiations(FInterface _interface) {
         val List<FInterface> baseInterfaces = getBaseInterfaces(_interface)
         return baseInterfaces.map[getTypeCollectionName(_interface) + "SomeIPProxy(_address, _connection)"].join(',\n')
-    }    
-    
+    }
+
     def String generateBaseRemoteHandlerConstructorsCalls(FInterface _interface) {
         val List<FInterface> baseInterfaces = getBaseInterfaces(_interface)
         var String itsCalls = ""
@@ -1558,10 +1630,10 @@ class FrancaGeneratorExtensions {
             itsCalls = itsCalls + ','
         return itsCalls
     }
-    
+
     def List<FMethod> getInheritedMethods(FInterface fInterface) {
         val List<FMethod> result = new ArrayList<FMethod>()
-        
+
         if(fInterface.base == null) {
             return result
         }
@@ -1586,7 +1658,7 @@ class FrancaGeneratorExtensions {
 
     def List<FBroadcast> getInheritedBroadcasts(FInterface fInterface) {
         val List<FBroadcast> result = new ArrayList<FBroadcast>()
-        
+
         if(fInterface.base == null) {
             return result
         }
@@ -1596,7 +1668,7 @@ class FrancaGeneratorExtensions {
 
         return result
     }
-    
+
     def static FExpression toExpression(String value)
     {
         return switch trimmedValue : if(value != null) value.trim else ""
@@ -1662,13 +1734,13 @@ class FrancaGeneratorExtensions {
         }
         return timeout
     }
-    
+
     def boolean isTheSameVersion(FVersion _mine, FVersion _other) {
         return ((_mine == null && _other == null) ||
                 (_mine != null && _other != null &&
                  _mine.major == _other.major &&
                  _mine.minor == _other.minor));
-        
+
     }
 
     def EObject getCommonContainer(EObject _me, EObject _other) {
@@ -1681,7 +1753,7 @@ class FrancaGeneratorExtensions {
         if (_me instanceof FTypeCollection && _other instanceof FTypeCollection) {
             val FTypeCollection me = _me as FTypeCollection
             val FTypeCollection other = _other as FTypeCollection
-            
+
             if (me.eContainer == other.eContainer &&
                 ((me.version == null && other.version == null) ||
                  (me.version != null && other.version != null &&
@@ -1733,13 +1805,13 @@ class FrancaGeneratorExtensions {
                 }
                 val containerName = getContainerName(container)
                 if (containerName != null && containerName != "") {
-                    if (name != "") { 
+                    if (name != "") {
                         name = containerName + "::" + name
                     } else {
                         name = containerName
                     }
                 }
-                
+
                 container = container.eContainer
             }
             name = prefix + name
@@ -1754,7 +1826,7 @@ class FrancaGeneratorExtensions {
         var FVersion myVersion = null
         if (_me instanceof FTypeCollection)
             myVersion = _me.version
-            
+
         var FVersion otherVersion = null
         if (_other instanceof FTypeCollection)
             otherVersion = _other.version
@@ -1795,11 +1867,11 @@ class FrancaGeneratorExtensions {
         }
         return _me.getContainerName()
     }
-    
+
     def String getEnumPrefix(){
               FPreferences::instance.getPreference(PreferenceConstants::P_ENUMPREFIX, "")
     }
-    
+
     def List<FField> getAllElements(FStructType _struct) {
         if (_struct.base == null)
             return new LinkedList(_struct.elements)
@@ -1808,7 +1880,7 @@ class FrancaGeneratorExtensions {
         elements.addAll(_struct.elements)
         return elements
     }
-    
+
     def List<FField> getAllElements(FUnionType _union) {
         if (_union.base == null)
             return new LinkedList(_union.elements)
@@ -1817,15 +1889,15 @@ class FrancaGeneratorExtensions {
         elements.addAll(_union.elements)
         return elements
     }
-    
+
     /**
-     * Get all interfaces from the deployment model that have a specification that contains 
+     * Get all interfaces from the deployment model that have a specification that contains
      * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
      * @return the list of FDInterfaces
      */
     def List<FDInterface> getFDInterfaces(FDModel fdmodel, String selector) {
-        var List<FDInterface> fdinterfaces = new ArrayList<FDInterface>() 
-        
+        var List<FDInterface> fdinterfaces = new ArrayList<FDInterface>()
+
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDInterface) {
                 var specname = depl.spec.name
@@ -1835,16 +1907,16 @@ class FrancaGeneratorExtensions {
             }
         }
         return fdinterfaces;
-    }      
-    
+    }
+
       /**
-     * Get all type collections from the deployment model that have a specification that contains 
+     * Get all type collections from the deployment model that have a specification that contains
      * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
      * @return the list of FDTypes
      */
     def List<FDTypes> getFDTypesList(FDModel fdmodel, String selector) {
-        var List<FDTypes> fdTypes = new ArrayList<FDTypes>() 
-        
+        var List<FDTypes> fdTypes = new ArrayList<FDTypes>()
+
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDTypes) {
                 var specname = depl.spec?.name
@@ -1854,16 +1926,16 @@ class FrancaGeneratorExtensions {
             }
         }
         return fdTypes;
-    }    
-    
+    }
+
       /**
-     * Get all providers from the deployment model that have a specification that contains 
+     * Get all providers from the deployment model that have a specification that contains
      * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
      * @return the list of FDTypes
      */
     def List<FDProvider> getFDProviders(FDModel fdmodel, String selector) {
-        var List<FDProvider> fdProviders = new ArrayList<FDProvider>() 
-        
+        var List<FDProvider> fdProviders = new ArrayList<FDProvider>()
+
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDProvider) {
                 var specname = depl.spec?.name
@@ -1873,31 +1945,31 @@ class FrancaGeneratorExtensions {
             }
         }
         return fdProviders;
-    }    
+    }
     def List<FDProvider> getAllFDProviders(FDModel fdmodel) {
-        var List<FDProvider> fdProviders = new ArrayList<FDProvider>() 
-        
+        var List<FDProvider> fdProviders = new ArrayList<FDProvider>()
+
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDProvider) {
                 fdProviders.add(depl);
             }
         }
         return fdProviders;
-    }    
+    }
     /**
-     * Copy deployment attributes into the destination deployment 
+     * Copy deployment attributes into the destination deployment
      */
     def mergeDeployments(FDInterface _source, FDInterface _destination) {
-        
+
         if (_source.target.equals(_destination.target)) {
             if (_source.attributes.size > 0) {
                 if(_destination.attributes.size == 0) {
                     _destination.attributes.addAll(_source.attributes)
                 }
-            }            
-            if (_source.methods.size > 0) { 
+            }
+            if (_source.methods.size > 0) {
                 _destination.methods.addAll(_source.methods)
-            }            
+            }
 //            Not used so far:
 //            if(source.broadcasts != null) {
 //                destination.broadcasts.addAll(source.broadcasts)
@@ -1907,14 +1979,14 @@ class FrancaGeneratorExtensions {
             }
         }
     }
-    
+
     def mergeDeployments(FDTypes _source, FDTypes _destination) {
         if (_source.target.equals(_destination.target)) {
             if (!_source.types.empty) {
                 _destination.types.addAll(_source.types)
             }
         }
-    }    
+    }
 
     def public getAllReferencedFInterfaces(FModel fModel)
     {
@@ -2027,45 +2099,45 @@ class FrancaGeneratorExtensions {
     def public supportsValidation(FTypeRef fTtypeRef) {
         fTtypeRef.derived instanceof FEnumerationType
     }
-    
+
     def public String getCanonical(String _basePath, String _uri) {
         if (_uri.startsWith("platform:") || _uri.startsWith("file:"))
             return _uri
 
         if (_uri.startsWith(File.separatorChar.toString))
-            return "file:" + _uri            
+            return "file:" + _uri
 
-        // handle Windows absolute paths...            
+        // handle Windows absolute paths...
         var baseSplitted = _basePath.split(":")
         var uriSplitted = _uri.split(":")
 
         if (uriSplitted.length == 2 && _uri.startsWith(uriSplitted.get(0))) {
-            // c:/...   windows abslolute 
-            return "file:/" + _uri              
+            // c:/...   windows abslolute
+            return "file:/" + _uri
         }
-        
+
         if (_uri.startsWith("/")) {
             // get the drive letter under windows for absolute paths
             if(baseSplitted.length == 3) {
                 return "file:" + baseSplitted.get(1) + ":" + _uri
-            }    
+            }
             else {
                 // linux...
-                return "file:" + _uri              
+                return "file:" + _uri
             }
         }
         // handle relative paths (resolve  uri against basePath)
         var char separatorCharacter = File.separatorChar;
         if (_basePath.startsWith("platform:") || _basePath.startsWith("file:")) {
-            separatorCharacter = '/' 
-        }        
+            separatorCharacter = '/'
+        }
         val String itsCompleteName = _basePath + separatorCharacter + _uri
         val String[] itsSegments = itsCompleteName.split(separatorCharacter.toString)
-        
+
         var int ignore = 0
         var int i = itsSegments.length - 1
         var List<String> itsCanonicalName = new ArrayList<String>()
-        
+
         /*
          * Run from the last segment to the first. Identity segments (.) are ignored,
          * while backward segments (..) let us ignore the next segment that is neither
@@ -2083,16 +2155,16 @@ class FrancaGeneratorExtensions {
                     itsCanonicalName.add(itsCurrentSegment)
                 } else {
                     ignore = ignore - 1
-                } 
-            }                
+                }
+            }
             i = i - 1
         }
-        
+
         /*
          * As we ran from back to front and added segments, we need to reverse,
          * before joining the segments
          */
         return itsCanonicalName.reverse.join(separatorCharacter.toString)
-    } 
+    }
 
 }

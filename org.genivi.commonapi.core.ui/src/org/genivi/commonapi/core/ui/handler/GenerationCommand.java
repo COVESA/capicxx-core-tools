@@ -22,12 +22,15 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IWorkspaceRoot;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.common.util.URI;
@@ -78,6 +81,8 @@ public class GenerationCommand extends AbstractHandler {
 	@Inject
 	private IGenerator francaGenerator;
 
+    private static String VALIDATION_MARKER = "org.genivi.commonapi.core.ui.VALIDATION_MARKER";
+
 	@Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
 		final ISelection selection = HandlerUtil.getCurrentSelection(event);
@@ -97,100 +102,131 @@ public class GenerationCommand extends AbstractHandler {
 	}
 
 	private void executeGeneratorForSelection(
-			final IStructuredSelection structuredSelection) {
-		IProject project = null;
-		final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
+            final IStructuredSelection structuredSelection) {
+        final EclipseResourceFileSystemAccess2 fileSystemAccess = createFileSystemAccess();
 
-		for (Iterator<?> iterator = structuredSelection.iterator(); iterator
-				.hasNext();) {
-			final Object selectiobObject = iterator.next();
-			if (selectiobObject instanceof IFile) {
-				final IFile file = (IFile) selectiobObject;
-				final URI uri = URI.createPlatformResourceURI(file
-						.getFullPath().toString(), true);
-				final ResourceSet rs = resourceSetProvider.get(file
-						.getProject());
-				final Resource r = rs.getResource(uri, true);
+        // Clear any already existing output from a previous command execution (e.g. errors) from the Franca console
+        // by creating a new one or initializing an already existing one.
+        //
+        final SpecificConsole francaConsole = new SpecificConsole("Franca");
+        Job job = new Job("Validation and generation") {
 
-				project = file.getProject();
-				fileSystemAccess.setProject(project);
+            @Override
+            protected IStatus run(IProgressMonitor monitor)
+            {
+                boolean validationError = false;
+                for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext(); )
+                {
+                    if (monitor.isCanceled())
+                        return Status.CANCEL_STATUS;
 
-				setupPreferences(file);
-				// define output directories from the preferences just set before
-				setupOutputDirectories(fileSystemAccess);
-				
-				// Clear any already existing output from a previous command execution (e.g. errors) from the Franca console
-				// by creating a new one or initializing an already existing one.
-				//
-                final SpecificConsole francaConsole = new SpecificConsole("Franca");
-                francaConsole.getOut().println("Loading " + file.getFullPath().toPortableString());
+                    final Object selectiobObject = iterator.next();
+                    if (selectiobObject instanceof IFile)
+                    {
+                        final IFile file = (IFile) selectiobObject;
+                        final URI uri = URI.createPlatformResourceURI(file.getFullPath().toString(), true);
 
-				Job job = new Job("validation and generation") {
+                        monitor.beginTask(file.getName(), IProgressMonitor.UNKNOWN);
+                        monitor.subTask("Validating");
+                        deleteValidationMarkers(file);
 
-					@Override
-					protected IStatus run(IProgressMonitor monitor) {
-						monitor.beginTask("handle " + file.getName(),
-								IProgressMonitor.UNKNOWN);
-						monitor.subTask("validation");
-						int i = 0;
-						try {
-							for (IMarker m : ((IResource) file).findMarkers(
-									IMarker.PROBLEM, true, 2)) {
-								if ((Integer) m.getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
-									i++;
-									break;
-								}
-							}
-
-						} catch (CoreException ce) {
-						}
-
-						// Validation of FIDL and FDEPL and all imported FIDL/FDEPL files.
-						try {
-						    if (!validate(uri, francaConsole)) {
-						        validatorErrorPopUp(file);
-						        outputCancelResult(francaConsole);
-						        return Status.CANCEL_STATUS;
-						    }
-						}
+                        // Validation of FIDL and FDEPL and all imported FIDL/FDEPL files.
+                        try {
+                            francaConsole.getOut().println("Validating " + getDisplayPath(uri));
+                            if (!validate(uri, francaConsole))
+                                validationError = true;
+                        }
                         catch (Exception ex) {
                             validatorExceptionPopUp(ex, file);
                             outputCancelResult(francaConsole);
                             return Status.CANCEL_STATUS;
                         }
+                    }
+                }
+                if (validationError)
+                {
+                    validatorErrorPopUp();
+                    outputCancelResult(francaConsole);
+                    return Status.CANCEL_STATUS;
+                }
 
-						if (r.getErrors().size() == 0 && i == 0) {
-							monitor.subTask("Generate");
-							try {
-								francaGenerator.doGenerate(r, fileSystemAccess);
-							} catch (Exception e) {
- 								exceptionPopUp(e, file);
- 	                            outputCancelResult(francaConsole);
-								return Status.CANCEL_STATUS;
-							} catch (Error e) {
-								errorPopUp(e, file);
-	                            outputCancelResult(francaConsole);
-								return Status.CANCEL_STATUS;
-							}
-							outputSuccessResult(francaConsole);
-							return Status.OK_STATUS;
-						}
-						markerPopUp(file, r);
-						outputCancelResult(francaConsole);
-						return Status.CANCEL_STATUS;
-					}
+                for (Iterator<?> iterator = structuredSelection.iterator(); iterator.hasNext(); )
+                {
+                    if (monitor.isCanceled())
+                        return Status.CANCEL_STATUS;
 
-				};
-				job.schedule();
-				// wait for this job to end
-				try {
-					job.join();
-				} catch (InterruptedException e) {
-					exceptionPopUp(e, file);
-				}
-			}
-		}
-	}
+                    final Object selectiobObject = iterator.next();
+                    if (selectiobObject instanceof IFile)
+                    {
+                        final IFile file = (IFile) selectiobObject;
+                        final URI uri = URI.createPlatformResourceURI(file.getFullPath().toString(), true);
+                        final ResourceSet rs = resourceSetProvider.get(file.getProject());
+                        final Resource r = rs.getResource(uri, true);
+
+                        IProject project = file.getProject();
+                        fileSystemAccess.setProject(project);
+
+                        setupPreferences(file);
+                        // define output directories from the preferences just set before
+                        setupOutputDirectories(fileSystemAccess);
+
+                        monitor.beginTask(file.getName(), IProgressMonitor.UNKNOWN);
+                        int i = 0;
+                        try {
+                            for (IMarker m : ((IResource) file).findMarkers(
+                                    IMarker.PROBLEM, true, 2)) {
+                                if ((Integer) m.getAttribute(IMarker.SEVERITY) == IMarker.SEVERITY_ERROR) {
+                                    i++;
+                                    break;
+                                }
+                            }
+                        } catch (CoreException ce) {
+                        }
+
+                        if (r.getErrors().size() == 0 && i == 0) {
+                            monitor.subTask("Generating");
+                            try {
+                                francaConsole.getOut().println("Generating " + getDisplayPath(uri));
+                                francaGenerator.doGenerate(r, fileSystemAccess);
+                            } catch (Exception e) {
+                                exceptionPopUp(e, file);
+                                outputCancelResult(francaConsole);
+                                return Status.CANCEL_STATUS;
+                            } catch (Error e) {
+                                errorPopUp(e, file);
+                                outputCancelResult(francaConsole);
+                                return Status.CANCEL_STATUS;
+                            }
+                            continue;
+                        }
+                        markerPopUp(file, r);
+                        outputCancelResult(francaConsole);
+                        return Status.CANCEL_STATUS;
+                    }
+                }
+
+                outputSuccessResult(francaConsole);
+                return Status.OK_STATUS;
+            }
+        };
+        job.setRule(new GeneratorRule());
+        job.schedule();
+    }
+
+    class GeneratorRule implements ISchedulingRule
+    {
+        @Override
+        public boolean contains(ISchedulingRule rule)
+        {
+            return rule == this || rule instanceof IResource;
+        }
+
+        @Override
+        public boolean isConflicting(ISchedulingRule rule)
+        {
+            return rule instanceof GeneratorRule || rule instanceof IResource;
+        }
+    }
 
 	protected void setupOutputDirectories(EclipseResourceFileSystemAccess2 fileSystemAccess) {
 		fileSystemAccess.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
@@ -214,7 +250,6 @@ public class GenerationCommand extends AbstractHandler {
         }
 
         // Validate all loaded FDEPL and FIDL files.
-        francaConsole.getOut().println("Validating " + getDisplayPath(resourcePathUri));
         return validate(modelPersistenceHandler.getResourceSet(), francaConsole);
 	}
 
@@ -323,10 +358,80 @@ public class GenerationCommand extends AbstractHandler {
             }
             if (!outputIssues(issues, francaConsole))
                 hasValidationError = true;
-            francaConsole.getOut().println("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
+
+            addValidationMarkers(issues);
+
+            if (diags.size() > 0)
+                francaConsole.getOut().println("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
         }
 
         return !hasValidationError;
+    }
+
+    void addValidationMarkers(List<Issue> issues)
+    {
+        IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
+        for (Issue issue : issues)
+        {
+            try
+            {
+                URI uri = issue.getUriToProblem();
+                if (uri.isPlatform())
+                {
+                    IResource resource = workspaceRoot.findMember(uri.toPlatformString(true));
+                    if (resource != null)
+                    {
+                        IMarker marker = resource.createMarker(IMarker.PROBLEM);
+                        if (marker != null)
+                        {
+                            // Tag our markers, so we can find them again.
+                            marker.setAttribute(VALIDATION_MARKER, true);
+
+                            if (issue.getSeverity() == Severity.ERROR)
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+                            else if (issue.getSeverity() == Severity.WARNING)
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
+                            else
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
+
+                            marker.setAttribute(IMarker.MESSAGE, issue.getMessage());
+                            marker.setAttribute(IMarker.PRIORITY, IMarker.PRIORITY_HIGH);
+                            marker.setAttribute(IMarker.LINE_NUMBER, issue.getLineNumber());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    void deleteValidationMarkers(IResource resource)
+    {
+        try
+        {
+            // Validation markers may get generated for all FDEPL within the project, depending
+            // on the "imports" used. Therefore, we can't know which validation markers really
+            // relate to one particular resource. Therefore we have to delete all validation markers
+            // within the project that is associated with that resource. That's reasonable because
+            // the nature of the validation is "sort of" a project scope anyway.
+            //
+            // This does not effect the file based validation which is performed by XText/Franca validators.
+            //
+            IMarker[] markers = resource.getProject().findMarkers(IMarker.PROBLEM, false, 2);
+            for (IMarker marker : markers)
+            {
+                // Only delete deployment validation markers, not any other problem markers.
+                if (marker.getAttribute(VALIDATION_MARKER, false))
+                    marker.delete();
+            }
+        }
+        catch (CoreException ex)
+        {
+            ex.printStackTrace();
+        }
     }
 
     protected List<Diagnostic> validateDeployment(List<FDModel> fdepls)
@@ -422,7 +527,7 @@ public class GenerationCommand extends AbstractHandler {
 				MessageDialog.openError(
 						null,
 						"Error by generating file " + file.getName(),
-						"Couldn't generate file. Exception occured:\n"
+						"Couldn't generate file(s) for \"" + file.getFullPath().toPortableString() + "\". Exception occured:\n"
 								+ ex.toString()
 								+ "\n\nSee console for stack trace.");
 			}
@@ -456,7 +561,7 @@ public class GenerationCommand extends AbstractHandler {
                 MessageDialog.openError(
                         null,
                         "Error in file " + file.getName(),
-                        "Couldn't generate file. File still holds errors!\n\nSee Problems view for details.");
+                        "Couldn't generate file(s). File \"" + file.getFullPath().toPortableString() + "\" still holds errors!\n\nSee Problems view for details.");
             }
         });
     }
@@ -471,22 +576,22 @@ public class GenerationCommand extends AbstractHandler {
 				MessageDialog.openError(
 						null,
 						"Error by generating file " + file.getName(),
-						"Couldn't generate file. Error occured:\n"
+						"Couldn't generate file(s) for \"" + file.getFullPath().toPortableString() + "\". Error occured:\n"
 								+ er.toString()
 								+ "\n\nSee console for stack trace.");
 			}
 		});
 	}
 
-	private void validatorErrorPopUp(final IFile file)
+	private void validatorErrorPopUp()
     {
         Display.getDefault().asyncExec(new Runnable() {
             @Override
             public void run() {
                 MessageDialog.openError(
                         null,
-                        "Error by validating file " + file.getName(),
-                        "Couldn't validate file.\n\nSee console view for details.");
+                        "Error",
+                        "Validation failed.\n\nSee console view for details.");
             }
         });
     }
@@ -509,7 +614,7 @@ public class GenerationCommand extends AbstractHandler {
                 MessageDialog.openError(
                         null,
                         "Error by validating file " + file.getName(),
-                        "Couldn't validate file. Exception occured:\n"
+                        "Couldn't validate file \"" + file.getFullPath().toPortableString() + "\" Exception occured:\n"
                                 + exMessage
                                 + "\n\nSee console view for details.");
             }

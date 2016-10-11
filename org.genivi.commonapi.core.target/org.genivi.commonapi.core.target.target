@@ -4,7 +4,7 @@
 <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="org.franca.ui.sdk.feature.group" version="0.9.1.201412191134"/>
 <unit id="org.franca.core.sdk.feature.group" version="0.9.1.201412191134"/>
-<repository location="http://franca.eclipselabs.org.codespot.com/git/update_site/releases"/>
+<repository location="http://franca.github.io/franca/update_site/releases"/>
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
 <unit id="org.eclipse.platform.sdk" version="4.4.1.M20140925-0400"/>

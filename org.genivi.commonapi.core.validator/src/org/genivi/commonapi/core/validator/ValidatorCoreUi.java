@@ -39,24 +39,39 @@ public class ValidatorCoreUi extends ValidatorCore {
     @Override
     public void validateModel(FModel model,
             ValidationMessageAcceptor messageAcceptor) {
-        if (!isValidatorEnabled()) {
-            return;
-        }
-        // call the super validation method
-        super.validateModel(model, messageAcceptor);
+        try {
+            if (!isValidatorEnabled()) {
+                return;
+            }
+            // call the super validation method
+            super.validateModel(model, messageAcceptor);
 
-        Resource res = model.eResource();
-        final Path platformPath = new Path(res.getURI().toPlatformString(true));
-        final IFile file = ResourcesPlugin.getWorkspace().getRoot()
-                .getFile(platformPath);
-        IPath filePath = file.getLocation();
-        String cwd = filePath.removeLastSegments(1).toString();
-        validateImport(model, messageAcceptor, file, filePath, cwd);
+            Resource res = model.eResource();
+            IPath filePath;
+            if (res.getURI().isPlatform())
+            {
+                final Path platformPath = new Path(res.getURI().toPlatformString(true));
+                IFile file = ResourcesPlugin.getWorkspace().getRoot()
+                        .getFile(platformPath);
+                filePath = file.getLocation();
+            }
+            else
+            {
+                filePath = new Path(res.getURI().toFileString());
+            }
+            String cwd = filePath.removeLastSegments(1).toString();
+            validateImport(model, messageAcceptor, filePath, cwd);
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+            throw ex;
+        }
     }
 
     protected void validateImport(FModel model,
-            ValidationMessageAcceptor messageAcceptor, final IFile file,
+            ValidationMessageAcceptor messageAcceptor,
             IPath filePath, String cwd) {
+        String fileName = filePath.lastSegment();
         HashSet<String> importedFiles = new HashSet<String>();
         ArrayList<String> importUriAndNamesspace = new ArrayList<String>();
         for (Import fImport : model.getImports()) {
@@ -66,7 +81,7 @@ public class ValidatorCoreUi extends ValidatorCore {
                 acceptWarning("Multiple times imported!", fImport,
                         FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
                         messageAcceptor);
-            if (fImport.getImportURI().equals(file.getName())) {
+            if (fImport.getImportURI().equals(fileName)) {
                 acceptError("Class may not import itself!", fImport,
                         FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
                         messageAcceptor);

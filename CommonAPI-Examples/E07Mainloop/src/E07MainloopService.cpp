@@ -122,6 +122,7 @@ void watchRemovedCallback ( CommonAPI::Watch* watch ) {
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E07S");
+    CommonAPI::Runtime::setProperty("LogApplication", "E07S");
     CommonAPI::Runtime::setProperty("LibraryBase", "E07Mainloop");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

@@ -48,7 +48,7 @@ class FTypeGenerator {
         }
         return false
     }
-    
+
     def private static findNextBreak(String text) {
         var breakIndex = text.substring(0, CommentLineLength).lastIndexOf(" ");
         if (breakIndex > 0) {
@@ -64,39 +64,39 @@ class FTypeGenerator {
         var startIndex = 0
         var endIndex = CommentLineLength
         var commentText = text.replace("\r\n", " ")
-        
+
         commentBody += " * " + annotation.getName() + ": "
         while(endIndex < commentText.length)  {
-        	line = commentText.substring(startIndex, endIndex)
-        	endIndex = findNextBreak(line)
-        	commentBody += commentText.substring(startIndex, startIndex + endIndex) + "\n *  ";
-        	startIndex += endIndex
-        	endIndex = startIndex + CommentLineLength 
+            line = commentText.substring(startIndex, endIndex)
+            endIndex = findNextBreak(line)
+            commentBody += commentText.substring(startIndex, startIndex + endIndex) + "\n *  ";
+            startIndex += endIndex
+            endIndex = startIndex + CommentLineLength
         }
         commentBody += commentText.substring(startIndex, commentText.length) + "\n";
-    	return commentBody;    
+        return commentBody;
     }
-        
+
     def static generateComments(FModelElement model, boolean inline) {
         var intro = ""
         var tail = ""
         var annoCommentText = ""
         if( model != null && model.comment != null){
-        	if(!inline) {
-        		intro = "/**\n"
-        		tail = " */"
-        	}
-        	for(annoComment : model.comment.elements) {
-            	if(annoComment != null){
-            		annoCommentText += breaktext(annoComment.comment, annoComment.type)
-            	}
+            if(!inline) {
+                intro = "/**\n"
+                tail = " */"
             }
-        	return intro + annoCommentText + tail
-        }	
+            for(annoComment : model.comment.elements) {
+                if(annoComment != null){
+                    annoCommentText += breaktext(annoComment.comment, annoComment.type)
+                }
+            }
+            return intro + annoCommentText + tail
+        }
         return ""
     }
 
-    
+
     def static getTyp(FModelElement element) {
         if(element instanceof FInterface || element instanceof FTypeCollection)
             return ModelTyp::INTERFACE
@@ -155,223 +155,239 @@ class FTypeGenerator {
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, PropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
         «IF fArrayType.elementType.derived != null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
-            typedef std::vector<std::shared_ptr<«fArrayType.elementType.getElementType(fArrayType, true)»>> «fArrayType.elementName»;
+            typedef std::vector<std::shared_ptr< «fArrayType.elementType.getElementType(fArrayType, true)»>> «fArrayType.elementName»;
         «ELSE»
-            typedef std::vector<«fArrayType.elementType.getElementType(fArrayType, true)»> «fArrayType.elementName»;
+            typedef std::vector< «fArrayType.elementType.getElementType(fArrayType, true)»> «fArrayType.elementName»;
         «ENDIF»
     '''
 
     def dispatch generateFTypeDeclaration(FMapType fMap, PropertyAccessor deploymentAccessor) '''
         «generateComments(fMap, false)»
-        typedef std::unordered_map<«fMap.generateKeyType», «fMap.generateValueType»«fMap.generateHasher»> «fMap.elementName»;
+        typedef std::unordered_map< «fMap.generateKeyType», «fMap.generateValueType»«fMap.generateHasher»> «fMap.elementName»;
     '''
 
     def dispatch generateFTypeDeclaration(FStructType fStructType, PropertyAccessor deploymentAccessor) '''
-		«generateComments(fStructType, false)»
-		«IF fStructType.polymorphic»
-		«fStructType.createSerials()»
-		
-		«ENDIF»
-		«IF fStructType.hasPolymorphicBase()»
-			«IF fStructType.base == null»
-			struct «fStructType.elementName» : CommonAPI::PolymorphicStruct {
-			«ELSE»
-			struct «fStructType.elementName» : «fStructType.base.getElementName(fStructType, false)» {
-			«ENDIF»
-		«ELSE»
-			struct «fStructType.elementName» : CommonAPI::Struct<«fStructType.allElements.map[getTypeName(fStructType, false)].join(", ")»> {
-		«ENDIF»
-			«IF fStructType.hasPolymorphicBase()»
-				«IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
-				static std::shared_ptr<«fStructType.elementName»> create(CommonAPI::Serial _serial);
-				«ENDIF»
-				CommonAPI::Serial getSerial() const { return «fStructType.elementName.toUpperCase»_SERIAL; }
-			«ENDIF»
-			
-			«fStructType.elementName»() {
-			«IF fStructType.allElements.size > 0»
-			«var n = 0»
-				«FOR element : fStructType.allElements»
-					«IF element.type.predefined.equals(FBasicTypeId.BOOLEAN) && !element.array»
-					std::get<«n»>(values_) = false;
-					«ENDIF»
-					 «{ n = n + 1; "" }»
-				«ENDFOR»
-			«ENDIF»
-			}
-			«IF fStructType.allElements.size > 0»
-				«fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»)
-				«IF fStructType.hasPolymorphicBase() && fStructType.base != null»
-					: «fStructType.base.elementName»(«fStructType.base.allElements.map["_" + elementName].join(", ")»)
-				«ENDIF» 
-				{
-					«IF fStructType.hasPolymorphicBase»
-						«var i = -1»
-						«FOR element : fStructType.elements»
-							std::get<«i = i+1»>(values_) = _«element.elementName»;
-						«ENDFOR»
-					«ELSE»
-						«var i = -1»
-						«FOR element : fStructType.allElements»
-							std::get<«i = i+1»>(values_) = _«element.elementName»;
-						«ENDFOR»
-					«ENDIF»
-				}
-			«ENDIF»
-			«IF fStructType.hasPolymorphicBase()»
-			template<class _Input>
-			void readValue(CommonAPI::InputStream<_Input> &_input, const CommonAPI::EmptyDeployment *_depl) {
-			    «IF fStructType.derivedFStructTypes.empty»
-			    (void) _depl;
-			    «ENDIF»
-				«var i = -1»
-				«FOR element : fStructType.elements»
-				_input.template readValue<CommonAPI::EmptyDeployment>(std::get<«i = i+1»>(values_));
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template readValue<_Input>(_input, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
+        «generateComments(fStructType, false)»
+        «IF fStructType.polymorphic»
+        «fStructType.createSerials()»
 
-			template<class _Input, class _Deployment>
-			void readValue(CommonAPI::InputStream<_Input> &_input, const _Deployment *_depl) {
-				«var j = -1»
-				«var k = fStructType.allElements.size - fStructType.elements.size - 1»
-				«FOR element : fStructType.elements»
-				_input.template readValue<>(std::get<«j = j+1»>(values_), std::get<«k = k+1»>(_depl->values_));
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template readValue<>(_input, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
-			template<class _Output>
-			void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
-				«var l = -1»
-				«FOR element : fStructType.elements»
-				_output.writeType(std::get<«l = l+1»>(values_), _depl);
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template writeType<_Output>(_output, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
-			template<class _Output, class _Deployment>
-			void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const _Deployment *_depl) {
-				«var l1 = -1»
-				«var l2 = fStructType.allElements.size - fStructType.elements.size - 1»
-				«FOR element : fStructType.elements»
-				_output.writeType(std::get<«l1 = l1+1»>(values_), std::get<«l2 = l2+1»>(_depl->values_));
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template writeType<_Output, _Deployment>(_output, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
+        «ENDIF»
+        «IF fStructType.hasPolymorphicBase()»
+            «IF fStructType.base == null»
+            struct «fStructType.elementName» : CommonAPI::PolymorphicStruct {
+            «ELSE»
+            struct «fStructType.elementName» : «fStructType.base.getElementName(fStructType, false)» {
+            «ENDIF»
+        «ELSE»
+            struct «fStructType.elementName» : CommonAPI::Struct< «fStructType.allElements.map[getTypeName(fStructType, false)].join(", ")»> {
+        «ENDIF»
+            «IF fStructType.hasPolymorphicBase()»
+                «IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
+                static COMMONAPI_EXPORT std::shared_ptr< «fStructType.elementName»> create(CommonAPI::Serial _serial);
+                «ENDIF»
+                CommonAPI::Serial getSerial() const { return «fStructType.elementName.toUpperCase»_SERIAL; }
+            «ENDIF»
 
-			template<class _Output>
-			void writeValue(CommonAPI::OutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
-			    «IF fStructType.derivedFStructTypes.empty»
-			    (void) _depl;
-			    «ENDIF»
-				«var m = -1»
-				«FOR element : fStructType.elements»
-				_output.template writeValue<CommonAPI::EmptyDeployment>(std::get<«m = m+1»>(values_));
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template writeValue<_Output>(_output, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
-
-			template<class _Output, class _Deployment>
-			void writeValue(CommonAPI::OutputStream<_Output> &_output, const _Deployment *_depl) {
-				«var n = -1»
-				«var o = fStructType.allElements.size - fStructType.elements.size - 1»
-				«FOR element : fStructType.elements»
-				_output.template writeValue<>(std::get<«n = n+1»>(values_), std::get<«o = o + 1»>(_depl->values_));
-				«ENDFOR»
-				«IF fStructType.hasDerivedTypes()»
-				switch (getSerial()) {
-				«FOR derived : fStructType.derivedFStructTypes»
-				«derived.generateCases(null, false)»
-					static_cast<«derived.elementName» *>(this)->template writeValue<>(_output, _depl);
-					break;
-				«ENDFOR»
-				default:
-					break;
-				}
-				«ENDIF»
-			}
-			«var p = -1»
-			«FOR element : fStructType.elements»
-				«generateComments(element, false)»
-				«val String typeName = element.getTypeName(fStructType, false)»
-				inline const «typeName» &get«element.elementName.toFirstUpper»() const { return std::get<«p = p+1»>(values_); }
-				inline void set«element.elementName.toFirstUpper»(const «typeName» «IF typeName.isComplex»&«ENDIF»_value) { std::get<«p»>(values_) = _value; }
-			«ENDFOR»
-			
-			«IF fStructType.hasPolymorphicBase() && fStructType.elements.size > 0»
-			std::tuple<«fStructType.elements.map[getTypeName(fStructType, false)].join(", ")»> values_;
-			«ENDIF»
-		«ELSE»
-			«var k = -1»
-			«FOR element : fStructType.allElements»
-				«generateComments(element, false)»
-				«val String typeName = element.getTypeName(fStructType, false)»
-				inline const «typeName» &get«element.elementName.toFirstUpper»() const { return std::get<«k = k+1»>(values_); }
-				inline void set«element.elementName.toFirstUpper»(const «typeName» «IF typeName.isComplex»&«ENDIF»_value) { std::get<«k»>(values_) = _value; }
-			«ENDFOR»
-		«ENDIF»
-			inline bool operator==(const «fStructType.name»& _other) const {
+            «fStructType.elementName»()
+            «IF fStructType.hasPolymorphicBase() && fStructType.base != null»
+                : «fStructType.base.elementName»()
+            «ENDIF»
+            {
             «IF fStructType.allElements.size > 0»
-                «FOR element : fStructType.allElements BEFORE 
+            «var n = 0»
+                «FOR element : fStructType.allElements»
+                    «var nindex = n»
+                    «IF (fStructType.hasPolymorphicBase)»
+                        «{ nindex = n - (fStructType.allElements.size - fStructType.elements.size); "" }»
+                    «ENDIF»
+                    «IF nindex >= 0 »
+                        «IF (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase) && !element.array»
+                                std::get< «nindex»>(values_) = std::make_shared< «element.type.getElementType(fStructType, false)»>();
+                        «ELSEIF element.type.derived != null && !element.array»
+                                std::get< «nindex»>(values_) = «element.getTypeName(fStructType, false)»();
+                        «ELSEIF element.type.predefined != null && !element.array»
+                                std::get< «nindex»>(values_) = «element.type.generateDummyValue()»;
+                        «ELSE»
+                                std::get< «nindex»>(values_) = «element.getTypeName(fStructType, false)»();
+                        «ENDIF»
+                    «ENDIF»
+                    «{ n = n + 1; "" }»
+                «ENDFOR»
+            «ENDIF»
+            }
+            «IF fStructType.allElements.size > 0»
+                «fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»)
+                «IF fStructType.hasPolymorphicBase() && fStructType.base != null»
+                    : «fStructType.base.elementName»(«fStructType.base.allElements.map["_" + elementName].join(", ")»)
+                «ENDIF»
+                {
+                    «IF fStructType.hasPolymorphicBase»
+                        «var i = -1»
+                        «FOR element : fStructType.elements»
+                            std::get< «i = i+1»>(values_) = _«element.elementName»;
+                        «ENDFOR»
+                    «ELSE»
+                        «var i = -1»
+                        «FOR element : fStructType.allElements»
+                            std::get< «i = i+1»>(values_) = _«element.elementName»;
+                        «ENDFOR»
+                    «ENDIF»
+                }
+            «ENDIF»
+            «IF fStructType.hasPolymorphicBase()»
+            template<class _Input>
+            void readValue(CommonAPI::InputStream<_Input> &_input, const CommonAPI::EmptyDeployment *_depl) {
+                «IF fStructType.derivedFStructTypes.empty»
+                (void) _depl;
+                «ENDIF»
+                «var i = -1»
+                «FOR element : fStructType.elements»
+                _input.template readValue<CommonAPI::EmptyDeployment>(std::get< «i = i+1»>(values_));
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template readValue<_Input>(_input, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+
+            template<class _Input, class _Deployment>
+            void readValue(CommonAPI::InputStream<_Input> &_input, const _Deployment *_depl) {
+                «var j = -1»
+                «var k = fStructType.allElements.size - fStructType.elements.size - 1»
+                «FOR element : fStructType.elements»
+                _input.template readValue<>(std::get< «j = j+1»>(values_), std::get< «k = k+1»>(_depl->values_));
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template readValue<>(_input, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+            template<class _Output>
+            void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
+                «var l = -1»
+                «FOR element : fStructType.elements»
+                _output.writeType(std::get< «l = l+1»>(values_), _depl);
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template writeType<_Output>(_output, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+            template<class _Output, class _Deployment>
+            void writeType(CommonAPI::TypeOutputStream<_Output> &_output, const _Deployment *_depl) {
+                «var l1 = -1»
+                «var l2 = fStructType.allElements.size - fStructType.elements.size - 1»
+                «FOR element : fStructType.elements»
+                _output.writeType(std::get< «l1 = l1+1»>(values_), std::get< «l2 = l2+1»>(_depl->values_));
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template writeType<_Output, _Deployment>(_output, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+
+            template<class _Output>
+            void writeValue(CommonAPI::OutputStream<_Output> &_output, const CommonAPI::EmptyDeployment *_depl) {
+                «IF fStructType.derivedFStructTypes.empty»
+                (void) _depl;
+                «ENDIF»
+                «var m = -1»
+                «FOR element : fStructType.elements»
+                _output.template writeValue<CommonAPI::EmptyDeployment>(std::get< «m = m+1»>(values_));
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template writeValue<_Output>(_output, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+
+            template<class _Output, class _Deployment>
+            void writeValue(CommonAPI::OutputStream<_Output> &_output, const _Deployment *_depl) {
+                «var n = -1»
+                «var o = fStructType.allElements.size - fStructType.elements.size - 1»
+                «FOR element : fStructType.elements»
+                _output.template writeValue<>(std::get< «n = n+1»>(values_), std::get< «o = o + 1»>(_depl->values_));
+                «ENDFOR»
+                «IF fStructType.hasDerivedTypes()»
+                switch (getSerial()) {
+                «FOR derived : fStructType.derivedFStructTypes»
+                «derived.generateCases(null, false)»
+                    static_cast< «derived.elementName» *>(this)->template writeValue<>(_output, _depl);
+                    break;
+                «ENDFOR»
+                default:
+                    break;
+                }
+                «ENDIF»
+            }
+            «var p = -1»
+            «FOR element : fStructType.elements»
+                «generateComments(element, false)»
+                «val String typeName = element.getTypeName(fStructType, false)»
+                inline const «typeName» &get«element.elementName.toFirstUpper»() const { return std::get< «p = p+1»>(values_); }
+                inline void set«element.elementName.toFirstUpper»(const «typeName» «IF typeName.isComplex»&«ENDIF»_value) { std::get< «p»>(values_) = _value; }
+            «ENDFOR»
+
+            «IF fStructType.hasPolymorphicBase() && fStructType.elements.size > 0»
+            std::tuple< «fStructType.elements.map[getTypeName(fStructType, false)].join(", ")»> values_;
+            «ENDIF»
+        «ELSE»
+            «var k = -1»
+            «FOR element : fStructType.allElements»
+                «generateComments(element, false)»
+                «val String typeName = element.getTypeName(fStructType, false)»
+                inline const «typeName» &get«element.elementName.toFirstUpper»() const { return std::get< «k = k+1»>(values_); }
+                inline void set«element.elementName.toFirstUpper»(const «typeName» «IF typeName.isComplex»&«ENDIF»_value) { std::get< «k»>(values_) = _value; }
+            «ENDFOR»
+        «ENDIF»
+            inline bool operator==(const «fStructType.name»& _other) const {
+            «IF fStructType.allElements.size > 0»
+                «FOR element : fStructType.allElements BEFORE
                 'return (' SEPARATOR ' && ' AFTER ');'»get«element.elementName.toFirstUpper»() == _other.get«element.elementName.toFirstUpper»()«ENDFOR»
             «ELSE»
                 (void) _other;
                 return true;
             «ENDIF»    }
-			inline bool operator!=(const «fStructType.name» &_other) const {
-				return !((*this) == _other);
-			}
-		
-		};
+            inline bool operator!=(const «fStructType.name» &_other) const {
+                return !((*this) == _other);
+            }
+
+        };
     '''
 
     def dispatch generateFTypeDeclaration(FEnumerationType fEnumerationType, PropertyAccessor deploymentAccessor) {
@@ -385,7 +401,7 @@ class FTypeGenerator {
     }
 
     def String generateLiterals(FEnumerationType _enumeration) {
-        var String literals = new String()        
+        var String literals = new String()
         if (_enumeration.base != null)
             literals += _enumeration.base.generateLiterals + ",\n"
         for (enumerator : _enumeration.enumerators) {
@@ -394,11 +410,11 @@ class FTypeGenerator {
         }
         return literals
     }
-    
+
     def String generateLiteralValidation(FEnumerationType _enumeration, String backingType, Set<String> _values) '''
         «IF _enumeration.base!=null»«_enumeration.base.generateLiteralValidation(backingType, _values)»«ENDIF»
         «FOR enumerator : _enumeration.enumerators»
-            «IF _values.contains(enumerator.value.enumeratorValue)»//«ENDIF»case static_cast<«backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
+            «IF _values.contains(enumerator.value.enumeratorValue)»//«ENDIF»case static_cast< «backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
             «{_values.add(enumerator.value.enumeratorValue) ""}»
         «ENDFOR»
     '''
@@ -414,15 +430,15 @@ class FTypeGenerator {
         «ENDIF»
         «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
 
-        struct «_enumeration.name» : CommonAPI::Enumeration<«backingType»> {
+        struct «_enumeration.name» : CommonAPI::Enumeration< «backingType»> {
             enum Literal : «backingType» {
                 «_enumeration.generateLiterals»
             };
-            
-            «_enumeration.name»() 
-                : CommonAPI::Enumeration<«backingType»>(static_cast<«backingType»>(«_enumeration.initialValue»)) {}
-            «_enumeration.name»(Literal _literal) 
-                : CommonAPI::Enumeration<«backingType»>(static_cast<«backingType»>(_literal)) {}
+
+            «_enumeration.name»()
+                : CommonAPI::Enumeration< «backingType»>(static_cast< «backingType»>(«_enumeration.initialValue»)) {}
+            «_enumeration.name»(Literal _literal)
+                : CommonAPI::Enumeration< «backingType»>(static_cast< «backingType»>(_literal)) {}
             «_enumeration.generateBaseTypeAssignmentOperator(_enumeration, _accessor)»
 
             inline bool validate() const {
@@ -441,35 +457,35 @@ class FTypeGenerator {
             inline bool operator>=(const «_enumeration.name» &_other) const { return (value_ >= _other.value_); }
             inline bool operator<(const «_enumeration.name» &_other) const { return (value_ < _other.value_); }
             inline bool operator>(const «_enumeration.name» &_other) const { return (value_ > _other.value_); }
-            
-            inline bool operator==(const Literal &_value) const { return (value_ == static_cast<«backingType»>(_value)); }
-            inline bool operator!=(const Literal &_value) const { return (value_ != static_cast<«backingType»>(_value)); }
-            inline bool operator<=(const Literal &_value) const { return (value_ <= static_cast<«backingType»>(_value)); }
-            inline bool operator>=(const Literal &_value) const { return (value_ >= static_cast<«backingType»>(_value)); }
-            inline bool operator<(const Literal &_value) const { return (value_ < static_cast<«backingType»>(_value)); }
-            inline bool operator>(const Literal &_value) const { return (value_ > static_cast<«backingType»>(_value)); }
+
+            inline bool operator==(const Literal &_value) const { return (value_ == static_cast< «backingType»>(_value)); }
+            inline bool operator!=(const Literal &_value) const { return (value_ != static_cast< «backingType»>(_value)); }
+            inline bool operator<=(const Literal &_value) const { return (value_ <= static_cast< «backingType»>(_value)); }
+            inline bool operator>=(const Literal &_value) const { return (value_ >= static_cast< «backingType»>(_value)); }
+            inline bool operator<(const Literal &_value) const { return (value_ < static_cast< «backingType»>(_value)); }
+            inline bool operator>(const Literal &_value) const { return (value_ > static_cast< «backingType»>(_value)); }
         };
     '''
-    
+
     def CharSequence generateEnumBaseTypeConstructor(FEnumerationType _enumeration, String _name, String _baseName, String _backingType) '''
        «IF _enumeration.base != null»
            «generateEnumBaseTypeConstructor(_enumeration.base, _name, _baseName, _backingType)»
            «_name»(const «_enumeration.getBaseType(_backingType)»::Literal &_value)
                : «_baseName»(_value) {}
        «ELSE»
-            «_name»(const Literal &_value) 
-                : «_baseName»(static_cast<«_backingType»>(_value)) {}
-            «_name»(const «_backingType» &_value) 
+            «_name»(const Literal &_value)
+                : «_baseName»(static_cast< «_backingType»>(_value)) {}
+            «_name»(const «_backingType» &_value)
                 : «_baseName»(_value) {}
        «ENDIF»
     '''
-    
+
     def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, FEnumerationType _other, PropertyAccessor _accessor) '''
         «IF _other.base != null»
             «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
             «val baseTypeName = _other.getBaseType(backingType)»
             «_enumeration.name» &operator=(const «baseTypeName»::Literal &_value) {
-                value_ = static_cast<«backingType»>(_value);
+                value_ = static_cast< «backingType»>(_value);
                 return (*this);
             }
             «_enumeration.generateBaseTypeAssignmentOperator(_other.base, _accessor)»
@@ -478,7 +494,7 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FUnionType fUnionType, PropertyAccessor deploymentAccessor) '''
         «generateComments(fUnionType, false)»
-        typedef CommonAPI::Variant<«fUnionType.getElementNames»>  «fUnionType.elementName»;
+        typedef CommonAPI::Variant< «fUnionType.getElementNames»>  «fUnionType.elementName»;
     '''
 
     def private String getElementNames(FUnionType fUnion) {
@@ -489,9 +505,9 @@ class FTypeGenerator {
                 names += ", "
             }
         }
-        
+
         names += fUnion.elements.map[getTypeName(fUnion, false)].join(", ")
-        
+
         return names
     }
 
@@ -504,38 +520,38 @@ class FTypeGenerator {
 
     def dispatch generateFTypeInlineImplementation(FEnumerationType fEnumerationType, FModelElement parent, PropertyAccessor deploymentAccessor) '''
     '''
-    
+
     def dispatch generateFTypeInlineImplementation(FUnionType fUnionType, FModelElement parent, PropertyAccessor deploymentAccessor) ''''''
 
     def dispatch generateFTypeImplementation(FTypeDef fTypeDef, FModelElement parent, PropertyAccessor _accessor) ''''''
     def dispatch generateFTypeImplementation(FArrayType fArrayType, FModelElement parent, PropertyAccessor _accessor) ''''''
     def dispatch generateFTypeImplementation(FMapType fMap, FModelElement parent, PropertyAccessor _accessor) ''''''
     def dispatch generateFTypeImplementation(FEnumerationType _enumeration, FModelElement _parent, PropertyAccessor _accessor) '''
-	'''
+    '''
 
     def dispatch generateFTypeImplementation(FStructType fStructType, FModelElement parent, PropertyAccessor _accessor) '''
         «IF fStructType.isStructEmpty»
-		static_assert(false, "struct «fStructType.name» must not be empty !");
+        static_assert(false, "struct «fStructType.name» must not be empty !");
         «ENDIF»
-		«IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
-		std::shared_ptr<«fStructType.getClassNamespace(parent)»> «fStructType.getClassNamespace(parent)»::create(CommonAPI::Serial _serial) {
-			switch (_serial) {
-			case «parent.elementName»::«fStructType.elementName.toUpperCase()»_SERIAL:
-				return std::make_shared<«fStructType.getClassNamespace(parent)»>();
-			«FOR derived : fStructType.derivedFStructTypes»
-			«derived.generateCases(parent, true)»
-				«IF derived.derivedFStructTypes.empty»
-				return std::make_shared<«derived.getClassNamespace(parent)»>();
-				«ELSE»
-				return «derived.getClassNamespace(parent)»::create(_serial);
-				«ENDIF»			
-			«ENDFOR»
-			default:
-				break;
-			}
-			return std::shared_ptr<«fStructType.getClassNamespace(parent)»>();
-		}
-		«ENDIF»
+        «IF fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes())»
+        std::shared_ptr< «fStructType.getClassNamespace(parent)»> «fStructType.getClassNamespace(parent)»::create(CommonAPI::Serial _serial) {
+            switch (_serial) {
+            case «parent.elementName»::«fStructType.elementName.toUpperCase()»_SERIAL:
+                return std::make_shared< «fStructType.getClassNamespace(parent)»>();
+            «FOR derived : fStructType.derivedFStructTypes»
+            «derived.generateCases(parent, true)»
+                «IF derived.derivedFStructTypes.empty»
+                return std::make_shared< «derived.getClassNamespace(parent)»>();
+                «ELSE»
+                return «derived.getClassNamespace(parent)»::create(_serial);
+                «ENDIF»
+            «ENDFOR»
+            default:
+                break;
+            }
+            return std::shared_ptr< «fStructType.getClassNamespace(parent)»>();
+        }
+        «ENDIF»
 
     '''
 
@@ -548,15 +564,15 @@ class FTypeGenerator {
         }
         return false
     }
-    
+
     def void generateInheritanceIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         if(fInterface.base != null) {
             generatedHeaders.add(fInterface.base.stubHeaderPath)
         }
     }
 
-    def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-    	if (!fInterface.attributes.filter[array].nullOrEmpty) {
+    def void generateRequiredTypeIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders, boolean isStub) {
+        if (!fInterface.attributes.filter[array].nullOrEmpty) {
             libraryHeaders.add('vector')
         }
         if (!fInterface.methods.map[inArgs.filter[array]].nullOrEmpty) {
@@ -568,16 +584,18 @@ class FTypeGenerator {
         if (!fInterface.broadcasts.map[outArgs.filter[array]].nullOrEmpty) {
             libraryHeaders.add('vector')
         }
-        
+
         fInterface.attributes.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
         fInterface.methods.forEach[
             inArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
             outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]
             errorEnum?.addRequiredHeaders(generatedHeaders, libraryHeaders)
         ]
-        fInterface.managedInterfaces.forEach[
-            generatedHeaders.add(stubHeaderPath)
-        ]
+        if (isStub) {
+            fInterface.managedInterfaces.forEach[
+                generatedHeaders.add(stubHeaderPath)
+            ]
+        }
         fInterface.broadcasts.forEach[outArgs.forEach[type.derived?.addRequiredHeaders(generatedHeaders, libraryHeaders)]]
 
         generatedHeaders.remove(fInterface.headerPath)
@@ -609,6 +627,8 @@ class FTypeGenerator {
             generatedHeaders.add(fStructType.base.FTypeCollection.headerPath)
         else
             libraryHeaders.addAll('CommonAPI/Deployment.hpp', 'CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp', 'CommonAPI/Struct.hpp')
+        if (fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes()))
+            libraryHeaders.add('CommonAPI/Export.hpp')
         fStructType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
     }
     def private dispatch void addFTypeRequiredHeaders(FEnumerationType fEnumerationType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
@@ -624,7 +644,7 @@ class FTypeGenerator {
         fUnionType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
         libraryHeaders.addAll('cstdint', 'memory')
     }
-    
+
     def private void getRequiredHeaderPath(FTypeRef fTypeRef, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         if (fTypeRef.derived != null) {
             generatedHeaders.add(fTypeRef.derived.FTypeCollection.headerPath)
@@ -643,7 +663,7 @@ class FTypeGenerator {
     def private getClassNamespace(FModelElement child, FModelElement parent) {
         child.getClassNamespaceWithName(child.elementName, parent, parent.elementName)
     }
-    
+
     def private getClassNamespaceWithName(FModelElement child, String name, FModelElement parent, String parentName) {
         var reference = name
         if (parent != null && parent != child)
@@ -653,7 +673,7 @@ class FTypeGenerator {
 
     def private generateHasher(FMapType fMap) {
         if (fMap.keyType.derived instanceof FEnumerationType)  {
-            return ''', CommonAPI::EnumHasher<«fMap.keyType.derived.getFullName»>'''
+            return ''', CommonAPI::EnumHasher< «fMap.keyType.derived.getFullName»>'''
         }
         return ""
     }
@@ -665,7 +685,7 @@ class FTypeGenerator {
         if(fMap.keyType.derived != null) {
             return fMap.keyType.derived.getFullName
         } else {
-        	return fMap.keyType.getElementType(null, true)
+            return fMap.keyType.getElementType(null, true)
         }
     }
 
@@ -674,9 +694,9 @@ class FTypeGenerator {
             return "std::shared_ptr<" + fMap.valueType.getElementType(null, true) + ">"
         }
         if(fMap.valueType.derived != null) {
-        	return fMap.valueType.derived.getFullName
+            return fMap.valueType.derived.getFullName
         } else {
-        	return fMap.valueType.getElementType(null, true)
+            return fMap.valueType.getElementType(null, true)
         }
     }
 

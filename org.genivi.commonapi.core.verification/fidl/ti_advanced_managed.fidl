@@ -12,6 +12,17 @@ interface Manager manages Device, SpecialDevice {
 
     attribute String [] myDevices
 
+    method addDevice {
+        in {
+            UInt8 x
+        }
+    }
+
+    method removeDevice {
+	in {
+	    UInt8 x
+	}
+    }
 }
 
 interface Device {

@@ -51,7 +51,7 @@ class FInterfaceProxyGenerator {
 
         «val generatedHeaders = new HashSet<String>»
         «val libraryHeaders = new HashSet<String>»
-        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders, false)»
 
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
@@ -92,11 +92,11 @@ class FInterfaceProxyGenerator {
             : virtual public «IF fInterface.base != null»«fInterface.base.getTypeCollectionName(fInterface)»ProxyBase«ELSE»CommonAPI::Proxy«ENDIF» {
         public:
             «FOR attribute : fInterface.attributes»
-                typedef CommonAPI::«attribute.commonApiBaseClassname»<«attribute.getTypeName(fInterface, true)»> «attribute.className»;
+                typedef CommonAPI::«attribute.commonApiBaseClassname»< «attribute.getTypeName(fInterface, true)»> «attribute.className»;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «IF broadcast.isSelective»
-                    typedef CommonAPI::SelectiveEvent<«broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»> «broadcast.className»;
+                    typedef CommonAPI::SelectiveEvent< «broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»> «broadcast.className»;
                 «ELSE»
                     typedef CommonAPI::Event<
                         «broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»
@@ -118,7 +118,7 @@ class FInterfaceProxyGenerator {
 
             «FOR method : fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                «IF generateSyncCalls»
+                «IF generateSyncCalls || method.isFireAndForget»
                 «IF method.isFireAndForget»
                     /**
                      * @invariant Fire And Forget
@@ -137,9 +137,9 @@ class FInterfaceProxyGenerator {
 
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»
-        
+
         «fInterface.generateMajorVersionNamespace»
-        
+
         #endif // «fInterface.defineName»_PROXY_BASE_HPP_
     '''
 
@@ -171,7 +171,7 @@ class FInterfaceProxyGenerator {
 
         template <typename ... _AttributeExtensions>
         class «fInterface.proxyClassName»
-            : virtual public «fInterface.elementName», 
+            : virtual public «fInterface.elementName»,
               virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base != null»
               public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
               virtual public _AttributeExtensions... {
@@ -208,11 +208,11 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             «FOR method : fInterface.methods»
-                «IF generateSyncCalls»
+                «IF generateSyncCalls || method.isFireAndForget»
                 /**
                 «FTypeGenerator::generateComments(method, true)»
                  * Calls «method.elementName» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
-                 * 
+                 *
                 «IF !method.inArgs.empty»* All const parameters are input parameters to this method.«ENDIF»
                 «IF !method.outArgs.empty»* All non-const parameters will be filled with the returned values.«ENDIF»
                  * The CallStatus will be filled when the method returns and indicate either
@@ -224,7 +224,7 @@ class FInterfaceProxyGenerator {
                 «IF !method.isFireAndForget»
                     /**
                      * Calls «method.elementName» with asynchronous semantics.
-                     * 
+                     *
                      * The provided callback will be called when the reply to this call arrives or
                      * an error occurs during the call. The CallStatus will indicate either "SUCCESS"
                      * or which type of error has occurred. In case of any error, ONLY the CallStatus
@@ -268,7 +268,7 @@ class FInterfaceProxyGenerator {
             virtual CommonAPI::InterfaceVersionAttribute& getInterfaceVersionAttribute();
 
          private:
-            std::shared_ptr<«fInterface.proxyBaseClassName»> delegate_;
+            std::shared_ptr< «fInterface.proxyBaseClassName»> delegate_;
         };
 
         typedef «fInterface.proxyClassName»<> «fInterface.proxyDefaultClassName»;
@@ -290,8 +290,8 @@ class FInterfaceProxyGenerator {
                 «IF fInterface.base != null»
                 «fInterface.base.getFullName()»Proxy<_AttributeExtensions...>(delegate),
                 «ENDIF»
-                _AttributeExtensions(*(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)))...,
-                delegate_(std::dynamic_pointer_cast<«fInterface.proxyBaseClassName»>(delegate)) {
+                _AttributeExtensions(*(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)))...,
+                delegate_(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)) {
         }
 
         template <typename ... _AttributeExtensions>
@@ -300,7 +300,7 @@ class FInterfaceProxyGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
-            «IF generateSyncCalls»
+            «IF generateSyncCalls || method.isFireAndForget»
             template <typename ... _AttributeExtensions>
             «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
                 «FOR arg : method.inArgs»
@@ -373,7 +373,7 @@ class FInterfaceProxyGenerator {
         «IF fInterface.hasAttributes»
         namespace CommonAPI {
         template<template<typename > class _AttributeExtension>
-        struct DefaultAttributeProxyHelper<«fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»,
+        struct DefaultAttributeProxyHelper< «fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»,
             _AttributeExtension> {
             typedef typename «fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.proxyClassName»<
                     «fInterface.attributes.map[fInterface.versionPrefix + fInterface.model.generateCppNamespace + fInterface.extensionsSubnamespace + '::' + extensionClassName + "<_AttributeExtension>"].join(", \n")»
@@ -383,7 +383,7 @@ class FInterfaceProxyGenerator {
         «ENDIF»
 
         «fInterface.generateMajorVersionNamespace»
-        
+
         #endif // «fInterface.defineName»_PROXY_HPP_
     '''
 
@@ -392,13 +392,10 @@ class FInterfaceProxyGenerator {
         template <template <typename > class _ExtensionType>
         class «fAttribute.extensionClassName» {
          public:
-            typedef _ExtensionType<«fInterface.proxyBaseClassName»::«fAttribute.className»> extension_type;
+            typedef _ExtensionType< «fInterface.proxyBaseClassName»::«fAttribute.className»> extension_type;
 
-            static_assert(std::is_base_of<typename CommonAPI::AttributeExtension<«fInterface.proxyBaseClassName»::«fAttribute.className»>, extension_type>::value,
+            static_assert(std::is_base_of<typename CommonAPI::AttributeExtension< «fInterface.proxyBaseClassName»::«fAttribute.className»>, extension_type>::value,
                           "Not CommonAPI Attribute Extension!");
-        #ifdef WIN32
-            «fAttribute.extensionClassName»() {}
-        #endif
 
             «fAttribute.extensionClassName»(«fInterface.proxyBaseClassName»& proxy): attributeExtension_(proxy.get«fAttribute.className»()) {
             }
@@ -471,7 +468,7 @@ class FInterfaceProxyGenerator {
             syncVariableList.add('_error')
 
         syncVariableList.addAll(fMethod.outArgs.map['_' + elementName])
-        
+
         if (!fMethod.isFireAndForget)
             return syncVariableList.join(', ') + ", _info"
         else

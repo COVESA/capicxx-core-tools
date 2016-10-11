@@ -47,12 +47,12 @@ public:
 class PFComplex: public ::testing::Test {
 public:
      void recvArray(const CommonAPI::CallStatus& callStatus, TestInterface::tArray y) {
-        (void)y;
+         (void)y;
+         std::unique_lock<std::mutex> uniqueLock(synchLock_);
          EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
          callCount_++;
          if (callCount_ == loopCountPerPaylod) {
              callCount_ = 0;
-             std::unique_lock<std::mutex> uniqueLock(synchLock_);
              condVar_.notify_one();
          }
      }

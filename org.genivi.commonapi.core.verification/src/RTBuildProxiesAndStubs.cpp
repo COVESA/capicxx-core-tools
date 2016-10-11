@@ -98,13 +98,13 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
         ASSERT_TRUE((bool)testProxy);
         testProxy->isAvailableBlocking();
 
-        std::cout << "Executing synchronous method calls (for approximately 30 seconds)" << std::endl;
+        std::cout << "Executing synchronous method calls (for approximately 5 seconds)" << std::endl;
         for (int i = 0; i < 30; i++) {
             CommonAPI::CallStatus callStatus;
             testProxy->testMethod(callStatus);
             EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
-            usleep(1 * 1000 * 1000);
+            usleep(1 * 1000 * 166);
         }
         std::cout << std::endl;
 
@@ -139,6 +139,52 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
     }
 }
 
+/**
+* @test Loads Runtime, creates proxy two times with reassigning and create stub/service.
+*   - Calls CommonAPI::Runtime::get() and checks if return value is true
+*   - Create proxy
+*   - Create proxy again and reassign
+*   - Create stub and register service
+*   - Checks whether proxy is available
+*   - Do synchronous calls
+*   - Unregister the service.
+*/
+TEST_F(RTBuildProxiesAndStubs, BuildProxyTwoTimesWithReassigningAndStub) {
+
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE((bool)runtime);
+
+    auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    ASSERT_TRUE((bool)testProxy);
+
+    testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    ASSERT_TRUE((bool)testProxy);
+
+    auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+    ASSERT_TRUE((bool)testStub);
+    ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+
+    int i = 0;
+    while( (i < 100)  && (!testProxy->isAvailable()) ) {
+        if (0 == i) {
+            std::cout << "Wait for proxy available" << std::flush;
+        }
+        std::cout << "." << std::flush;
+        usleep(100 * 1000);
+        i++;
+    }
+    std::cout << std::endl;
+
+    ASSERT_TRUE(testProxy->isAvailable());
+
+    CommonAPI::CallStatus callStatus;
+    testProxy->testMethod(callStatus);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    usleep(5 * 1000 * 1000);
+
+    ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+}
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

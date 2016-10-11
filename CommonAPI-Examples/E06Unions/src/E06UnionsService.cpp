@@ -13,6 +13,7 @@
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E06S");
+    CommonAPI::Runtime::setProperty("LogApplication", "E06S");
     CommonAPI::Runtime::setProperty("LibraryBase", "E06Unions");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

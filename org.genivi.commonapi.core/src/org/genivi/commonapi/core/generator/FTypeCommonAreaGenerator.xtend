@@ -80,7 +80,7 @@ class FTypeCommonAreaGenerator {
         var rev = fUnion.elements
         var iter = rev.iterator
         val parent = (fUnion.eContainer as FTypeCollection)
-        
+
         while (iter.hasNext) {
             var item = iter.next
             var lName = "";
@@ -88,7 +88,7 @@ class FTypeCommonAreaGenerator {
                 lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.elementName, parent, parent.name)
             } else {
                lName = item.getTypeName(fUnion, false)
-            }            
+            }
             names.add(lName)
         }
 
@@ -100,7 +100,7 @@ class FTypeCommonAreaGenerator {
 
         return names.reverse
     }
-    
+
     def private generateVariantComnparatorIf(List<String> list) {
         var counter = 1;
         var ret = "";
@@ -123,7 +123,7 @@ class FTypeCommonAreaGenerator {
         «val unionBaseTypeName = _base.getElementName(null, true)»
         «val unionTypeContainerName = (_derived.eContainer as FTypeCollection).getTypeCollectionName(null)»
         «val unionBaseTypeContainerName = (_base.eContainer as FTypeCollection).getTypeCollectionName(null)»
-        
+
         inline bool operator==(
                 const «unionTypeContainerName»::«unionTypeName» &_lhs,
                 const «unionBaseTypeContainerName»::«unionBaseTypeName» &_rhs) {
@@ -172,9 +172,9 @@ class FTypeCommonAreaGenerator {
     def generateHash (FType type, String name, FTypeCollection fTypes, PropertyAccessor deploymentAccessor) '''
     //Hash for «name»
     template<>
-    struct hash<«type.getFQN(name, fTypes)»> {
+    struct hash< «type.getFQN(name, fTypes)»> {
         inline size_t operator()(const «type.getFQN(name, fTypes)»& «name.toFirstLower») const {
-            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«name.toFirstLower»);
+            return static_cast< «type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«name.toFirstLower»);
         }
     };
     '''
@@ -182,9 +182,9 @@ class FTypeCommonAreaGenerator {
     def generateHash (FType type, FTypeCollection fTypes, PropertyAccessor deploymentAccessor) '''
     //Hash for «type.elementName»
     template<>
-    struct hash<«type.getFQN(fTypes)»> {
+    struct hash< «type.getFQN(fTypes)»> {
         inline size_t operator()(const «type.getFQN(fTypes)»& «type.elementName.toFirstLower») const {
-            return static_cast<«type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.elementName.toFirstLower»);
+            return static_cast< «type.getFEnumerationType.getBackingType(deploymentAccessor).primitiveTypeName»>(«type.elementName.toFirstLower»);
         }
     };
     '''

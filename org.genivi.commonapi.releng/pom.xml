@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>commonapi</groupId>
     <artifactId>org.genivi.commonapi.releng</artifactId>
-    <version>3.1.5-SNAPSHOT</version>
+    <version>3.1.8-SNAPSHOT</version>
     <packaging>pom</packaging>
     <properties>
         <tycho-version>0.22.0</tycho-version>
@@ -46,7 +46,7 @@
                         <artifact>
                             <groupId>commonapi</groupId>
                             <artifactId>${target.id}</artifactId>
-                            <version>3.1.5-SNAPSHOT</version>
+                            <version>3.1.8-SNAPSHOT</version>
                         </artifact>
                     </target>
                     <filters>

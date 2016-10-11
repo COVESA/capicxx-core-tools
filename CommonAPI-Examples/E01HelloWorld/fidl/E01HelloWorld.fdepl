@@ -10,7 +10,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
     SomeIpServiceID = 4660
 
     method sayHello {
-        SomeIpMethodID = 33000
+        SomeIpMethodID = 30000
         SomeIpReliable = true
         
         in {

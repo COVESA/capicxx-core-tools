@@ -33,7 +33,7 @@ class FTypeCollectionGenerator {
             if (fTypeCollection.hasSourceFile) {
                 fileSystemAccess.generateFile(fTypeCollection.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fTypeCollection.generateSource(modelid, deploymentAccessor))
             }
-        } 
+        }
         else {
             // feature: suppress code generation
             fileSystemAccess.generateFile(fTypeCollection.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)

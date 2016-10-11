@@ -389,7 +389,7 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
     }
 
     usleep(wt);
-    ASSERT_EQ(subscriptionHandler.myQueue_.size(), testNumber + 1); // + 1 due to the reason, that by subscribtion the current value is returned
+    ASSERT_EQ(subscriptionHandler.myQueue_.size(), std::deque<uint8_t>::size_type(testNumber + 1)); // + 1 due to the reason, that by subscribtion the current value is returned
 
     uint8_t t = 0;
     for(std::deque<uint8_t>::iterator it = subscriptionHandler.myQueue_.begin(); it != subscriptionHandler.myQueue_.end(); ++it) {
@@ -683,7 +683,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
 //}
 
 /**
- * @test Test of subscribing and immediately sequentially
+ * @test Test of subscribing and unsubscribing sequentially
  *  - subscribe first callback
  *  - subscribe second callback
  *  - change value
@@ -744,6 +744,76 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeSequentially) {
     usleep(wt);
 }
 
+/**
+ * @test Test of subscribing and unsubscribing implicit with creating a new proxy with reassigning
+ *  - subscribe first callback
+ *  - subscribe second callback
+ *  - change value
+ *  - check that both callbacks were executed by changing the value
+ *  - create new proxy with reassigning. So the connection won't be destroyed and the callbacks
+ *    are unsubscribed implicitly.
+ *  - subscribe second callback
+ *  - change value
+ *  - check that only second callback was executed
+ *  - unsubscribe second callback
+ *  - change value
+ *  - check that both callbacks were not executed by changing the value
+ */
+TEST_F(CMAttributeSubscription, DISABLED_SubscribeAndUnsubscribeImplicitWithCreatingNewProxyWithReassigning) {
+
+    SubscribeUnsubscribeHandler subUnsubHandler;
+
+    CommonAPI::Event<uint8_t>::Subscription subscribedListenerCallOk;
+    CommonAPI::Event<uint8_t>::Subscription subscribedListenerCallNotOk;
+
+    std::function<void (const uint8_t&)> callbackOk =
+            std::bind(&SubscribeUnsubscribeHandler::okCallback, &subUnsubHandler, std::placeholders::_1);
+    std::function<void (const uint8_t&)> callbackNotOk =
+            std::bind(&SubscribeUnsubscribeHandler::notOkCallback, &subUnsubHandler, std::placeholders::_1);
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    testProxy_->isAvailableBlocking();
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    // subscribe ok and notOk callback
+    subscribedListenerCallOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackOk);
+    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
+
+    testStub_->setTestAttributeAttribute(12);
+    subUnsubHandler.wait_OkAttribute(12);
+    subUnsubHandler.wait_NotOkAttribute(12);
+    EXPECT_EQ(12, subUnsubHandler.getSubscribedOkAttribute());
+    EXPECT_EQ(12, subUnsubHandler.getSubscribedNotOkAttribute());
+
+    //build new proxy with reassigning --> Connection won't be destroyed + callbacks will be unsubscribed
+    testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    ASSERT_TRUE((bool)testProxy_);
+
+    testProxy_->isAvailableBlocking();
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    //subscribe notOk callback
+    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
+
+    testStub_->setTestAttributeAttribute(14);
+    subUnsubHandler.wait_NotOkAttribute(14);
+    EXPECT_EQ(12, subUnsubHandler.getSubscribedOkAttribute());
+    EXPECT_EQ(14, subUnsubHandler.getSubscribedNotOkAttribute());
+
+    // unsubscribe notOk callback
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListenerCallNotOk);
+
+    testStub_->setTestAttributeAttribute(16);
+    usleep(wt);
+    EXPECT_EQ(12, subUnsubHandler.getSubscribedOkAttribute());
+    EXPECT_EQ(14, subUnsubHandler.getSubscribedNotOkAttribute());
+
+    bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
+    ASSERT_TRUE(serviceUnregistered);
+    usleep(wt);
+}
 
 /**
  * @test Test of behaviour in case unsubscribe is called two times
@@ -835,7 +905,8 @@ TEST_F(CMAttributeSubscription, SubscribeServiceNotAvailable) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
 
     usleep(wt);
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
@@ -858,6 +929,8 @@ TEST_F(CMAttributeSubscription, SubscribeServiceNotAvailable) {
     subscriptionHandler.wait_Attribute(newValue);
 
     EXPECT_EQ(newValue, subscriptionHandler.getSubscriptedTestAttribute());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
     bool isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -901,7 +974,8 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
 
     // initialize test stub with default value
     testStub_->setTestAttributeAttribute(firstValue);
@@ -932,6 +1006,8 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     subscriptionHandler.wait_Attribute(thirdValue);
 
     EXPECT_EQ(thirdValue, subscriptionHandler.getSubscriptedTestAttribute());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
     isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -973,7 +1049,8 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
 
     // initialize test stub with default value
     testStub_->setTestAttributeAttribute(firstValue);
@@ -1003,6 +1080,8 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     subscriptionHandler.wait_Attribute(secondValue);
 
     EXPECT_EQ(secondValue, subscriptionHandler.getSubscriptedTestAttribute());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
     isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -1037,7 +1116,8 @@ TEST_F(CMAttributeSubscription, SubscribeSecondProxyLater) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
 
     // register service
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -1060,7 +1140,8 @@ TEST_F(CMAttributeSubscription, SubscribeSecondProxyLater) {
     std::function<void (const uint8_t&)> secondMyCallback =
             std::bind(&SubscriptionHandler::myCallback, &secondSubscriptionHandler, std::placeholders::_1);
 
-    secondTestProxy->getTestAttributeAttribute().getChangedEvent().subscribe(secondMyCallback);
+    CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
+        secondTestProxy->getTestAttributeAttribute().getChangedEvent().subscribe(secondMyCallback);
 
     secondSubscriptionHandler.wait_Attribute(defaultValue);
 
@@ -1075,6 +1156,9 @@ TEST_F(CMAttributeSubscription, SubscribeSecondProxyLater) {
 
     EXPECT_EQ(newValue, subscriptionHandler.getSubscriptedTestAttribute());
     EXPECT_EQ(newValue, secondSubscriptionHandler.getSubscriptedTestAttribute());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(firstSubscribedListener);
+    secondTestProxy->getTestAttributeAttribute().getChangedEvent().unsubscribe(secondSubscribedListener);
 
     bool isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -1107,11 +1191,14 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceNotAvailable) {
     std::function<void (const uint8_t&)> myCallback3 =
             std::bind(&ThreeCallbackHandler::callback_3, &threeCallbackHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
+    CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
     usleep(wt);
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
+    CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
     usleep(wt);
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
+    CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
 
     // register service
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -1129,6 +1216,10 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceNotAvailable) {
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_1());
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_2());
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_3());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(firstSubscribedListener);
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(secondSubscribedListener);
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(thirdSubscribedListener);
 
     bool isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
@@ -1167,11 +1258,14 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     std::function<void (const uint8_t&)> myCallback3 =
             std::bind(&ThreeCallbackHandler::callback_3, &threeCallbackHandler, std::placeholders::_1);
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
+    CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
     usleep(wt);
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
+    CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
     usleep(wt);
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
+    CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
 
     threeCallbackHandler.waitCallbacks();
 
@@ -1182,6 +1276,10 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_1());
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_2());
     EXPECT_EQ(defaultValue, threeCallbackHandler.getCallbackValue_3());
+
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(firstSubscribedListener);
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(secondSubscribedListener);
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(thirdSubscribedListener);
 
     bool isUnregistered = runtime_->unregisterService(domain,
             TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);

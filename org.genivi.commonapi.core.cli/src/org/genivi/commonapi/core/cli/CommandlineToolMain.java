@@ -86,25 +86,25 @@ public class CommandlineToolMain extends CommandlineTool {
 
 	}
 
-	public void generateCore(List<String> fileList) {
+	public int generateCore(List<String> fileList) {
 		francaGenerator = injector.getInstance(FrancaGenerator.class);
 
-		doGenerate(fileList);
+		return doGenerate(fileList);
 	}
-	
+
 	protected String normalize(String _path) {
 		File itsFile = new File(_path);
 		return itsFile.getAbsolutePath();
 	}
-	
+
 
 	/**
 	 * Call the franca generator for the specified list of files.
-	 * 
+	 *
 	 * @param fileList
 	 *            the list of files to generate code from
 	 */
-	protected void doGenerate(List<String> _fileList) {
+	protected int doGenerate(List<String> _fileList) {
 		fsa.setOutputConfigurations(FPreferences.getInstance()
 				.getOutputpathConfiguration());
 
@@ -115,7 +115,7 @@ public class CommandlineToolMain extends CommandlineTool {
 		ConsoleLogger.printLog("and CommonAPI Version "
 				+ FrancaGeneratorExtensions.getCoreVersion());
 		int error_state = NO_ERROR_STATE;
-		
+
 		// Create absolute paths
 		List<String> fileList = new ArrayList<String>();
 		for (String path : _fileList) {
@@ -174,12 +174,12 @@ public class CommandlineToolMain extends CommandlineTool {
 		}
 		fsa.clearFileList();
 		dumpGeneratedFiles = false;
-		System.exit(error_state);
+		return error_state;
 	}
 
 	/**
 	 * Validate the fidl/fdepl file resource
-	 * 
+	 *
 	 * @param resource
 	 */
 	private void validateCore(Resource resource) {
@@ -207,7 +207,7 @@ public class CommandlineToolMain extends CommandlineTool {
 				}
 			}
 			if (model instanceof FDModel) {
-				// don't validate fdepl files at the moment				
+				// don't validate fdepl files at the moment
 				return;
 				// cliValidator.validateImports((FDModel) model, resource.getURI());
 			}
@@ -223,7 +223,7 @@ public class CommandlineToolMain extends CommandlineTool {
 		pref.setPreference(PreferenceConstants.P_GENERATE_COMMON, "false");
 		ConsoleLogger.printLog("No common code will be generated");
 	}
-	
+
 	public void setNoProxyCode() {
 		pref.setPreference(PreferenceConstants.P_GENERATE_PROXY, "false");
 		ConsoleLogger.printLog("No proxy code will be generated");
@@ -304,10 +304,14 @@ public class CommandlineToolMain extends CommandlineTool {
 		isValidation = false;
 	}
 
+    public void enableValidationWarningsAsErrors() {
+        isValidationWarningsAsErrors = true;
+    }
+
 	/**
 	 * Set the text from a file which will be inserted as a comment in each
 	 * generated file (for example your license)
-	 * 
+	 *
 	 * @param fileWithText
 	 * @return
 	 */

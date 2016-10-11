@@ -242,6 +242,96 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
 }
 
+/*
+* @test Test function call with advanced types
+*   - Add more elements to a map than deployment allows -> Not succeed
+*   - Add less elements to a map than deployment allows -> Not succeed
+*/
+TEST_F(DTAdvanced, DISABLED_SendAndReceiveMapInvalid) {
+
+    CommonAPI::CallStatus callStatus;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
+
+    arrayTestValue.push_back("Test1");
+    arrayTestValue.push_back("Test2");
+    arrayTestValue.push_back("Test3");
+
+    enumerationTestValue = v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE2;
+
+    structTestValue.setBooleanMember(true);
+    structTestValue.setUint8Member(42);
+    structTestValue.setStringMember("Hello World");
+
+    uint8_t u = 53;
+    unionTestValue = u;
+
+    mapTestValue[1] = "Hello";
+    mapTestValue[2] = "World";
+    mapTestValue[3] = "World";
+    mapTestValue[4] = "World";
+    mapTestValue[5] = "World";
+
+    typedefTestValue = 64;
+
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
+    enumArrayIn.push_back(enumerationTestValue);
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapResultValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefResultValue;
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayOut;
+
+    testProxy_->fTest(
+            arrayTestValue,
+            enumerationTestValue,
+            structTestValue,
+            unionTestValue,
+            mapTestValue,
+            typedefTestValue,
+            enumArrayIn,
+            callStatus,
+            arrayResultValue,
+            enumerationResultValue,
+            structResultValue,
+            unionResultValue,
+            mapResultValue,
+            typedefResultValue,
+            enumArrayOut
+    );
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::OUT_OF_MEMORY);
+
+    mapTestValue.clear();
+    mapTestValue[1] = "Hello";
+
+    testProxy_->fTest(
+            arrayTestValue,
+            enumerationTestValue,
+            structTestValue,
+            unionTestValue,
+            mapTestValue,
+            typedefTestValue,
+            enumArrayIn,
+            callStatus,
+            arrayResultValue,
+            enumerationResultValue,
+            structResultValue,
+            unionResultValue,
+            mapResultValue,
+            typedefResultValue,
+            enumArrayOut
+    );
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::OUT_OF_MEMORY);
+
+}
 
 /**
 * @test Test attribute functions with invalid values
@@ -261,6 +351,28 @@ TEST_F(DTAdvanced, AttributeSetInvalid) {
 
     testProxy_->getAEnumerationAttribute().setValue(enumerationTestValue, callStatus, enumerationResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::INVALID_VALUE);
+}
+
+/**
+* @test Test attribute functions with invalid map length
+*   - Call set function of attributes with map length
+*   - Check that an error returns
+*/
+TEST_F(DTAdvanced, DISABLED_AttributeSetInvalidMapLength) {
+
+    CommonAPI::CallStatus callStatus;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestResonseValue;
+
+    mapTestValue.clear();
+    mapTestValue[1] = "Hello";
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
+
+    testProxy_->getAMapAttribute().setValue(mapTestValue, callStatus, mapTestResonseValue);
+
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::OUT_OF_MEMORY);
 }
 
 /**
@@ -424,6 +536,58 @@ TEST_F(DTAdvanced, BroadcastReceive) {
         EXPECT_EQ(mapTestValue, mapResultValue);
         EXPECT_EQ(typedefTestValue, typedefResultValue);
     });
+
+    testProxy_->fTest(
+            arrayTestValue,
+            enumerationTestValue,
+            structTestValue,
+            unionTestValue,
+            mapTestValue,
+            typedefTestValue,
+            enumArrayIn,
+            callStatus,
+            arrayResultValue,
+            enumerationResultValue,
+            structResultValue,
+            unionResultValue,
+            mapResultValue,
+            typedefResultValue,
+            enumArrayOut
+    );
+
+    usleep(100000);
+    ASSERT_TRUE(received_);
+    received_ = false;
+
+    mapTestValue.clear();
+    mapTestValue[4] = "Test";
+    mapTestValue[5] = "123";
+
+    testProxy_->fTest(
+            arrayTestValue,
+            enumerationTestValue,
+            structTestValue,
+            unionTestValue,
+            mapTestValue,
+            typedefTestValue,
+            enumArrayIn,
+            callStatus,
+            arrayResultValue,
+            enumerationResultValue,
+            structResultValue,
+            unionResultValue,
+            mapResultValue,
+            typedefResultValue,
+            enumArrayOut
+    );
+
+    usleep(100000);
+    ASSERT_TRUE(received_);
+    received_ = false;
+
+    mapTestValue.clear();
+    mapTestValue[11] = "blub";
+    mapTestValue[22] = "blah";
 
     testProxy_->fTest(
             arrayTestValue,

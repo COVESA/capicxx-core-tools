@@ -28,7 +28,7 @@ class FInterfaceStubGenerator {
 
 
     def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, IResource modelid) {
-        
+
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
             fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(modelid))
             // should skeleton code be generated ?
@@ -36,8 +36,8 @@ class FInterfaceStubGenerator {
             {
                 fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultHeader(modelid))
                 fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultSource(modelid))
-            }        
-        } 
+            }
+        }
         else {
             // feature: suppress code generation
             fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, PreferenceConstants::NO_CODE)
@@ -46,7 +46,7 @@ class FInterfaceStubGenerator {
             {
                 fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants::NO_CODE)
                 fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, PreferenceConstants::NO_CODE)
-            }        
+            }
         }
     }
 
@@ -57,12 +57,13 @@ class FInterfaceStubGenerator {
         #define «fInterface.defineName»_STUB_HPP_
 
         #include <functional>
+        #include <sstream>
 
         «val generatedHeaders = new HashSet<String>»
         «val libraryHeaders = new HashSet<String>»
 
         «fInterface.generateInheritanceIncludes(generatedHeaders, libraryHeaders)»
-        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders)»
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders, true)»
         «fInterface.generateSelectiveBroadcastStubIncludes(generatedHeaders, libraryHeaders)»
 
         «FOR requiredHeaderFile : generatedHeaders.sort»
@@ -93,8 +94,8 @@ class FInterfaceStubGenerator {
          * An application developer should not need to bother with this class.
          */
         class «fInterface.stubAdapterClassName»
-            : public virtual CommonAPI::StubAdapter, 
-              public virtual «fInterface.elementName»«IF fInterface.base != null», 
+            : public virtual CommonAPI::StubAdapter,
+              public virtual «fInterface.elementName»«IF fInterface.base != null»,
               public virtual «fInterface.base.getTypeCollectionName(fInterface)»StubAdapter«ENDIF» {
          public:
             «FOR attribute : fInterface.attributes»
@@ -180,7 +181,7 @@ class FInterfaceStubGenerator {
          * a look at if he wants to implement a service.
          */
         class «fInterface.stubClassName»
-            : public virtual «fInterface.stubCommonAPIClassName»«IF fInterface.base != null», 
+            : public virtual «fInterface.stubCommonAPIClassName»«IF fInterface.base != null»,
               public virtual «fInterface.base.getTypeCollectionName(fInterface)»Stub«ENDIF»
         {
         public:
@@ -188,49 +189,115 @@ class FInterfaceStubGenerator {
         «{methodreplyMap = new HashMap<FMethod, String>();""}»
         «FOR method: fInterface.methods»
             «IF !method.isFireAndForget»
-	            «generateMethodReplyDeclarations(method, fInterface, counterMap, methodreplyMap)»
+                «generateMethodReplyDeclarations(method, fInterface, counterMap, methodreplyMap)»
             «ENDIF»
-	    «ENDFOR»
-        
+        «ENDFOR»
+
             virtual ~«fInterface.stubClassName»() {}
             virtual const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
 
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 /// Provides getter access to the attribute «attribute.elementName»
-                virtual const «attribute.getTypeName(fInterface, true)» &«attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client) = 0;
+                «var definition = ""»
+                «IF (FTypeGenerator::isdeprecated(attribute.comment))»
+                    «{definition = " COMMONAPI_DEPRECATED";""}»
+                «ENDIF»
+                virtual«definition» const «attribute.getTypeName(fInterface, true)» &«attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client) = 0;
+                «IF attribute.isObservable»
+                    /// sets attribute with the given value and propagates it to the adapter
+                    virtual void «attribute.stubAdapterClassFireChangedMethodName»(«attribute.getTypeName(fInterface, true)» _value) {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter)
+                        stubAdapter->«attribute.stubAdapterClassFireChangedMethodName»(_value);
+                    }
+                «ENDIF»
             «ENDFOR»
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
                 /// This is the method that will be called on remote calls on the method «method.elementName».
-                virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap.get(method))») = 0;
+                «var definition = ""»
+                «IF (FTypeGenerator::isdeprecated(method.comment))»
+                    «{definition = " COMMONAPI_DEPRECATED";""}»
+                «ENDIF»
+                virtual«definition» void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap.get(method))») = 0;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
-                «IF broadcast.selective»
+                «var definition = ""»
+                «IF (FTypeGenerator::isdeprecated(broadcast.comment))»
+                    «{definition = " COMMONAPI_DEPRECATED";""}»
+                «ENDIF»                «IF broadcast.selective»
                     /**
                      * Sends a selective broadcast event for «broadcast.elementName» to the given ClientIds.
                      * The ClientIds must all be out of the set of subscribed clients.
                      * If no ClientIds are given, the selective broadcast is sent to all subscribed clients.
                      */
-                    virtual void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)») = 0;
-                    /// retreives the list of all subscribed clients for «broadcast.elementName»
-                    virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»() = 0;
+                    virtual«definition» void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)») = 0;
+                    /// retrieves the list of all subscribed clients for «broadcast.elementName»
+                    virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»() {
+                        auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                        if (stubAdapter)
+                            return(stubAdapter->«broadcast.stubAdapterClassSubscribersMethodName»());
+                        else
+                            return NULL;
+                    }
                     /// Hook method for reacting on new subscriptions or removed subscriptions respectively for selective broadcasts.
                     virtual void «broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) = 0;
-                    /// Hook method for reacting accepting or denying new subscriptions 
+                    /// Hook method for reacting accepting or denying new subscriptions
                     virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client) = 0;
+                    virtual void «broadcast.stubAdapterClassSendSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)») {
+                        auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                        if (stubAdapter)
+                            stubAdapter->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
+                    }
                 «ELSE»
                     /// Sends a broadcast event for «broadcast.elementName».
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») = 0;
+                    virtual«definition» void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
+                        auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                        if (stubAdapter)
+                            stubAdapter->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                    }
                 «ENDIF»
             «ENDFOR»
 
             «FOR managed : fInterface.managedInterfaces»
-                virtual «managed.stubRegisterManagedMethod» = 0;
-                virtual bool «managed.stubDeregisterManagedName»(const std::string&) = 0;
-                virtual std::set<std::string>& «managed.stubManagedSetGetterName»() = 0;
+                virtual bool «managed.stubRegisterManagedMethodWithInstanceNumberImpl» {
+                    std::stringstream ss;
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter) {
+                        ss << stubAdapter->getAddress().getInstance() << ".i" << _instanceNumber;
+                        std::string instance = ss.str();
+                        return stubAdapter->«managed.stubRegisterManagedName»(_stub, instance);
+                    } else {
+                        return false;
+                    }
+                }
+                virtual bool «managed.stubRegisterManagedMethodImpl» {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter) {
+                        return stubAdapter->«managed.stubRegisterManagedName»(_stub, _instance);
+                    } else {
+                        return false;
+                    }
+                }
+                virtual bool «managed.stubDeregisterManagedName»(const std::string& _instance) {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter)
+                        return stubAdapter->«managed.stubDeregisterManagedName»(_instance);
+                    else
+                        return false;
+                }
+                virtual std::set<std::string>& «managed.stubManagedSetGetterName»() {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter) {
+                        return stubAdapter->«managed.stubManagedSetGetterName»();
+                    } else {
+                        static std::set<std::string> emptySet = std::set<std::string>();
+                        return emptySet;
+                    }
+                }
             «ENDFOR»
             using «fInterface.stubCommonAPIClassName»::initStubAdapter;
             typedef «fInterface.stubCommonAPIClassName»::StubAdapterType StubAdapterType;
@@ -248,13 +315,13 @@ class FInterfaceStubGenerator {
     '''
 
     def private generateMethodReplyDeclarations(FMethod fMethod, FInterface fInterface, HashMap<String, Integer> counterMap, HashMap<FMethod, String> methodreplyMap) '''
-		«IF !(counterMap.containsKey(fMethod.elementName))»
-			«{counterMap.put(fMethod.elementName, 0);  methodreplyMap.put(fMethod, fMethod.elementName);""}»
-			    typedef std::function<void («fMethod.generateStubReplySignature()»)>«fMethod.elementName»Reply_t;
-		«ELSE»
-			«{counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1);  methodreplyMap.put(fMethod, fMethod.elementName + counterMap.get(fMethod.elementName));""}»
-			    typedef std::function<void («fMethod.generateStubReplySignature()»)>«methodreplyMap.get(fMethod)»Reply_t;
-		«ENDIF»
+        «IF !(counterMap.containsKey(fMethod.elementName))»
+            «{counterMap.put(fMethod.elementName, 0);  methodreplyMap.put(fMethod, fMethod.elementName);""}»
+                typedef std::function<void («fMethod.generateStubReplySignature()»)>«fMethod.elementName»Reply_t;
+        «ELSE»
+            «{counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1);  methodreplyMap.put(fMethod, fMethod.elementName + counterMap.get(fMethod.elementName));""}»
+                typedef std::function<void («fMethod.generateStubReplySignature()»)>«methodreplyMap.get(fMethod)»Reply_t;
+        «ENDIF»
     '''
 
 
@@ -268,8 +335,20 @@ class FInterfaceStubGenerator {
             #include <«fInterface.base.stubDefaultHeaderPath»>
         «ENDIF»
 
+        #include <CommonAPI/Export.hpp>
+
         #include <«fInterface.stubHeaderPath»>
         #include <sstream>
+
+        #  if _MSC_VER >= 1300
+        /*
+         * Diamond inheritance is used for the CommonAPI::Proxy base class.
+         * The Microsoft compiler put warning (C4250) using a desired c++ feature: "Delegating to a sister class"
+         * A powerful technique that arises from using virtual inheritance is to delegate a method from a class in another class
+         * by using a common abstract base class. This is also called cross delegation.
+         */
+        #    pragma warning( disable : 4250 )
+        #  endif
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -284,73 +363,72 @@ class FInterfaceStubGenerator {
          * that would be defined for this service, and/or if you do not need any non-default
          * behaviour.
          */
-        class «fInterface.stubDefaultClassName»
+        class COMMONAPI_EXPORT_CLASS_EXPLICIT «fInterface.stubDefaultClassName»
             : public virtual «fInterface.stubClassName»«IF fInterface.base != null»,
               public virtual «fInterface.base.getTypeCollectionName(fInterface)»StubDefault«ENDIF» {
         public:
-            «fInterface.stubDefaultClassName»();
+            COMMONAPI_EXPORT «fInterface.stubDefaultClassName»();
 
-            «fInterface.stubRemoteEventClassName»* initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»> &_adapter);
+            COMMONAPI_EXPORT «fInterface.stubRemoteEventClassName»* initStubAdapter(const std::shared_ptr< «fInterface.stubAdapterClassName»> &_adapter);
 
-            const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> _client);
+            COMMONAPI_EXPORT const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> _client);
 
             «FOR attribute : fInterface.attributes»
                 «val typeName = attribute.getTypeName(fInterface, true)»
-                virtual const «typeName»& «attribute.stubClassGetMethodName»();
-                virtual const «typeName»& «attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client);
-                virtual void «attribute.stubDefaultClassSetMethodName»(«typeName» _value);
+                COMMONAPI_EXPORT virtual const «typeName»& «attribute.stubClassGetMethodName»();
+                COMMONAPI_EXPORT virtual const «typeName»& «attribute.stubClassGetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client);
+                COMMONAPI_EXPORT virtual void «attribute.stubDefaultClassSetMethodName»(«typeName» _value);
                 «IF !attribute.readonly»
-                    virtual void «attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value);
+                    COMMONAPI_EXPORT virtual void «attribute.stubDefaultClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value);
                 «ENDIF»
             «ENDFOR»
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))»);
+                COMMONAPI_EXPORT virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))»);
             «ENDFOR»
 
-          	«FOR broadcast : fInterface.broadcasts»
+            «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
                 «IF broadcast.selective»
-                    virtual void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)»);
-                    virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»();
+                    COMMONAPI_EXPORT virtual void «broadcast.stubAdapterClassFireSelectiveMethodName»(«generateSendSelectiveSignatur(broadcast, fInterface, true)»);
                     /// Hook method for reacting on new subscriptions or removed subscriptions respectively for selective broadcasts.
-                    virtual void «broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event);
-                    /// Hook method for reacting accepting or denying new subscriptions 
-                    virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client);
+                    COMMONAPI_EXPORT virtual void «broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event);
+                    /// Hook method for reacting accepting or denying new subscriptions
+                    COMMONAPI_EXPORT virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client);
                 «ELSE»
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')»);
+                    COMMONAPI_EXPORT virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')»);
                 «ENDIF»
             «ENDFOR»
 
             «FOR managed : fInterface.managedInterfaces»
-                bool «managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.getStubFullClassName»>);
-                «managed.stubRegisterManagedMethod»;
-                bool «managed.stubDeregisterManagedName»(const std::string&);
-                std::set<std::string>& «managed.stubManagedSetGetterName»();
+                COMMONAPI_EXPORT bool «managed.stubRegisterManagedAutoName»(std::shared_ptr< «managed.getStubFullClassName»>);
+                COMMONAPI_EXPORT «managed.stubRegisterManagedMethod»;
+                COMMONAPI_EXPORT bool «managed.stubDeregisterManagedName»(const std::string&);
+                COMMONAPI_EXPORT std::set<std::string>& «managed.stubManagedSetGetterName»();
             «ENDFOR»
 
         protected:
             «FOR attribute : fInterface.attributes»
                 «val typeName = attribute.getTypeName(fInterface, true)»
                 «FTypeGenerator::generateComments(attribute, false)»
-                virtual bool «attribute.stubDefaultClassTrySetMethodName»(«typeName» _value);
-                virtual bool «attribute.stubDefaultClassValidateMethodName»(const «typeName» &_value);
+                COMMONAPI_EXPORT virtual bool «attribute.stubDefaultClassTrySetMethodName»(«typeName» _value);
+                COMMONAPI_EXPORT virtual bool «attribute.stubDefaultClassValidateMethodName»(const «typeName» &_value);
                 «IF !attribute.readonly»
-                    virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                    COMMONAPI_EXPORT virtual void «attribute.stubRemoteEventClassChangedMethodName»();
                 «ENDIF»
             «ENDFOR»
-            class RemoteEventHandler: public virtual «fInterface.stubRemoteEventClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubDefaultClassName»::RemoteEventHandler«ENDIF» {
+            class COMMONAPI_EXPORT_CLASS_EXPLICIT RemoteEventHandler: public virtual «fInterface.stubRemoteEventClassName»«IF fInterface.base != null», public virtual «fInterface.base.stubDefaultClassName»::RemoteEventHandler«ENDIF» {
             public:
-                RemoteEventHandler(«fInterface.stubDefaultClassName» *_defaultStub);
+                COMMONAPI_EXPORT RemoteEventHandler(«fInterface.stubDefaultClassName» *_defaultStub);
 
                 «FOR attribute : fInterface.attributes»
                     «val typeName = attribute.getTypeName(fInterface, true)»
                     «FTypeGenerator::generateComments(attribute, false)»
                     «IF !attribute.readonly»
-                        virtual bool «attribute.stubRemoteEventClassSetMethodName»(«typeName» _value);
-                        virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value);
-                        virtual void «attribute.stubRemoteEventClassChangedMethodName»();
+                        COMMONAPI_EXPORT virtual bool «attribute.stubRemoteEventClassSetMethodName»(«typeName» _value);
+                        COMMONAPI_EXPORT virtual bool «attribute.stubRemoteEventClassSetMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, «typeName» _value);
+                        COMMONAPI_EXPORT virtual void «attribute.stubRemoteEventClassChangedMethodName»();
                     «ENDIF»
 
                 «ENDFOR»
@@ -367,7 +445,7 @@ class FInterfaceStubGenerator {
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 «attribute.getTypeName(fInterface, true)» «attribute.stubDefaultClassVariableName» {};
-            «ENDFOR»            
+            «ENDFOR»
 
             CommonAPI::Version interfaceVersion_;
         };
@@ -387,7 +465,7 @@ class FInterfaceStubGenerator {
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
-        
+
         «fInterface.stubDefaultClassName»::«fInterface.stubDefaultClassName»():
                 remoteEventHandler_(this),
                 «IF !fInterface.managedInterfaces.empty»
@@ -401,7 +479,7 @@ class FInterfaceStubGenerator {
             return interfaceVersion_;
         }
 
-        «fInterface.stubRemoteEventClassName»* «fInterface.stubDefaultClassName»::initStubAdapter(const std::shared_ptr<«fInterface.stubAdapterClassName»> &_adapter) {
+        «fInterface.stubRemoteEventClassName»* «fInterface.stubDefaultClassName»::initStubAdapter(const std::shared_ptr< «fInterface.stubAdapterClassName»> &_adapter) {
             «IF fInterface.base != null»«fInterface.base.stubDefaultClassName»::initStubAdapter(_adapter);«ENDIF»
             «fInterface.stubCommonAPIClassName»::stubAdapter_ = _adapter;
             return &remoteEventHandler_;
@@ -422,9 +500,7 @@ class FInterfaceStubGenerator {
                 «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 «IF attribute.isObservable»
                 if (valueChanged) {
-                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                    if (stubAdapter)
-                        stubAdapter->«attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                    «attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
                 }
                 «ENDIF»
             }
@@ -440,11 +516,11 @@ class FInterfaceStubGenerator {
 
             bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassValidateMethodName»(const «typeName» &_value) {
                 (void)_value;
-            	«IF attribute.supportsTypeValidation»
-            		return «attribute.validateType(fInterface)»;
-            	«ELSE»
-            		return true;
-            	«ENDIF»
+                «IF attribute.supportsTypeValidation»
+                    return «attribute.validateType(fInterface)»;
+                «ELSE»
+                    return true;
+                «ENDIF»
             }
 
             «IF !attribute.readonly»
@@ -458,12 +534,12 @@ class FInterfaceStubGenerator {
                 }
 
                 void «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassChangedMethodName»() {
-                	assert(defaultStub_ !=NULL);
+                    assert(defaultStub_ !=NULL);
                     defaultStub_->«attribute.stubRemoteEventClassChangedMethodName»();
                 }
 
                 bool «fInterface.stubDefaultClassName»::RemoteEventHandler::«attribute.stubRemoteEventClassSetMethodName»(«typeName» _value) {
-                	assert(defaultStub_ !=NULL);
+                    assert(defaultStub_ !=NULL);
                     return defaultStub_->«attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 }
 
@@ -494,7 +570,7 @@ class FInterfaceStubGenerator {
                     _reply(«method.generateDummyArgumentList»);
                 «ENDIF»
             }
-            
+
         «ENDFOR»
 
         «FOR broadcast : fInterface.broadcasts»
@@ -508,10 +584,7 @@ class FInterfaceStubGenerator {
                             }
                         «ENDIF»
                     «ENDFOR»
-                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                    if (stubAdapter)
-                        stubAdapter->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
+                    «broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
                 }
                 void «fInterface.stubDefaultClassName»::«broadcast.subscriptionChangedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client, const CommonAPI::SelectiveBroadcastSubscriptionEvent _event) {
                     (void)_client;
@@ -523,15 +596,6 @@ class FInterfaceStubGenerator {
                     // Accept in default
                     return true;
                 }
-                std::shared_ptr<CommonAPI::ClientIdList> const «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassSubscribersMethodName»() {
-                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                   	if (stubAdapter)
-                        return(stubAdapter->«broadcast.stubAdapterClassSubscribersMethodName»());
-                    else
-                        return NULL;
-                }
-
             «ELSE»
                 void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
                     «FOR arg : broadcast.outArgs»
@@ -541,53 +605,24 @@ class FInterfaceStubGenerator {
                             }
                         «ENDIF»
                     «ENDFOR»
-                    assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                   	if (stubAdapter)
-                        stubAdapter->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                    «fInterface.stubClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
                 }
             «ENDIF»
         «ENDFOR»
 
         «FOR managed : fInterface.managedInterfaces»
-            bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr<«managed.stubFullClassName»> _stub) {
+            bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedAutoName»(std::shared_ptr< «managed.stubFullClassName»> _stub) {
                 autoInstanceCounter_++;
-                std::stringstream ss;
-                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                if (stubAdapter) {
-                    ss << stubAdapter->getAddress().getInstance() << ".i" << autoInstanceCounter_;
-                    std::string instance = ss.str();
-                    return stubAdapter->«managed.stubRegisterManagedName»(_stub, instance);
-                } else {
-                    return false;
-                }
+                return «fInterface.stubClassName»::«managed.stubRegisterManagedName»(_stub, autoInstanceCounter_);
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubRegisterManagedMethodImpl» {
-                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                if (stubAdapter) 
-                    return stubAdapter->«managed.stubRegisterManagedName»(_stub, _instance);
-                else
-                    return false;
+                return «fInterface.stubClassName»::«managed.stubRegisterManagedName»(_stub, _instance);
             }
             bool «fInterface.stubDefaultClassName»::«managed.stubDeregisterManagedName»(const std::string &_instance) {
-                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                if (stubAdapter) 
-                    return stubAdapter->«managed.stubDeregisterManagedName»(_instance);
-                else
-                    return false;
+                return «fInterface.stubClassName»::«managed.stubDeregisterManagedName»(_instance);
             }
             std::set<std::string>& «fInterface.stubDefaultClassName»::«managed.stubManagedSetGetterName»() {
-                assert((«fInterface.stubCommonAPIClassName»::stubAdapter_.lock()) !=NULL);
-                auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                if (stubAdapter) {
-                    return stubAdapter->«managed.stubManagedSetGetterName»();
-                } else {
-                    static std::set<std::string> emptySet = std::set<std::string>();
-                    return emptySet;
-                }
+                return «fInterface.stubClassName»::«managed.stubManagedSetGetterName»();
             }
         «ENDFOR»
 

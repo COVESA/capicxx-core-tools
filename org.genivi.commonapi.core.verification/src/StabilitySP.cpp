@@ -531,9 +531,9 @@ public:
         std::function<void (const CommonAPI::CallStatus&, TestInterface::tArray)> myCallback =
             std::bind(&ProxyThread::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
-        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(50 * 1000);
+        CommonAPI::CallInfo callInfo(50*1000);
 
-        proxy->getTestAttributeAttribute().getValueAsync(myCallback, callInfo);
+        proxy->getTestAttributeAttribute().getValueAsync(myCallback, &callInfo);
         return true;
     }
     bool exerciseSetAttributeAsync(std::shared_ptr<TestInterfaceProxy<>> proxy) {
@@ -545,9 +545,9 @@ public:
             arrayTestValue.push_back((unsigned char)(messageindex & 0xFF));
         }
 
-        CommonAPI::CallInfo* callInfo = new CommonAPI::CallInfo(100 * 1000);
+        CommonAPI::CallInfo callInfo(100 * 1000);
 
-        proxy->getTestAttributeAttribute().setValueAsync(arrayTestValue, myCallback, callInfo);
+        proxy->getTestAttributeAttribute().setValueAsync(arrayTestValue, myCallback, &callInfo);
         return true;
     }
 

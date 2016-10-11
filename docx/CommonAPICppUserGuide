@@ -576,6 +576,9 @@ The directory for stub code
 |+-dsk,--dest-skel+ _<arg>_ |
 The directory for the skeleton code
 
+|+-dsub,--dest-subdirs+ _<arg>_ |
+Use a subdirectory per interfaceUse a subdirectory per interface
+
 |+-l,--license+ _<arg>_ |
 The file path to the license text that will be added to each generated file
 

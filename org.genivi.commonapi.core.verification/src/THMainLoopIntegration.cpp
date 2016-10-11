@@ -65,8 +65,6 @@ protected:
         }
 
         usleep(200);
-        delete mainLoopForProxy_;
-        delete mainLoopForStub_;
     }
 
     bool serviceRegistered_;
@@ -98,13 +96,10 @@ public:
 };
 
 /**
-* @test Verifies Transport Reading When Dispatching Watches.
+* @test Verifies communication with Main Loop.
 *   - get proxy with available flag = true
 *   - generate big test data
-*   - send asynchronous test message
-*   - dispatch dispatchSource: the message must not be arrived
-*   - dispatch watches (reads transport).
-*   - dispatch dispatchSources again: now the message must be arrived.
+*   - send synchronous test message
 */
 TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 

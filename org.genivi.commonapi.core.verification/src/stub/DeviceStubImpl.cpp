@@ -17,6 +17,5 @@ void DeviceStubImpl::doSomething(
         const std::shared_ptr<CommonAPI::ClientId> _client,
         doSomethingReply_t _reply) {
     (void)_client;
-    std::cout << "DeviceStubImpl::doSomething() called." << std::endl;
     _reply();
 }

@@ -133,6 +133,18 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/conf/commonapi4someip.ini.in
   "${PROJECT_BINARY_DIR}/commonapi4someip.ini" @ONLY)
 
 ##############################################################################
+# copy script files to binary directory
+if (WIN32)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.vbs.in
+      "${PROJECT_BINARY_DIR}/MPSelective.vbs" @ONLY)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.bat.in
+      "${PROJECT_BINARY_DIR}/MPSelective.bat" @ONLY)
+else()
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.sh.in
+       "${PROJECT_BINARY_DIR}/MPSelective.sh" @ONLY)
+endif()
+
+##############################################################################
 # google test
 
 # check for set environment variable
@@ -168,15 +180,15 @@ endif()
 
 if (MSVC)
 # Visual C++ is not always sure whether he is really C++
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc /wd\\\"4503\\\"")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /wd\\\"4503\\\"")
 set(USE_RT "")
 else()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wextra -Wformat -Wformat-security -Wconversion -fexceptions -fstrict-aliasing -fstack-protector -fasynchronous-unwind-tables -fno-omit-frame-pointer -D_GLIBCXX_USE_NANOSLEEP")
 set(USE_RT "rt")
 endif()
 
-message("Compiler options: ${CMAKE_CXX_FLAGS}") 
+message("Compiler options: ${CMAKE_CXX_FLAGS}")
 
 include_directories(
     src
@@ -193,7 +205,7 @@ add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 SET(TESTS_BAT "OFF" CACHE BOOL
     "Controls whether only tests for build acceptance should be build and run via 'make check'")
 
-SET(TESTS_EXTRA "OFF" CACHE BOOL
+SET(TESTS_EXTRA "ON" CACHE BOOL
     "Controls whether extra tests should be build or not")
 
 if (MSVC)
@@ -286,6 +298,12 @@ if (NOT ${TESTS_BAT})
         src-gen/v1/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
 
+    add_executable(DTDeployment
+        src/DTDeployment.cpp
+        src/stub/DTDeploymentStub.cpp
+        src-gen/v1/commonapi/datatypes/deployment/TestInterfaceStubDefault.cpp)
+    target_link_libraries(DTDeployment ${TEST_LINK_LIBRARIES})
+
     add_executable(THMainLoopIntegration
         src/THMainLoopIntegration.cpp
         src/stub/THMainLoopIntegrationStub.cpp
@@ -322,6 +340,17 @@ if (NOT ${TESTS_BAT})
             src/stub/StabilitySPStub.cpp
             src-gen/v1/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
         target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
+
+        add_executable(MPSelectiveClient
+           src/MPSelectiveClient.cpp)
+        target_link_libraries(MPSelectiveClient ${TEST_LINK_LIBRARIES})
+
+        add_executable(MPSelectiveService
+           src/stub/MPSelectiveStubImpl.cpp
+           src/MPSelectiveService.cpp
+           src-gen/v1/commonapi/multiprocess/bselective/MPSelectiveStubDefault.cpp)
+        target_link_libraries(MPSelectiveService ${TEST_LINK_LIBRARIES})
+
     endif()
 endif()
 
@@ -341,6 +370,7 @@ if (NOT ${TESTS_BAT})
     add_dependencies(DTAdvanced gtest)
     add_dependencies(DTDerived gtest)
     add_dependencies(DTCombined gtest)
+    add_dependencies(DTDeployment gtest)
     add_dependencies(THMainLoopIntegration gtest)
     add_dependencies(THMainLoopIndependence gtest)
     add_dependencies(THMainLoopTwoThreads gtest)
@@ -348,6 +378,7 @@ if (NOT ${TESTS_BAT})
         add_dependencies(PFPrimitive gtest)
         add_dependencies(PFComplex gtest)
         add_dependencies(StabilitySP gtest)
+        add_dependencies(MPSelectiveClient gtest)
     endif()
 endif()
 
@@ -367,6 +398,7 @@ if (NOT ${TESTS_BAT})
     add_dependencies(check DTAdvanced)
     add_dependencies(check DTDerived)
     add_dependencies(check DTCombined)
+    add_dependencies(check DTDeployment)
     add_dependencies(check THMainLoopIntegration)
     add_dependencies(check THMainLoopIndependence)
     add_dependencies(check THMainLoopTwoThreads)
@@ -374,6 +406,8 @@ if (NOT ${TESTS_BAT})
         add_dependencies(check PFPrimitive)
         add_dependencies(check PFComplex)
         add_dependencies(check StabilitySP)
+        add_dependencies(check MPSelectiveClient)
+        add_dependencies(check MPSelectiveService)
     endif()
 endif()
 
@@ -427,6 +461,14 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
             set_property(TEST PFComplexDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
             add_test(NAME StabilitySPDBus COMMAND StabilitySP)
             set_property(TEST StabilitySPDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+            if (WIN32)
+                add_test(NAME MPSelectiveDBus COMMAND ${PROJECT_BINARY_DIR}/MPSelective.bat
+				              WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+                set_property(TEST MPSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+            else()
+                add_test(NAME MPSelectiveDBus COMMAND MPSelective.sh)
+                set_property(TEST MPSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+            endif()
         endif()
     endif()
 endif()
@@ -472,6 +514,8 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
         set_property(TEST DTDerivedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME DTCombinedSomeIP COMMAND DTCombined)
         set_property(TEST DTCombinedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+        add_test(NAME DTDeploymentSomeIP COMMAND DTDeployment)
+        set_property(TEST DTDeploymentSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME THMainLoopIntegrationSomeIP COMMAND THMainLoopIntegration)
         set_property(TEST THMainLoopIntegrationSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME THMainLoopIndependenceSomeIP COMMAND THMainLoopIndependence)
@@ -485,6 +529,14 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
             set_property(TEST PFComplexSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
             add_test(NAME StabilitySPSomeIP COMMAND StabilitySP)
             set_property(TEST StabilitySPSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+            if (WIN32)
+                add_test(NAME MPSelectiveSomeIP COMMAND ${PROJECT_BINARY_DIR}/MPSelective.bat
+				         WORKING_DIRECTORY ${PROJECT_BINARY_DIR} )
+                set_property(TEST MPSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+            else()
+                add_test(NAME MPSelectiveSomeIP COMMAND MPSelective.sh)
+                set_property(TEST MPSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+            endif()
         endif()
     endif()
 endif()
@@ -492,4 +544,3 @@ endif()
 ##############################################################################
 # maintainer-clean
 add_custom_target(maintainer-clean COMMAND rm -rf *)
-

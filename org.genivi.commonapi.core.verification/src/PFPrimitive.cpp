@@ -48,11 +48,11 @@ class PFPrimitive: public ::testing::Test {
 public:
      void recvArray(const CommonAPI::CallStatus& callStatus, TestInterface::TestArray y) {
          (void)y;
+         std::unique_lock<std::mutex> uniqueLock(synchLock_);
          EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
          callCount_++;
          if (callCount_ == loopCountPerPaylod) {
              callCount_ = 0;
-             std::unique_lock<std::mutex> uniqueLock(synchLock_);
              condVar_.notify_one();
          }
      }

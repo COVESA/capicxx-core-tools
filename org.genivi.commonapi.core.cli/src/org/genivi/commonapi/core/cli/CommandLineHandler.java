@@ -16,16 +16,16 @@ import org.genivi.commonapi.console.ICommandLineHandler;
 
 
 /**
- * Handle command line options 
+ * Handle command line options
  */
 public class CommandLineHandler extends AbstractCommandLineHandler implements
 		ICommandLineHandler {
 
-	
+
 	public static final String FILE_EXTENSION_FDEPL = "fdepl";
 	public static final String FILE_EXTENSION_FIDL = "fidl";
 	private CommandlineToolMain cliTool;
-	
+
 	public CommandLineHandler() {
 		cliTool = new CommandlineToolMain();
 	}
@@ -40,7 +40,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 		// -ll --loglevel quiet or verbose
 		if(parsedArguments.hasOption("ll")) {
 			cliTool.setLogLevel(parsedArguments.getOptionValue("ll"));
-		}		
+		}
 		ConsoleLogger.printLog("Executing CommonAPI Core Code Generation...\n");
 
 		if(parsedArguments.hasOption("sk")) {
@@ -51,8 +51,8 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 			if(skArgument == null) {
 				// no -sk argument was given, use "Default"
 				skArgument = "Default";
-			} 
-			// The fidl/fdepl file will be interpreted as sk argument, 
+			}
+			// The fidl/fdepl file will be interpreted as sk argument,
 			// if "-sk" is placed just before the fidl/fdepl file in the command line !
 			if(skArgument.endsWith(FILE_EXTENSION_FDEPL) || skArgument.endsWith(FILE_EXTENSION_FIDL)) {
 				// it is not an -sk argument but it is the file to generate code from !
@@ -61,16 +61,16 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 			else {
 				cliTool.setSkeletonPostfix(skArgument);
 			}
-		}			
+		}
 		// a search path may be specified, collect all fidl/fdepl files
 		if(parsedArguments.hasOption("sp")) {
 			String searchPath = parsedArguments.getOptionValue("sp");
 			files.addAll(cliTool.searchFidlandFdeplFiles(searchPath));
-		}	
-		
+		}
+
 		// we expect at least the fidel/fdepl file as command line argument
 		if(files.size() > 0 && files.get(0) != null) {
-			String file = files.get(0); 
+			String file = files.get(0);
 			if(file.endsWith(FILE_EXTENSION_FDEPL) || file.endsWith(FILE_EXTENSION_FIDL)) {
 				// handle command line options
 
@@ -79,7 +79,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 				if(parsedArguments.hasOption("nc")) {
 					cliTool.setNoCommonCode();
 				}
-				
+
 				// Switch off generation of proxy code
 				// -np --no-proxy do not generate proxy code
 				if(parsedArguments.hasOption("np")) {
@@ -87,7 +87,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 				}
 
 				// Switch off generation of stub code
-				// -ns --no-stub do not generate stub code				
+				// -ns --no-stub do not generate stub code
 				if(parsedArguments.hasOption("ns")) {
 					cliTool.setNoStubCode();
 				}
@@ -155,7 +155,7 @@ public class CommandLineHandler extends AbstractCommandLineHandler implements
 				}
 				// finally invoke the generator.
 				// the remaining arguments are assumed to be files !
-				cliTool.generateCore(files);
+				return cliTool.generateCore(files);
 			}
 			else {
 				System.out.println("The file extension should be ." + FILE_EXTENSION_FIDL + " or ." + FILE_EXTENSION_FDEPL);

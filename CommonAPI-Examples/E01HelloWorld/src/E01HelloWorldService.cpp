@@ -13,6 +13,7 @@ using namespace std;
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E01S");
+    CommonAPI::Runtime::setProperty("LogApplication", "E01S");
     CommonAPI::Runtime::setProperty("LibraryBase", "E01HelloWorld");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

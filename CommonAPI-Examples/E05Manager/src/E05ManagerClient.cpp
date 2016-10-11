@@ -28,6 +28,7 @@ void newDeviceAvailable(const std::string address, const CommonAPI::Availability
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E05C");
+    CommonAPI::Runtime::setProperty("LogApplication", "E05C");
     CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

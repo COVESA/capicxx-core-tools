@@ -1,5 +1,5 @@
 {
-    "unicast" : "192.168.56.101",
+    "unicast" : "127.0.0.1",
     "logging" :
     {
         "level" : "debug",
@@ -7,7 +7,7 @@
         "file" : { "enable" : "false", "path" : "/var/log/vsomeip.log" },
         "dlt" : "false"
     },
-    "applications" : 
+    "applications" :
     [
         {
             "name" : "client-sample",
@@ -16,45 +16,15 @@
         {
             "name" : "service-sample",
             "id" : "0x1277"
-        }            
+        }
     ],
-    "servicegroups" :
+    "services" :
     [
         {
-            "name" : "default",
-            "delays" :
-            {
-                "initial" : { "minimum" : "10", "maximum" : "100" },
-                "repetition-base" : "200",
-                "repetition-max" : "3",
-                "cyclic-offer" : "2000",
-                "cyclic-request" : "2001"
-            },
-            "services" :
-            [
-                {
-                    "service" : "0x1234",
-                    "instance" : "0x5678",
-                    "reliable" : { "port" : "30509", "enable-magic-cookies" : "false" },
-                    "unreliable" : "31000",
-                    "events" : 
-                    [
-                        {
-                            "event" : "0x80F2",
-                            "is_field" : "false",
-                            "is_reliable" : "false",
-                            "update-cycle" : 2000
-                        }
-                    ],
-                    "eventgroups" :
-                    [
-                        {
-                            "eventgroup" : "0x80F2",
-                            "events" : [ "0x80F2" ]
-                        }
-                    ]
-                }
-            ]
+            "service" : "0x1234",
+            "instance" : "0x5678",
+            "reliable" : { "port" : "30509", "enable-magic-cookies" : "false" },
+            "unreliable" : "31000"
         }
     ],
     "routing" : "service-sample",

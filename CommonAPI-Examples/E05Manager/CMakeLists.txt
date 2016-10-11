@@ -9,6 +9,23 @@ set(PRJ_NAME E05Manager)
 
 set(CMAKE_VERBOSE_MAKEFILE on)
 
+OPTION(USE_FILE "Set to OFF to disable file logging" OFF )
+message(STATUS "USE_FILE is set to value: ${USE_FILE}")
+
+OPTION(USE_CONSOLE "Set to OFF to disable console logging" OFF )
+message(STATUS "USE_CONSOLE is set to value: ${USE_CONSOLE}")
+
+IF(USE_FILE)
+  add_definitions(-DUSE_FILE)
+ENDIF(USE_FILE)
+IF(USE_CONSOLE)
+  add_definitions(-DUSE_CONSOLE)
+ENDIF(USE_CONSOLE)
+
+SET(MAX_LOG_LEVEL "DEBUG" CACHE STRING "maximum log level")
+message(STATUS "MAX_LOG_LEVEL is set to value: ${MAX_LOG_LEVEL}")
+add_definitions(-DCOMMONAPI_LOGLEVEL=COMMONAPI_LOGLEVEL_${MAX_LOG_LEVEL})
+
 if (MSVC)
 # Visual C++ is not always sure whether he is really C++
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_CRT_SECURE_NO_WARNINGS /EHsc /wd\\\"4503\\\"")
@@ -29,11 +46,11 @@ OPTION(USE_INSTALLED_COMMONAPI "Set to OFF to use the local (build tree) version
 message(STATUS "USE_INSTALLED_COMMONAPI is set to value: ${USE_INSTALLED_COMMONAPI}")
 
 if ("${USE_INSTALLED_COMMONAPI}" STREQUAL "ON")
-    FIND_PACKAGE(CommonAPI 3.1.5 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.5 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI 3.1.8 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.8 REQUIRED CONFIG NO_CMAKE_PACKAGE_REGISTRY)
 else()
-    FIND_PACKAGE(CommonAPI 3.1.5 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
-    FIND_PACKAGE(CommonAPI-DBus 3.1.5 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI 3.1.8 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
+    FIND_PACKAGE(CommonAPI-DBus 3.1.8 REQUIRED CONFIG NO_SYSTEM_ENVIRONMENT_PATH NO_CMAKE_SYSTEM_PATH)
 endif()
 
 message(STATUS "CommonAPI_CONSIDERED_CONFIGS: ${CommonAPI_CONSIDERED_CONFIGS}")
@@ -61,8 +78,8 @@ else()
 endif()
 
 # SOME/IP
-find_package (CommonAPI-SomeIP 3.1.5 REQUIRED)
-find_package (vsomeip 2.0.1 REQUIRED)
+find_package (CommonAPI-SomeIP 3.1.8 REQUIRED)
+find_package (vsomeip 2.2.0 REQUIRED)
 
 # Source Files
 set(PRJ_SRC_PATH src)
@@ -123,7 +140,11 @@ link_directories(
 )
 endif()
 
-set(LINK_LIBRARIES -Wl,--as-needed CommonAPI)
+if (MSVC)
+  set(LINK_LIBRARIES CommonAPI)
+else()
+  set(LINK_LIBRARIES -Wl,--as-needed CommonAPI)
+endif() 
 
 # Build Client
 add_executable(${PRJ_NAME_CLIENT} ${PRJ_CLIENT_SRCS})

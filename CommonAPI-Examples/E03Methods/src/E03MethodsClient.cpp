@@ -31,6 +31,7 @@ void recv_cb(const CommonAPI::CallStatus& callStatus,
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E03C");
+    CommonAPI::Runtime::setProperty("LogApplication", "E03C");
     CommonAPI::Runtime::setProperty("LibraryBase", "E03Methods");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

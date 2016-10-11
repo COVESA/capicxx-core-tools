@@ -156,6 +156,7 @@ void recv_msg1(std::shared_ptr<CommonTypes::SettingsStruct> x) {
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E06C");
+    CommonAPI::Runtime::setProperty("LogApplication", "E06C");
     CommonAPI::Runtime::setProperty("LibraryBase", "E06Unions");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

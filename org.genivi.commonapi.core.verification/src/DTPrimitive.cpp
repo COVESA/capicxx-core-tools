@@ -378,7 +378,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
 TEST_F(DTPrimitive, EmptyBroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-    std::uint32_t callbackCalled = 0;
+    std::int32_t callbackCalled = 0;
     int numberFunctionCalls = 2;
 
     received_ = false;

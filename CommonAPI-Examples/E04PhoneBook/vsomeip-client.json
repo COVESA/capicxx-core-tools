@@ -1,5 +1,5 @@
 {
-    "unicast" : "10.10.46.59",
+    "unicast" : "10.0.3.125",
     "netmask" : "255.255.255.0",
     "logging" : 
     {
@@ -26,5 +26,9 @@
         "multicast" : "224.244.224.245",
         "port" : "30490",
         "protocol" : "udp"
+    },
+    "supports_selective_broadcasts" :
+    {
+        "address" : "10.0.3.1"
     }
 }

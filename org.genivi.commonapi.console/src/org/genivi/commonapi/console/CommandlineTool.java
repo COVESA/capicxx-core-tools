@@ -20,13 +20,15 @@ public class CommandlineTool {
 	protected boolean dumpGeneratedFiles;
 	protected List<String>       files            = new ArrayList<String>();
 	protected boolean hasValidationError;
+	protected boolean hasValidationWarning;
 	protected boolean isValidation = true;
+	protected boolean isValidationWarningsAsErrors = false;
 	protected static final String FDEPL_EXTENSION = ".fdepl";
 	protected static final String FIDL_EXTENSION = ".fidl";
-	
+
 	/**
 	 * Get the text from a file which will be inserted as a comment in each generated file (for example your license)
-	 * 
+	 *
 	 * @param fileWithText
 	 * @return
 	 */
@@ -73,12 +75,12 @@ public class CommandlineTool {
 			ConsoleLogger.printErrorLog("Please write a path to an existing file after -l");
 		}
 		return licenseText;
-	}	
+	}
 
 	/**
 	 * creates a absolute path from a relative path which starts on the current
 	 * user directory
-	 * 
+	 *
 	 * @param path
 	 *            the relative path which start on the current user-directory
 	 * @return the created absolute path
@@ -91,7 +93,7 @@ public class CommandlineTool {
 	/**
 	 * Here we create an absolute path from a relativ path and a rootpath from
 	 * which the relative path begins
-	 * 
+	 *
 	 * @param path
 	 *            the relative path which begins on rootpath
 	 * @param rootpath
@@ -132,7 +134,7 @@ public class CommandlineTool {
 	/**
 	 * a relaceAll Method which doesn't interprets the toreplace String as a
 	 * regex and so you can also replace \ and such special things
-	 * 
+	 *
 	 * @param text
 	 *            the text who has to be modified
 	 * @param toreplace
@@ -158,51 +160,54 @@ public class CommandlineTool {
 	{
 		return Platform.getBundle("org.franca.core").getVersion().toString();
 	}
-	
+
 	protected static FilenameFilter fidlFilter = new FilenameFilter() {
-		public boolean accept(File dir, String name) {
+		@Override
+        public boolean accept(File dir, String name) {
 			if(name.endsWith(FIDL_EXTENSION)) {
 				return true;
-			} 
+			}
 		return false;
 		}
-	};	
-	
+	};
+
 	protected static FilenameFilter fdeplFilter = new FilenameFilter() {
-		public boolean accept(File dir, String name) {
+		@Override
+        public boolean accept(File dir, String name) {
 			if (name.endsWith(FDEPL_EXTENSION)) {
 				return true;
 			}
 			return false;
 		}
-	};	
+	};
 
 	private static FilenameFilter fidlFdeplFilter = new FilenameFilter() {
-		public boolean accept(File dir, String name) {
+		@Override
+        public boolean accept(File dir, String name) {
 			if((name.endsWith(FIDL_EXTENSION) || name.endsWith(FDEPL_EXTENSION))) {
 				return true;
-			} 
+			}
 		return false;
 		}
 	};
-	
-	
+
+
 	public List<String> searchFidlFiles(String searchPath) {
-		return searchFiles(searchPath, fidlFilter); 
+		return searchFiles(searchPath, fidlFilter);
 	}
-	
+
 	public List<String> searchFdeplFiles(String searchPath) {
-		return searchFiles(searchPath, fdeplFilter); 
+		return searchFiles(searchPath, fdeplFilter);
 	}
 
 	public List<String> searchFidlandFdeplFiles(String searchPath) {
-		return searchFiles(searchPath, fidlFdeplFilter); 
-	}	
-	
+		return searchFiles(searchPath, fidlFdeplFilter);
+	}
+
 	/**
 	 * Search files with the given filter in the given path. the directories in a linux path are
 	 * separated by ":".
-	 * 
+	 *
 	 * @param searchPath
 	 * @return the list of fdepl files.
 	 */
@@ -211,7 +216,7 @@ public class CommandlineTool {
 		String[] searchDirs;
 		// if the search path contains several directories...
 		if (System.getProperty("os.name").contains("Windows")) {
-			searchDirs = searchPath.split(",");			
+			searchDirs = searchPath.split(",");
 		}
 		else {
 			searchDirs = searchPath.split(":");
@@ -228,6 +233,6 @@ public class CommandlineTool {
 			}
 		}
 		return fileList;
-	}	
-	
+	}
+
 }

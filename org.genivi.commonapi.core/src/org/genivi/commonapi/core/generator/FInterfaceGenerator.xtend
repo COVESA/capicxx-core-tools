@@ -27,12 +27,12 @@ class FInterfaceGenerator {
     @Inject private extension FrancaGeneratorExtensions
 
     def generateInterface(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
-        
+
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
             fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateHeader(modelid, deploymentAccessor))
             if (fInterface.hasSourceFile)
                 fileSystemAccess.generateFile(fInterface.sourcePath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateSource(modelid, deploymentAccessor))
-        } 
+        }
         else {
             // feature: suppress code generation
             fileSystemAccess.generateFile(fInterface.headerPath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
@@ -44,6 +44,9 @@ class FInterfaceGenerator {
     def generateInstanceIds(FInterface fInterface, IFileSystemAccess fileSystemAccess,  List<String> deployedInstances) {
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
             fileSystemAccess.generateFile(fInterface.instanceHeaderPath, IFileSystemAccess.DEFAULT_OUTPUT, fInterface.generateInstanceHeader(deployedInstances))
+        } else {
+            // feature: suppress code generation
+            fileSystemAccess.generateFile(fInterface.instanceHeaderPath, IFileSystemAccess.DEFAULT_OUTPUT, PreferenceConstants::NO_CODE)
         }
     }
 
@@ -53,18 +56,20 @@ class FInterfaceGenerator {
         #ifndef «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
         #define «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
 
+        #include <string>
+
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         «FOR instanceId : deployedInstances»
-            const std::string «fInterface.elementName»_«instanceId» = "«instanceId»"; 
+            const std::string «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')» = "«instanceId»";
         «ENDFOR»
-        
+
         const std::string «fInterface.elementName»_INSTANCES[] = {
             «FOR instanceId : deployedInstances»
-                «fInterface.elementName»_«instanceId»«IF instanceId != deployedInstances.last»,«ENDIF»
-            «ENDFOR»            
-        }; 
+                «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')»«IF instanceId != deployedInstances.last»,«ENDIF»
+            «ENDFOR»
+        };
 
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»
@@ -86,7 +91,7 @@ class FInterfaceGenerator {
         «FOR requiredHeaderFile : generatedHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
-        
+
         «IF fInterface.base != null»
             #include <«fInterface.base.headerPath»>
         «ENDIF»
@@ -105,7 +110,7 @@ class FInterfaceGenerator {
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         class «fInterface.elementName»«IF fInterface.base != null»
-        	: virtual public «fInterface.base.getTypeCollectionName(fInterface)»«ENDIF» {
+            : virtual public «fInterface.base.getTypeCollectionName(fInterface)»«ENDIF» {
         public:
             virtual ~«fInterface.elementName»() { }
 
@@ -153,7 +158,7 @@ class FInterfaceGenerator {
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
-        
+
         «FOR method : fInterface.methodsWithError»
             «method.errors.generateFTypeImplementation(method.containingInterface, _accessor)»
         «ENDFOR»

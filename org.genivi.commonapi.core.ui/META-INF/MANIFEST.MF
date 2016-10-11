@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: GENIVI Common API UI
 Bundle-SymbolicName: org.genivi.commonapi.core.ui;singleton:=true
-Bundle-Version: 3.1.5.qualifier
+Bundle-Version: 3.1.8.qualifier
 Bundle-Activator: org.genivi.commonapi.core.ui.CommonApiUiPlugin
 Bundle-Vendor: BMW AG
 Require-Bundle: org.eclipse.core.runtime;bundle-version="[3.10.0,4.0.0)";visibility:=reexport,
@@ -14,7 +14,7 @@ Require-Bundle: org.eclipse.core.runtime;bundle-version="[3.10.0,4.0.0)";visibil
  org.eclipse.xtext.builder;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
  org.eclipse.xtext.generator;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
  com.google.inject;bundle-version="[3.0.0,4.0.0)";visibility:=reexport,
- org.genivi.commonapi.core;bundle-version="3.1.5";visibility:=reexport,
+ org.genivi.commonapi.core;bundle-version="3.1.8";visibility:=reexport,
  org.franca.core.dsl.ui;bundle-version="0.9.1",
  org.franca.deploymodel.dsl.ui;bundle-version="0.9.1",
  org.eclipse.ui.console;bundle-version="[3.5.0,4.0.0)"

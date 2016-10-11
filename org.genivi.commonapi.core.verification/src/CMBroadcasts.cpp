@@ -221,7 +221,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
         if (subStatus != CommonAPI::CallStatus::UNKNOWN) break;
         usleep(10000);
     }
-    EXPECT_EQ(subStatus, CommonAPI::CallStatus::UNKNOWN);
+    EXPECT_EQ(subStatus, CommonAPI::CallStatus::SUCCESS);
 
     // send value '3' via a method call - this tells stub to broadcast through the selective bc
     result = 0;
@@ -360,6 +360,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     }
     ASSERT_FALSE(testProxy_->isAvailable());
 
+    uint32_t errorHandlerCount = 0;
     // subscribe to broadcast
     testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
@@ -369,7 +370,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        std::cout << "error handler called: " << (uint32_t)status << std::endl;
+        (void) status;
+        ++errorHandlerCount;
     });
 
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
@@ -433,6 +435,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
         usleep(10000);
     }
     EXPECT_EQ(result, 1);
+    EXPECT_EQ(errorHandlerCount, 2u);
 }
 
 int main(int argc, char** argv) {

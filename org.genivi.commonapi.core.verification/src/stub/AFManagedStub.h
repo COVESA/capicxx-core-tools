@@ -28,6 +28,10 @@ public:
 
     void deviceRemoved(unsigned int);
     void specialDeviceRemoved(unsigned int);
+
+    void addDevice(const std::shared_ptr<CommonAPI::ClientId>, uint8_t, addDeviceReply_t);
+    void removeDevice(const std::shared_ptr<CommonAPI::ClientId>, uint8_t, removeDeviceReply_t);
+
 private:
     std::string managerInstanceName;
 

@@ -20,6 +20,7 @@ const std::string connectionIdService = "service-sample";
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E05S");
+    CommonAPI::Runtime::setProperty("LogApplication", "E05S");
     CommonAPI::Runtime::setProperty("LibraryBase", "E05Manager");
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
     std::shared_ptr<E05ManagerStubImpl> myService = std::make_shared < E05ManagerStubImpl > (managerInstanceName);

@@ -131,6 +131,7 @@ void printFilterResult(const std::vector<E04PhoneBook::phoneBookDataElementMap>&
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E04C");
+    CommonAPI::Runtime::setProperty("LogApplication", "E04C");
     CommonAPI::Runtime::setProperty("LibraryBase", "E04PhoneBook");
 
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();

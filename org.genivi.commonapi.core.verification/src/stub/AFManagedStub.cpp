@@ -20,8 +20,20 @@ AFManagedStub::AFManagedStub(const std::string instanceName) {
 AFManagedStub::~AFManagedStub() {
 }
 
+void AFManagedStub::addDevice(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x, addDeviceReply_t _reply) {
+    (void)_client;
+    deviceDetected(_x);
+    _reply();
+}
+
+void AFManagedStub::removeDevice(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x, removeDeviceReply_t _reply) {
+    (void)_client;
+    deviceRemoved(_x);
+    _reply();
+}
+
 void AFManagedStub::deviceDetected(unsigned int n) {
-    std::cout << "Device " << n << " detected!" << std::endl;
+    //std::cout << "Device " << n << " detected!" << std::endl;
 
     std::string deviceInstanceName = getDeviceName(n);
     myDevices[deviceInstanceName] = DevicePtr(new DeviceStubImpl);
@@ -33,7 +45,7 @@ void AFManagedStub::deviceDetected(unsigned int n) {
 }
 
 void AFManagedStub::specialDeviceDetected(unsigned int n) {
-    std::cout << "Special device " << n << " detected!" << std::endl;
+    //std::cout << "Special device " << n << " detected!" << std::endl;
 
     std::string specialDeviceInstanceName = getSpecialDeviceName(n);
     mySpecialDevices[specialDeviceInstanceName] = SpecialDevicePtr(new SpecialDeviceStubImpl);
@@ -46,7 +58,7 @@ void AFManagedStub::specialDeviceDetected(unsigned int n) {
 }
 
 void AFManagedStub::deviceRemoved(unsigned int n) {
-    std::cout << "Device " << n << " removed!" << std::endl;
+    //std::cout << "Device " << n << " removed!" << std::endl;
 
     std::string deviceInstanceName = getDeviceName(n);
     const bool deviceDeregistered = this->deregisterManagedStubDevice(deviceInstanceName);
@@ -59,7 +71,7 @@ void AFManagedStub::deviceRemoved(unsigned int n) {
 }
 
 void AFManagedStub::specialDeviceRemoved(unsigned int n) {
-    std::cout << "Special device " << n << " removed!" << std::endl;
+    //std::cout << "Special device " << n << " removed!" << std::endl;
 
     std::string specialDeviceInstanceName = getSpecialDeviceName(n);
     const bool specialDeviceDeregistered = this->deregisterManagedStubSpecialDevice(specialDeviceInstanceName);

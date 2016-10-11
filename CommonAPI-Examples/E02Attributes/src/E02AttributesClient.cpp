@@ -15,15 +15,6 @@
 
 using namespace v1::commonapi::examples;
 
-template<typename _AttributeType>
-class AttrExt : public CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>
-{
-public:
-    AttrExt(_AttributeType& baseAttribute) :
-        CommonAPI::Extensions::AttributeCacheExtension<_AttributeType>(baseAttribute) {
-    };
-};
-
 void recv_cb(const CommonAPI::CallStatus& callStatus, const int32_t& val) {
     std::cout << "Receive callback: " << val << std::endl;
 }
@@ -37,6 +28,7 @@ void recv_cb_s(const CommonAPI::CallStatus& callStatus, const CommonTypes::a1Str
 
 int main() {
     CommonAPI::Runtime::setProperty("LogContext", "E02C");
+    CommonAPI::Runtime::setProperty("LogApplication", "E02C");
     CommonAPI::Runtime::setProperty("LibraryBase", "E02Attributes");
 
     std::shared_ptr < CommonAPI::Runtime > runtime = CommonAPI::Runtime::get();
@@ -45,7 +37,7 @@ int main() {
     std::string instance = "commonapi.examples.Attributes"; 
     std::string connection = "client-sample";
 
-    auto myProxy = runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, AttrExt>(domain, instance, connection);
+    auto myProxy = runtime->buildProxyWithDefaultAttributeExtension<E02AttributesProxy, CommonAPI::Extensions::AttributeCacheExtension>(domain, instance, connection);
 
     std::cout << "Waiting for service to become available." << std::endl;
     while (!myProxy->isAvailable()) {
