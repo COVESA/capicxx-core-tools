@@ -1,42 +1,59 @@
 <!DOCTYPE html>
 <html>
 
-  <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="CommonAPI C++: A C++ framework for interprocess and network communication.">
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-    <title>CommonAPI C++</title>
-  </head>
+<head>
+	<meta charset='utf-8'>
+	<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	<meta name="description" content="CommonAPI C++: A C++ framework for interprocess and network communication.">
+	<link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+	<title>CommonAPI C++</title>
+</head>
 
-  <body>
+<body>
 
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
+<!-- HEADER -->
+<div id="header_wrap" class="outer">
+    <header class="inner">
+      <h1 id="project_title">CommonAPI C++</h1>
+      <h2 id="project_tagline">A C++ framework for interprocess and network communication.</h2>
+      <a id="forkme_banner" href="https://github.com/GENIVI/capicxx-core-tools">View on GitHub</a>
+    </header>
+</div>
 
-
-          <h1 id="project_title">CommonAPI C++</h1>
-          <h2 id="project_tagline">A C++ framework for interprocess and network communication.</h2>
-
-          <a id="forkme_banner" href="https://github.com/GENIVI/capicxx-core-tools">View on GitHub</a>
-
-
-        </header>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <h3>
-<a id="welcome-to-commonapi-c" class="anchor" href="#welcome-to-commonapi-c" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Welcome to CommonAPI C++!</h3>
-
-<p>CommonAPI C++ is a C++ framework for interprocess and network communication. The basic objective is not to provide a new mechanism for interprocess or network communication (IPC), but to define a high-level C ++ API, which can be used for different mechanisms. The benefit for C ++ developers should be that they are relieved from details of proprietary or little-known communication frameworks or protocols.</p>
-
-<p>CommonAPI C++ is strongly related to the interface description language Franca IDL (see <a href="https://github.com/franca/franca">Franca IDL</a> ). The basic procedure is that you define an interface for your service with the platform- and programming-language-independent Franca IDL. Then you generate proxy- and stub-code with the CommonAPI code generator (CommonAPI-Tools). After that implement the stub functions by using the function bodies as they are generated and then implement the client by calling these functions by using the generated proxy. To get executable applications (client and service) generate IPC framework specific code (glue-code) with the binding specific code generator (at the moment there is one for D-Bus and for SOME/IP, see details in the provided documentation). At the end compile it together with the provided runtime libraries (for CommonAPI itself and again a binding specific library, for details see again the provided documentation).</p>
+<!-- MAIN CONTENT -->
+<div id="main_content_wrap" class="outer">
+<section id="main_content" class="inner">
 
 <h3>
-<a id="basic-features" class="anchor" href="#basic-features" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Basic Features</h3>
+<a id="welcome-to-commonapi-c" class="anchor" href="#welcome-to-commonapi-c" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>
+Welcome to CommonAPI C++!
+</h3>
+
+<p>
+CommonAPI C++ is a C++ framework for interprocess and network communication. The basic objective is not to provide a new mechanism for interprocess or network communication (IPC), but to define a high-level C++ API, which can be used for different mechanisms. The benefit for C++ developers should be that they are relieved from details of proprietary or little-known communication frameworks or protocols.
+</p>
+
+<p>
+So that the application can be independent of the used IPC mechanism CommonAPI C++ consists of a core component which provides the API for the application and a component which is specific for the IPC mechanism, a so-called _binding_. Each of these two basic components is again divided into a generic part which provides standard functions for initialization, logging and so on (_runtime_ environment) and an application specific part. This application specific part must be generated from the logical definition of the application interface which is done with the interface description language Franca IDL (see https://github.com/franca/franca[FrancaIDL]).
+</p>
+
+<img src="images/CommonAPIOverview02.png" alt="CommonAPI C++ Overview" />
+
+<p>
+The basic procedure is that you define an interface for your service with the platform- and programming-language-independent Franca IDL. Then you generate proxy- and stub-code with the CommonAPI code generator (CommonAPI-Tools). After that implement the stub functions by using the function bodies as they are generated and then implement the client by calling these functions by using the generated proxy. To get executable applications (client and service) generate IPC framework specific code (glue-code) with the binding specific code generator (at the moment there is one for D-Bus and for SOME/IP, see details in the provided documentation). At the end compile it together with the provided runtime libraries (for CommonAPI itself and again a binding specific library, for details see again the provided documentation).
+</p>
+
+<img src="images/Workflow.png" alt="CommonAPI C++ Overview" />
+
+<p>
+If you are new to CommonAPI C++ please start by reading the tutorial (see link below in the download section) and looking at the examples. The source code can be found in the CommonAPI-Tools repository. Even easier are the introductions in the Wikis (see also link below).
+</p>
+
+<h3>
+<a id="basic-features" class="anchor" href="#basic-features" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>
+Basic Features
+</h3>
+
 <ul>
 <li>Interface description with the easy to learn, human-readable FrancaIDL.</li>
 <li>Support of Franca features as inheritance, polymorphic structs, unions. </li>
@@ -48,7 +65,10 @@
 </ul>
 
 <h3>
-<a id="links" class="anchor" href="#links" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Links</h3>
+<a id="links" class="anchor" href="#links" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>
+Links
+</h3>
+
 <ul>
 <li>CommonAPI C++ runtime: <a href="https://github.com/GENIVI/capicxx-core-runtime/">https://github.com/GENIVI/capicxx-core-runtime/</a> </li>
 <li>Eclipse update-site: <a href="http://genivi.github.io/capicxx-core-tools/updatesite/">http://genivi.github.io/capicxx-core-tools/updatesite/</a> </li>
@@ -56,32 +76,36 @@
 </ul>
 
 <h3>
-<a id="bindings" class="anchor" href="#bindings" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Bindings</h3>
+<a id="bindings" class="anchor" href="#bindings" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>
+Bindings
+</h3>
+
 <ul>
 <li>CommonAPI C++ D-Bus binding: <a href="http://genivi.github.io/capicxx-dbus-tools/">http://genivi.github.io/capicxx-dbus-tools/</a> </li>
 <li>CommonAPI C++ SOME/IP binding: <a href="http://genivi.github.io/capicxx-someip-tools/">http://genivi.github.io/capicxx-someip-tools/</a> </li>
 </ul>
 
 <h3>
-<a id="downloads" class="anchor" href="#downloads" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Downloads</h3>
-        <ul>
-          <li><a href="https://github.com/GENIVI/capicxx-core-tools/releases/download/3.1.9.1/commonapi-generator.zip">Download Core Code Generator 3.1.9.1 (Binary)</a></li>
-          <li><a href="https://github.com/GENIVI/capicxx-core-runtime/archive/3.1.9.tar.gz">Download Core Runtime 3.1.9 (TAR Ball)</a></li>
-          <li><a href="https://github.com/GENIVI/capicxx-core-tools/releases/download/3.1.9/CommonAPICppUserGuide.pdf">Download User Guide 3.1.9 (pdf)</a></li>
-        </ul>
+<a id="downloads" class="anchor" href="#downloads" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>
+Downloads
+</h3>
 
-      </section>
-    </div>
+<ul>
+<li><a href="https://github.com/GENIVI/capicxx-core-tools/releases/download/3.1.9.1/commonapi-generator.zip">Download Core Code Generator 3.1.9.1 (Binary)</a></li>
+<li><a href="https://github.com/GENIVI/capicxx-core-runtime/archive/3.1.9.tar.gz">Download Core Runtime 3.1.9 (TAR Ball)</a></li>
+<li><a href="https://github.com/GENIVI/capicxx-core-tools/releases/download/3.1.9/CommonAPICppUserGuide.pdf">Download User Guide 3.1.9 (pdf)</a></li>
+</ul>
 
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">CommonAPI C++ maintained by <a href="https://github.com/GENIVI">GENIVI</a></p>
-        <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
-      </footer>
-    </div>
+</section>
+</div>
 
-    
+<!-- FOOTER  -->
+<div id="footer_wrap" class="outer">
+  <footer class="inner">
+    <p class="copyright">CommonAPI C++ maintained by <a href="https://github.com/GENIVI">GENIVI</a></p>
+    <p>Published with <a href="https://pages.github.com">GitHub Pages</a></p>
+  </footer>
+</div>
 
-  </body>
+</body>
 </html>
