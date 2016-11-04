@@ -1,0 +1,20 @@
+Changes
+=======
+
+v3.1.10
+- Upgrade to JDK-1.8.
+- Moved mutex lock in 'VerificationMainLoop::registerWatch' to avoid deadlock. The mutex was moved after registering the file descriptor. Otherwise a deadlock can occur when 'VerificationMainLoop::unregisterWatch' is called in parallel.
+- Fixed THMainloopIndependence and THMainloopIntegration segfault. The problem is that a 'DispatchSource' has a pointer to its related 'Watch' as member variable and in the destructor of the dispatch source the watch is accessed. So a segfault can occur when the watch is deleted before the dispatch source.
+- Merge core and binding deployments for attributes, broadcasts, methods and types instead of copying the core deployment into the lists of the binding deplyoment. The copying led to binding deployments getting lost because the core deployment overwrote the binding deployment when it was inserted into the map in class FDMapper.
+- Fixed CMAttributeSubscription multithreading test.
+- Relaxed timing requirements when TESTS_BAT is defined and fixed races in tests.
+- Added test SubscribeAndUnsubscribeAndReSubscribe.
+- It is now possible to deploy a broadcast with type 'error'. An error broadcast signals an occured error due to a method call and needs an appropriate error name. With a respective deployment file as input for the generators, they produce appropriate code to receive and send error replies.
+- Check proxy pointer in TearDown to avoid sporadic crashes.
+- Added CodeArtifactName deployment parameter.
+- CommonAPI generator generate uncompilable code in case of: if enum 'namespace::A' extends enum 'other_namespace::B' which extends 'other_namespace::C', the namespace in the assign operator of 'A' is missing.
+- Replace polling mechanism in Windows main-loop. The current polling mechanism of the main-loops is not reliable under Windows. It is replaced with a WSAPoll on the file descriptors instead of WSAWaitForMultipleEvents on wsa events.
+
+v3.1.9.1
+- Fix error when InstanceIds.hpp is #included in two independend compilation units.
+

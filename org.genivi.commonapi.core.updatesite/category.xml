@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <feature url="features/org.genivi.commonapi.core.validator.feature_3.1.9.qualifier.jar" id="org.genivi.commonapi.core.validator.feature" version="3.1.9.qualifier">
+   <feature url="features/org.genivi.commonapi.core.validator.feature_3.1.10.qualifier.jar" id="org.genivi.commonapi.core.validator.feature" version="3.1.10.qualifier">
       <category name="GENIVI CommonAPI"/>
    </feature>
-   <feature url="features/org.genivi.commonapi.core.feature_3.1.9.qualifier.jar" id="org.genivi.commonapi.core.feature" version="3.1.9.qualifier">
+   <feature url="features/org.genivi.commonapi.core.feature_3.1.10.qualifier.jar" id="org.genivi.commonapi.core.feature" version="3.1.10.qualifier">
       <category name="GENIVI CommonAPI"/>
    </feature>
    <category-def name="GENIVI CommonAPI" label="GENIVI CommonAPI Generators">

@@ -133,18 +133,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/conf/commonapi4someip.ini.in
   "${PROJECT_BINARY_DIR}/commonapi4someip.ini" @ONLY)
 
 ##############################################################################
-# copy script files to binary directory
-if (WIN32)
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.vbs.in
-      "${PROJECT_BINARY_DIR}/MPSelective.vbs" @ONLY)
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.bat.in
-      "${PROJECT_BINARY_DIR}/MPSelective.bat" @ONLY)
-else()
-    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/scripts/MPSelective.sh.in
-       "${PROJECT_BINARY_DIR}/MPSelective.sh" @ONLY)
-endif()
-
-##############################################################################
 # google test
 
 # check for set environment variable
@@ -213,6 +201,10 @@ set(TEST_LINK_LIBRARIES CommonAPI gtest ws2_32)
 else()
 set(TEST_LINK_LIBRARIES CommonAPI gtest)
 endif()
+
+if (${TESTS_BAT})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTESTS_BAT")
+endif ()
 
 if (NOT ${TESTS_BAT})
     add_executable(RTLoadingRuntime src/RTLoadingRuntime.cpp)
@@ -355,16 +347,6 @@ if (NOT ${TESTS_BAT})
             src-gen/v1/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
         target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
 
-        add_executable(MPSelectiveClient
-           src/MPSelectiveClient.cpp)
-        target_link_libraries(MPSelectiveClient ${TEST_LINK_LIBRARIES})
-
-        add_executable(MPSelectiveService
-           src/stub/MPSelectiveStubImpl.cpp
-           src/MPSelectiveService.cpp
-           src-gen/v1/commonapi/multiprocess/bselective/MPSelectiveStubDefault.cpp)
-        target_link_libraries(MPSelectiveService ${TEST_LINK_LIBRARIES})
-
     endif()
 endif()
 
@@ -394,7 +376,6 @@ if (NOT ${TESTS_BAT})
         add_dependencies(PFPrimitive gtest)
         add_dependencies(PFComplex gtest)
         add_dependencies(StabilitySP gtest)
-        add_dependencies(MPSelectiveClient gtest)
     endif()
 endif()
 
@@ -423,8 +404,6 @@ if (NOT ${TESTS_BAT})
         add_dependencies(check PFPrimitive)
         add_dependencies(check PFComplex)
         add_dependencies(check StabilitySP)
-        add_dependencies(check MPSelectiveClient)
-        add_dependencies(check MPSelectiveService)
     endif()
 endif()
 
@@ -480,14 +459,6 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
             set_property(TEST PFComplexDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
             add_test(NAME StabilitySPDBus COMMAND StabilitySP)
             set_property(TEST StabilitySPDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
-            if (WIN32)
-                add_test(NAME MPSelectiveDBus COMMAND ${PROJECT_BINARY_DIR}/MPSelective.bat
-				              WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
-                set_property(TEST MPSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
-            else()
-                add_test(NAME MPSelectiveDBus COMMAND MPSelective.sh)
-                set_property(TEST MPSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
-            endif()
         endif()
     endif()
 endif()
@@ -550,14 +521,6 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
             set_property(TEST PFComplexSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
             add_test(NAME StabilitySPSomeIP COMMAND StabilitySP)
             set_property(TEST StabilitySPSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
-            if (WIN32)
-                add_test(NAME MPSelectiveSomeIP COMMAND ${PROJECT_BINARY_DIR}/MPSelective.bat
-				         WORKING_DIRECTORY ${PROJECT_BINARY_DIR} )
-                set_property(TEST MPSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
-            else()
-                add_test(NAME MPSelectiveSomeIP COMMAND MPSelective.sh)
-                set_property(TEST MPSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
-            endif()
         endif()
     endif()
 endif()

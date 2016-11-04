@@ -326,6 +326,13 @@ public class ValidatorCore implements IFrancaExternalValidator {
                     messageAcceptor);
             return;
         }
+        if (cppKeywords.reservedWords.contains(name)) {
+            acceptError("Name " + name
+                    + " is a reserved identifier", eObject,
+                    FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
+                    messageAcceptor);
+            return;
+        }
     }
 
     private boolean isFrancaVersionGreaterThan(int major, int minor, int micro) {

@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>commonapi</groupId>
     <artifactId>org.genivi.commonapi.releng</artifactId>
-    <version>3.1.9-SNAPSHOT</version>
+    <version>3.1.10-SNAPSHOT</version>
     <packaging>pom</packaging>
     <properties>
         <tycho-version>0.22.0</tycho-version>
@@ -13,7 +13,7 @@
         <xtend-version>2.7.3</xtend-version>
     </properties>
 
-    <pluginRepositories>    
+    <pluginRepositories>
         <pluginRepository>
             <id>sonatype</id>
             <url>http://repository.sonatype.org/content/groups/sonatype-public-grid/</url>
@@ -46,7 +46,7 @@
                         <artifact>
                             <groupId>commonapi</groupId>
                             <artifactId>${target.id}</artifactId>
-                            <version>3.1.9-SNAPSHOT</version>
+                            <version>3.1.10-SNAPSHOT</version>
                         </artifact>
                     </target>
                     <filters>
@@ -88,7 +88,7 @@
             <plugin>
                 <groupId>org.eclipse.xtend</groupId>
                 <artifactId>xtend-maven-plugin</artifactId>
-                <version>${xtend-version}</version> 
+                <version>${xtend-version}</version>
                 <executions>
                     <execution>
                         <goals>

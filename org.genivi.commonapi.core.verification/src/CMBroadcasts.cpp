@@ -26,6 +26,12 @@ const std::string testAddress = "commonapi.communication.TestInterface";
 
 const int tasync = 10000;
 
+#ifdef TESTS_BAT
+const unsigned int wf = 10; /* "wait-factor" when run in BAT environment */
+#else
+const unsigned int wf = 1;
+#endif
+
 using namespace v1_0::commonapi::communication;
 
 class Environment: public ::testing::Environment {
@@ -74,10 +80,10 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 100 ) {
-            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        do {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
             counter++;
-        }
+        } while ( testProxy_->isAvailable() && counter < 100 );
 
         ASSERT_FALSE(testProxy_->isAvailable());
     }
@@ -168,7 +174,7 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
     EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     // check that no value was correctly received
-    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
     EXPECT_EQ(result, 0);
 
 }

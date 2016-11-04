@@ -38,8 +38,6 @@ const long maxTimeout = 10;
 
 namespace CommonAPI {
 
-  typedef pollfd DemoMainLoopPollFd;
-
 class VerificationMainLoop {
  public:
     VerificationMainLoop() = delete;
@@ -54,11 +52,132 @@ class VerificationMainLoop {
                   hasToStop_(false),
                   running_(false),
                   isBroken_(false) {
-    #ifdef WIN32
-        wsaEvents_.push_back(WSACreateEvent());
-        if (wsaEvents_[0] == WSA_INVALID_EVENT) {
-            printf("Invalid Event Created!");
+#ifdef WIN32
+    WSADATA wsaData;
+    int iResult;
+
+    SOCKET ListenSocket = INVALID_SOCKET;
+
+    struct addrinfo *result = NULL;
+    struct addrinfo hints;
+
+    // Initialize Winsock
+    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0) {
+        printf("WSAStartup failed with error: %d\n", iResult);
+    }
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = AI_PASSIVE;
+
+    // Resolve the server address and port
+    iResult = getaddrinfo(NULL, "0", &hints, &result);
+    if (iResult != 0) {
+        printf("getaddrinfo failed with error: %d\n", iResult);
+        WSACleanup();
+    }
+
+    // Create a SOCKET for connecting to server
+    ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (ListenSocket == INVALID_SOCKET) {
+        printf("socket failed with error: %ld\n", WSAGetLastError());
+        freeaddrinfo(result);
+        WSACleanup();
+    }
+
+    // Setup the TCP listening socket
+    iResult = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
+    if (iResult == SOCKET_ERROR) {
+        printf("bind failed with error: %d\n", WSAGetLastError());
+        freeaddrinfo(result);
+        closesocket(ListenSocket);
+        WSACleanup();
+    }
+
+    sockaddr* connected_addr = new sockaddr();
+    USHORT port = 0;
+    int namelength = sizeof(sockaddr);
+    iResult = getsockname(ListenSocket, connected_addr, &namelength);
+    if (iResult == SOCKET_ERROR) {
+        printf("getsockname failed with error: %d\n", WSAGetLastError());
+    } else if (connected_addr->sa_family == AF_INET) {
+        port = ((struct sockaddr_in*)connected_addr)->sin_port;
+    }
+    delete connected_addr;
+
+    freeaddrinfo(result);
+
+    iResult = listen(ListenSocket, SOMAXCONN);
+    if (iResult == SOCKET_ERROR) {
+        printf("listen failed with error: %d\n", WSAGetLastError());
+        closesocket(ListenSocket);
+        WSACleanup();
+    }
+
+    wsaData;
+    wakeFd_.fd = INVALID_SOCKET;
+    struct addrinfo *ptr = NULL;
+
+    // Initialize Winsock
+    iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0) {
+        printf("WSAStartup failed with error: %d\n", iResult);
+    }
+
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    // Resolve the server address and port
+    iResult = getaddrinfo("127.0.0.1", std::to_string(ntohs(port)).c_str(), &hints, &result);
+    if (iResult != 0) {
+        printf("getaddrinfo failed with error: %d\n", iResult);
+        WSACleanup();
+    }
+
+    // Attempt to connect to an address until one succeeds
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next) {
+
+        // Create a SOCKET for connecting to server
+        wakeFd_.fd = socket(ptr->ai_family, ptr->ai_socktype,
+            ptr->ai_protocol);
+        if (wakeFd_.fd == INVALID_SOCKET) {
+            printf("socket failed with error: %ld\n", WSAGetLastError());
+            WSACleanup();
         }
+
+        // Connect to server.
+        iResult = connect(wakeFd_.fd, ptr->ai_addr, (int)ptr->ai_addrlen);
+        if (iResult == SOCKET_ERROR) {
+            printf("connect failed with error: %ld\n", WSAGetLastError());
+            closesocket(wakeFd_.fd);
+            wakeFd_.fd = INVALID_SOCKET;
+            continue;
+        }
+        break;
+    }
+
+    freeaddrinfo(result);
+
+    if (wakeFd_.fd == INVALID_SOCKET) {
+        printf("Unable to connect to server!\n");
+        WSACleanup();
+    }
+
+    // Accept a client socket
+    sendFd_.fd = accept(ListenSocket, NULL, NULL);
+    if (sendFd_.fd == INVALID_SOCKET) {
+        printf("accept failed with error: %d\n", WSAGetLastError());
+        closesocket(ListenSocket);
+        WSACleanup();
+    }
+
+    wakeFd_.events = POLLIN;
+    registerFileDescriptor(wakeFd_);
     #else
         wakeFd_.fd = eventfd(0, EFD_SEMAPHORE | EFD_NONBLOCK);
         wakeFd_.events = POLLIN;
@@ -87,10 +206,7 @@ class VerificationMainLoop {
     }
 
     ~VerificationMainLoop() {
-
-    #ifndef WIN32
         unregisterFileDescriptor (wakeFd_);
-    #endif  
 
         context_->unsubscribeForDispatchSources(
                 dispatchSourceListenerSubscription_);
@@ -99,7 +215,17 @@ class VerificationMainLoop {
         context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
     #ifdef WIN32
-        WSACloseEvent(wsaEvents_[0]);
+        // shutdown the connection since no more data will be sent
+        int iResult = shutdown(wakeFd_.fd, SD_SEND);
+        if (iResult == SOCKET_ERROR) {
+            printf("shutdown failed with error: %d\n", WSAGetLastError());
+            closesocket(wakeFd_.fd);
+            WSACleanup();
+        }
+
+        // cleanup
+        closesocket(wakeFd_.fd);
+        WSACleanup();
     #else
         close(wakeFd_.fd);
     #endif
@@ -196,7 +322,9 @@ class VerificationMainLoop {
      */
     void doSingleIteration(const int64_t& timeout = TIMEOUT_INFINITE) {
         {
-            std::lock_guard<std::mutex> itsLock(dispatchSourcesMutex_);
+            std::lock_guard<std::mutex> itsDispatchSourcesLock(dispatchSourcesMutex_);
+            std::lock_guard<std::mutex> itsWatchesLock(watchesMutex_);
+
             for (auto dispatchSourceIterator = registeredDispatchSources_.begin();
                 dispatchSourceIterator != registeredDispatchSources_.end();
                 dispatchSourceIterator++) {
@@ -231,6 +359,43 @@ class VerificationMainLoop {
                 }
                 else {
                     (dispatchSourceIterator->second)->mutex_->unlock();
+                }
+            }
+
+            for (auto watchesIterator = registeredWatches_.begin();
+                watchesIterator != registeredWatches_.end();
+                watchesIterator++) {
+
+                (watchesIterator->second)->mutex_->lock();
+                if ((watchesIterator->second)->deleteObject_) {
+                    if (!(watchesIterator->second)->isExecuted_) {
+                        (watchesIterator->second)->mutex_->unlock();
+                        bool contained = false;
+                        for (auto watchesIteratorInner = watchesToDispatch_.begin();
+                            watchesIteratorInner != watchesToDispatch_.end(); watchesIteratorInner++) {
+                            if (std::get<1>(*watchesIteratorInner)->watch_ == (watchesIterator->second)->watch_) {
+                                contained = true;
+                                break;
+                            }
+                        }
+                        if (!contained) {
+                            delete (watchesIterator->second)->watch_;
+                            (watchesIterator->second)->watch_ = NULL;
+                            delete (watchesIterator->second)->mutex_;
+                            (watchesIterator->second)->mutex_ = NULL;
+                            delete watchesIterator->second;
+                            watchesIterator = registeredWatches_.erase(watchesIterator);
+                        }
+                        if (watchesIterator == registeredWatches_.end()) {
+                            break;
+                        }
+                    }
+                    else {
+                        (watchesIterator->second)->mutex_->unlock();
+                    }
+                }
+                else {
+                    (watchesIterator->second)->mutex_->unlock();
                 }
             }
         }
@@ -271,46 +436,6 @@ class VerificationMainLoop {
                 }
                 else {
                     (timeoutIterator->second)->mutex_->unlock();
-                }
-            }
-        }
-
-        {
-            std::lock_guard<std::mutex> itsLock(watchesMutex_);
-            for (auto watchesIterator = registeredWatches_.begin();
-                watchesIterator != registeredWatches_.end();
-                watchesIterator++) {
-
-                (watchesIterator->second)->mutex_->lock();
-                if ((watchesIterator->second)->deleteObject_) {
-                    if (!(watchesIterator->second)->isExecuted_) {
-                        (watchesIterator->second)->mutex_->unlock();
-                        bool contained = false;
-                        for (auto watchesIteratorInner = watchesToDispatch_.begin();
-                            watchesIteratorInner != watchesToDispatch_.end(); watchesIteratorInner++) {
-                            if (std::get<1>(*watchesIteratorInner)->watch_ == (watchesIterator->second)->watch_) {
-                                contained = true;
-                                break;
-                            }
-                        }
-                        if (!contained) {
-                            delete (watchesIterator->second)->watch_;
-                            (watchesIterator->second)->watch_ = NULL;
-                            delete (watchesIterator->second)->mutex_;
-                            (watchesIterator->second)->mutex_ = NULL;
-                            delete watchesIterator->second;
-                            watchesIterator = registeredWatches_.erase(watchesIterator);
-                        }
-                        if (watchesIterator == registeredWatches_.end()) {
-                            break;
-                        }
-                    }
-                    else {
-                        (watchesIterator->second)->mutex_->unlock();
-                    }
-                }
-                else {
-                    (watchesIterator->second)->mutex_->unlock();
                 }
             }
         }
@@ -385,13 +510,7 @@ class VerificationMainLoop {
     }
 
     void poll() {
-
-    #ifdef WIN32
         int managedFileDescriptorOffset = 0;
-    #else
-        int managedFileDescriptorOffset = 1;
-    #endif
-
         {
             std::lock_guard<std::mutex> itsLock(fileDescriptorsMutex_);
             for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
@@ -400,24 +519,7 @@ class VerificationMainLoop {
         }
 
     #ifdef WIN32
-        int numReadyFileDescriptors = 0;
-
-        int errorCode = WSAWaitForMultipleEvents((DWORD)wsaEvents_.size(), wsaEvents_.data(), FALSE, (DWORD)currentMinimalTimeoutInterval_, FALSE);
-
-        if (errorCode == WSA_WAIT_IO_COMPLETION) {
-            printf("WSAWaitForMultipleEvents failed with error: WSA_WAIT_IO_COMPLETION");
-        }
-        else if (errorCode == WSA_WAIT_FAILED) {
-            printf("WSAWaitForMultipleEvents failed with error: %ld\n", WSAGetLastError());
-        }
-        else {
-            for (uint32_t i = 0; i < managedFileDescriptors_.size(); i++) {
-                if (WaitForSingleObjectEx(wsaEvents_[i + 1], 0, true) != WAIT_TIMEOUT) {
-                    numReadyFileDescriptors++;
-                    managedFileDescriptors_[i].revents = POLLIN;
-                }
-            }
-        }
+        int numReadyFileDescriptors = WSAPoll(&managedFileDescriptors_[0], managedFileDescriptors_.size(), int(currentMinimalTimeoutInterval_));
     #else
         int numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]),
                 managedFileDescriptors_.size(), int(currentMinimalTimeoutInterval_));
@@ -453,23 +555,14 @@ class VerificationMainLoop {
             }
         }
 
-    #ifdef WIN32
-        wakeupAck();
-    #else
         // If the wakeup descriptor woke us up, we must acknowledge
         if (managedFileDescriptors_[0].revents) {
             wakeupAck();
         }
-    #endif
     }
 
     bool check() {
-        //The first file descriptor always is the loop's wakeup-descriptor (but not for windows anymore). All others need to be linked to a watch.
-    #ifdef WIN32
-        int managedFileDescriptorOffset = 0;
-    #else
         int managedFileDescriptorOffset = 1;
-    #endif
         {
             std::lock_guard<std::mutex> itsLock(fileDescriptorsMutex_);
             for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset;
@@ -523,10 +616,16 @@ class VerificationMainLoop {
 
     void wakeup() {
     #ifdef WIN32
-        if (!WSASetEvent(wsaEvents_[0]))
-        {
-            printf("SetEvent failed (%d)\n", GetLastError());
-            return;
+        // Send an initial buffer
+        char *sendbuf = "1";
+
+        int iResult = send(sendFd_.fd, sendbuf, (int)strlen(sendbuf), 0);
+        if (iResult == SOCKET_ERROR) {
+            int error = WSAGetLastError();
+
+            if (error != WSANOTINITIALISED) {
+                printf("send failed with error: %d\n", error);
+            }
         }
     #else
         int64_t wake = 1;
@@ -538,12 +637,20 @@ class VerificationMainLoop {
 
     void wakeupAck() {
     #ifdef WIN32
-        for (unsigned int i = 0; i < wsaEvents_.size(); i++) {
-            if (!WSAResetEvent(wsaEvents_[i]))
-                {
-                    printf("ResetEvent failed (%d)\n", GetLastError());
-                    return;
-                }
+        // Receive until the peer closes the connection
+        int iResult;
+        char recvbuf[DEFAULT_BUFLEN];
+        int recvbuflen = DEFAULT_BUFLEN;
+
+        iResult = recv(wakeFd_.fd, recvbuf, recvbuflen, 0);
+        if (iResult > 0) {
+            //printf("Bytes received from %d: %d\n", wakeFd_.fd, iResult);
+        }
+        else if (iResult == 0) {
+            printf("Connection closed\n");
+        }
+        else {
+            printf("recv failed with error: %d\n", WSAGetLastError());
         }
     #else
         int64_t buffer;
@@ -682,24 +789,6 @@ class VerificationMainLoop {
         }
     }
 
-#ifdef WIN32
-    void registerEvent(
-        const HANDLE& wsaEvent) {
-        wsaEvents_.push_back(wsaEvent);
-    }
-
-    void unregisterEvent(
-        const HANDLE& wsaEvent) {
-        for (auto it = wsaEvents_.begin();
-            it != wsaEvents_.end(); it++) {
-            if ((*it) == wsaEvent) {
-                wsaEvents_.erase(it);
-                break;
-            }
-        }
-    }
-#endif
-
     void registerDispatchSource(DispatchSource* dispatchSource, const DispatchPriority dispatchPriority) {
         DispatchSourceToDispatchStruct* dispatchSourceStruct =
                 new DispatchSourceToDispatchStruct(dispatchSource,
@@ -728,14 +817,11 @@ class VerificationMainLoop {
     }
 
     void registerWatch(Watch* watch, const DispatchPriority dispatchPriority) {
-        std::lock_guard<std::mutex> itsLock(watchesMutex_);
         pollfd fdToRegister = watch->getAssociatedFileDescriptor();
-    
-    #ifdef WIN32
-        registerEvent(watch->getAssociatedEvent());
-    #endif
 
         registerFileDescriptor(fdToRegister);
+
+        std::lock_guard<std::mutex> itsLock(watchesMutex_);
         std::mutex* mtx = new std::mutex;
 
         WatchToDispatchStruct* watchStruct = new WatchToDispatchStruct(fdToRegister.fd, watch, mtx, false, false);
@@ -746,9 +832,6 @@ class VerificationMainLoop {
         unregisterFileDescriptor(watch->getAssociatedFileDescriptor());
 
         std::lock_guard<std::mutex> itsLock(watchesMutex_);
-    #ifdef WIN32
-        unregisterEvent(watch->getAssociatedEvent());
-    #endif
 
         for (auto watchIterator = registeredWatches_.begin();
             watchIterator != registeredWatches_.end(); watchIterator++) {
@@ -870,10 +953,10 @@ class VerificationMainLoop {
     bool running_;
 
 #ifdef WIN32
-    std::vector<HANDLE> wsaEvents_;
-#else
-    pollfd wakeFd_;
+    pollfd sendFd_;
 #endif
+
+    pollfd wakeFd_;
 
     bool isBroken_;
 

@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.core.cli.feature"
       label="CommonAPI Generator Feature"
-      version="3.1.9.qualifier"
+      version="3.1.10.qualifier"
       provider-name="BMW AG">
 
    <plugin

@@ -16,14 +16,15 @@ import java.math.BigInteger
 import java.util.ArrayList
 import java.util.Collection
 import java.util.HashMap
+import java.util.LinkedHashMap
 import java.util.HashSet
 import java.util.LinkedList
 import java.util.List
 import java.util.Map
-import java.util.Set
 import java.util.jar.Manifest
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
+import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
@@ -57,10 +58,18 @@ import org.franca.core.franca.FTypedElement
 import org.franca.core.franca.FUnionType
 import org.franca.core.franca.FVersion
 import org.franca.core.franca.FrancaFactory
+import org.franca.deploymodel.dsl.fDeploy.FDArray
+import org.franca.deploymodel.dsl.fDeploy.FDAttribute
+import org.franca.deploymodel.dsl.fDeploy.FDBroadcast
+import org.franca.deploymodel.dsl.fDeploy.FDEnumeration
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
+import org.franca.deploymodel.dsl.fDeploy.FDMethod
 import org.franca.deploymodel.dsl.fDeploy.FDModel
 import org.franca.deploymodel.dsl.fDeploy.FDProvider
+import org.franca.deploymodel.dsl.fDeploy.FDStruct
+import org.franca.deploymodel.dsl.fDeploy.FDTypeDef
 import org.franca.deploymodel.dsl.fDeploy.FDTypes
+import org.franca.deploymodel.dsl.fDeploy.FDUnion
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.deployment.PropertyAccessor.DefaultEnumBackingType
 import org.genivi.commonapi.core.deployment.PropertyAccessor.EnumBackingType
@@ -479,8 +488,13 @@ class FrancaGeneratorExtensions {
         return signature
     }
 
-    def generateOverloadedStubSignature(FMethod fMethod, String methodName) {
+    def generateOverloadedStubSignature(FMethod fMethod, LinkedHashMap<String, Boolean> replies) {
         var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
+        
+        if(!fMethod.isFireAndForget && replies.containsValue(true)) {
+            //replies containing error replies
+            signature = signature + ', const CommonAPI::CallId_t _callId'
+        }
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
@@ -488,11 +502,17 @@ class FrancaGeneratorExtensions {
         signature = signature + fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
 
         if (!fMethod.isFireAndForget) {
-            if (signature != "")
-                signature = signature + ", ";
-            signature = signature + methodName + "Reply_t _reply";
+            for (Map.Entry<String, Boolean> entry : replies.entrySet) {
+                var methodName = entry.key
+                var isErrorReply = entry.value
+                signature = signature + ", " + methodName + 'Reply_t'
+                if(isErrorReply) {
+                    signature = signature + ' _' + methodName + 'Reply'
+                } else {
+                    signature = signature + ' _reply'
+                }
+            }
         }
-
         return signature
     }
 
@@ -508,6 +528,85 @@ class FrancaGeneratorExtensions {
             signature = signature + fMethod.outArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
 
         return signature
+    }
+    
+    def generateStubErrorReplySignature(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no error type: ' + fBroadcast)
+        
+        var signature = 'const CommonAPI::CallId_t _callId'
+
+        if (!fBroadcast.errorArgs(deploymentAccessor).empty)
+            signature = signature + ', ' + fBroadcast.errorArgs(deploymentAccessor).map[getTypeName(fBroadcast, true) + ' _' + elementName].join(', ')
+
+        return signature
+    }
+    
+    def errorReplyTypes(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
+
+        var types = "const CommonAPI::CallId_t";
+        var errorTypes = fBroadcast.errorArgs(deploymentAccessor).map[getTypeName(fBroadcast, true)].join(', ')
+        if(errorTypes != "") {
+            types = types + ", "
+        }
+        types = types + errorTypes
+        return types
+    }
+    
+    def errorReplyCallbackName(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
+        
+        return fBroadcast.elementName + "Callback"
+    }
+    
+    def errorReplyCallbackBindArgs(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
+
+        var bindArgs = "std::placeholders::_1, " + "\"" + deploymentAccessor.getErrorName(fBroadcast) + "\""
+        if(fBroadcast.errorArgs(deploymentAccessor).size > 1) {
+            for(var i=0; i < fBroadcast.errorArgs(deploymentAccessor).size; i++) {
+                bindArgs = bindArgs + ', std::placeholders::_' + (i+2) 
+            }
+        }
+        return bindArgs
+    }
+    
+    def generateErrorReplyCallbackSignature(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
+        
+        var signature = 'const CommonAPI::CallId_t _callId'
+        var signatureOut = fBroadcast.outArgs.map[getTypeName(fBroadcast, true) + ' _' + it.elementName].join(', ')
+        if(signatureOut != "") {
+            signature = signature + ", "
+        }
+        signature = signature + signatureOut
+        return signature
+    }
+    
+    def isErrorType(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {        
+        return (deploymentAccessor.getBroadcastType(fBroadcast) == PropertyAccessor.BroadcastType.error)
+    }
+    
+    def isErrorType(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
+        return (fBroadcast.isErrorType(deploymentAccessor) &&
+            deploymentAccessor.getErrors(fMethod) != null &&
+            deploymentAccessor.getErrors(fMethod).contains(fBroadcast.elementName))
+    }
+    
+    def errorName(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
+        checkArgument(!fBroadcast.outArgs.empty, 'FBroadcast of type error has no required error name: ' + fBroadcast)
+        checkArgument(fBroadcast.outArgs.get(0).getTypeName(fBroadcast, true) == 'std::string',
+        'FBroadcast of type error does not contain a string as first argument (error name): ' + fBroadcast)
+        
+        return fBroadcast.outArgs.get(0).elementName
+    }
+    
+    def errorArgs(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
+        checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no error type: ' + fBroadcast)
+        checkArgument(!fBroadcast.outArgs.empty, 'FBroadcast of type error has no required error name: ' + fBroadcast)
+        
+        return fBroadcast.outArgs.subList(1, fBroadcast.outArgs.size)
     }
 
     def String generateDummyValue(FTypeRef typeRef) {
@@ -1094,10 +1193,10 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def String getBaseType(FEnumerationType _enumeration, String _backingType) {
+    def String getBaseType(FEnumerationType _enumeration, FEnumerationType _other, String _backingType) {
         var String baseType
         if (_enumeration.base != null) {
-            baseType = _enumeration.base.getElementName(_enumeration, false)
+            baseType = _enumeration.base.getElementName(_other, false)
         } else {
             baseType = "CommonAPI::Enumeration<" + _backingType + ">"
         }
@@ -1963,36 +2062,116 @@ class FrancaGeneratorExtensions {
         }
         return fdProviders;
     }
+    
     /**
      * Copy deployment attributes into the destination deployment
      */
-    def mergeDeployments(FDInterface _source, FDInterface _destination) {
+    def mergeDeployments(FDInterface _source, FDInterface _target) {
+        if (_source != null && _source.target != null &&
+            _target != null && _source.target.equals(_target.target)) {
 
-        if (_source.target.equals(_destination.target)) {
-            if (_source.attributes.size > 0) {
-                if(_destination.attributes.size == 0) {
-                    _destination.attributes.addAll(_source.attributes)
+            var List<FDAttribute> itsNewAttributes = new ArrayList<FDAttribute>()                
+            var List<FDBroadcast> itsNewBroadcasts = new ArrayList<FDBroadcast>()
+            var List<FDMethod> itsNewMethods = new ArrayList<FDMethod>()
+
+            // Merge attributes
+            for (FDAttribute s : _source.attributes) {
+                var boolean hasBeenMerged = false
+                for (FDAttribute t : _target.attributes) {
+                    if (s.target.equals(t.target)) {
+                        t.properties.addAll(s.properties)
+                        hasBeenMerged = true
+                    }
+                }
+                if (!hasBeenMerged)
+                    itsNewAttributes.add(s)
+            }
+
+            // Merge broadcasts
+            for (FDBroadcast s : _source.broadcasts) {
+                var boolean hasBeenMerged = false
+                for (FDBroadcast t : _target.broadcasts) {
+                    if (s.target.equals(t.target)) {
+                        t.properties.addAll(s.properties)
+                        hasBeenMerged = true
+                    }
+                }
+                if (!hasBeenMerged) {
+                    itsNewBroadcasts.add(s)
                 }
             }
-            if (_source.methods.size > 0) {
-                _destination.methods.addAll(_source.methods)
+
+            // Merge methods
+            for (FDMethod s : _source.methods) {
+                var boolean hasBeenMerged = false
+                for (FDMethod t : _target.methods) {
+                    if (s.target.equals(t.target)) {
+                        t.properties.addAll(s.properties)
+                        hasBeenMerged = true
+                    }
+                }
+                if (!hasBeenMerged)
+                    itsNewMethods.add(s)
             }
-//            Not used so far:
-//            if(source.broadcasts != null) {
-//                destination.broadcasts.addAll(source.broadcasts)
-//            }
-            if (_source.types.size > 0) {
-                _destination.types.addAll(_source.types)
-            }
+
+            _target.attributes.addAll(itsNewAttributes)
+            _target.broadcasts.addAll(itsNewBroadcasts)
+            _target.methods.addAll(itsNewMethods)
+
+            // Merge types
+            mergeDeployments(_source.types, _target.types)
         }
     }
 
-    def mergeDeployments(FDTypes _source, FDTypes _destination) {
-        if (_source.target.equals(_destination.target)) {
-            if (!_source.types.empty) {
-                _destination.types.addAll(_source.types)
-            }
+    def mergeDeployments(FDTypes _source, FDTypes _target) {
+        if (_source != null && _source.target != null &&
+            _target != null && _source.target.equals(_target.target)) {
+            // Merge types
+            mergeDeployments(_source.types, _target.types)
         }
+    }
+        
+    def mergeDeployments(EList<FDTypeDef> _source, EList<FDTypeDef> _target) {
+        var List<FDTypeDef> itsNewTypeDefs = new ArrayList<FDTypeDef>()
+        
+        for (FDTypeDef s : _source) {
+            var boolean hasBeenMerged = false
+            for (FDTypeDef t : _target) {
+                if (s instanceof FDArray && t instanceof FDArray) {
+                    val FDArray itsSourceArray = s as FDArray
+                    val FDArray itsTargetArray = t as FDArray
+                    if (itsSourceArray.target.equals(itsTargetArray.target)) {
+                        itsTargetArray.properties.addAll(itsSourceArray.properties)
+                        hasBeenMerged = true
+                    }
+                } else if (s instanceof FDEnumeration && t instanceof FDEnumeration) {
+                    val FDEnumeration itsSourceEnumeration = s as FDEnumeration
+                    val FDEnumeration itsTargetEnumeration = t as FDEnumeration
+                    if (itsSourceEnumeration.target.equals(itsTargetEnumeration.target)) {
+                        itsTargetEnumeration.properties.addAll(itsSourceEnumeration.properties)
+                        hasBeenMerged = true
+                    }
+                } else if (s instanceof FDStruct && t instanceof FDStruct) {
+                    val FDStruct itsSourceStruct = s as FDStruct
+                    val FDStruct itsTargetStruct = t as FDStruct
+                    if (itsSourceStruct.target.equals(itsTargetStruct.target)) {
+                        itsTargetStruct.properties.addAll(itsSourceStruct.properties)
+                        hasBeenMerged = true
+                    }
+                } else if (s instanceof FDUnion && t instanceof FDUnion) {
+                    val FDUnion itsSourceUnion = s as FDUnion
+                    val FDUnion itsTargetUnion = t as FDUnion
+                    if (itsSourceUnion.target.equals(itsTargetUnion.target)) {
+                        itsTargetUnion.properties.addAll(itsSourceUnion.properties)
+                        hasBeenMerged = true
+                    }
+                } 
+            } 
+            if (!hasBeenMerged)
+                itsNewTypeDefs.add(s);
+        }
+        
+        _target.addAll(itsNewTypeDefs)
     }
 
     def public getAllReferencedFInterfaces(FModel fModel)

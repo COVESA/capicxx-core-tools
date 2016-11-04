@@ -7,6 +7,7 @@ package org.genivi.commonapi.core.deployment;
 
 import java.util.List;
 
+import org.franca.core.franca.FBroadcast;
 import org.franca.core.franca.FEnumerationType;
 import org.franca.core.franca.FInterface;
 import org.franca.core.franca.FMethod;
@@ -21,6 +22,7 @@ import org.franca.deploymodel.dsl.fDeploy.FDValue;
 import org.genivi.commonapi.core.DeploymentInterfacePropertyAccessor;
 import org.genivi.commonapi.core.DeploymentProviderPropertyAccessor;
 import org.genivi.commonapi.core.DeploymentTypeCollectionPropertyAccessor;
+import org.genivi.commonapi.core.DeploymentInterfacePropertyAccessor.BroadcastType;
 
 public class PropertyAccessor {
 	
@@ -103,6 +105,10 @@ public class PropertyAccessor {
 		catch (java.lang.NullPointerException e) {}
 		return EnumBackingType.Int32;
 	}
+	
+	public enum BroadcastType {
+		signal, error
+	}
 
 	public Integer getTimeout(FMethod obj) {
 		try {
@@ -111,6 +117,15 @@ public class PropertyAccessor {
 		}
 		catch (java.lang.NullPointerException e) {}
 		return defaultTimeout_;
+	}
+	
+	public List<String> getErrors(FMethod obj) {
+		try {
+			if (type_ == DeploymentType.INTERFACE)
+				return interface_.getErrors(obj);
+		}
+		catch (java.lang.NullPointerException e) {}
+		return null;
 	}
 
 	public List<FInterface> getClientInstanceReferences (FDProvider obj) {
@@ -163,6 +178,24 @@ public class PropertyAccessor {
 		try {
 			if (type_ == DeploymentType.PROVIDER)
 				return provider_.getPreregisteredProperties(obj);
+		}
+		catch (java.lang.NullPointerException e) {}
+		return null;
+	}
+	
+	public BroadcastType getBroadcastType (FBroadcast obj) {
+		try {
+			if (type_ == DeploymentType.INTERFACE)
+				return from(interface_.getBroadcastType(obj));
+		}
+		catch (java.lang.NullPointerException e) {}
+		return BroadcastType.signal;
+	}
+	
+	public String getErrorName (FBroadcast obj) {
+		try {
+			if (type_ == DeploymentType.INTERFACE)
+				return interface_.getErrorName(obj);
 		}
 		catch (java.lang.NullPointerException e) {}
 		return null;
@@ -264,5 +297,19 @@ public class PropertyAccessor {
 			}
 		}
 		return EnumBackingType.UseDefault;
+	}
+	
+	private BroadcastType from(DeploymentInterfacePropertyAccessor.BroadcastType _source) {
+		if (_source != null) {
+			switch (_source) {
+			case signal:
+				return BroadcastType.signal;
+			case error:
+				return BroadcastType.error;
+			default:
+				return BroadcastType.signal;
+			}
+		}
+		return BroadcastType.signal;
 	}
 }

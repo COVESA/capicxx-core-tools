@@ -261,7 +261,7 @@ class FrancaGenerator implements IGenerator {
                 it.generateProxy(_fileSystemAccess, deploymentAccessor, _res)
             }
             if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_STUB, "true").equals("true")) {
-                it.generateStub(_fileSystemAccess, _res)
+                it.generateStub(_fileSystemAccess, deploymentAccessor, _res)
             }
             if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_COMMON, "true").equals("true")) {
                 generateInterface(it, _fileSystemAccess, deploymentAccessor, _res)

@@ -75,8 +75,6 @@ local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInter
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface38=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface39=@GLUECODE_SO_SOMEIP@
 
-local:commonapi.multiprocess.bselective.MPSelective:v1_0:commonapi.multiprocess.bselective.MPSelective=@GLUECODE_SO_SOMEIP@
-
 [stub]
 local:commonapi.runtime.TestInterface:v1_0:commonapi.runtime.TestInterface=@GLUECODE_SO_SOMEIP@
 local:commonapi.communication.TestInterface:v1_0:commonapi.communication.TestInterface=@GLUECODE_SO_SOMEIP@
@@ -144,5 +142,3 @@ local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInter
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface37=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface38=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface39=@GLUECODE_SO_SOMEIP@
-
-local:commonapi.multiprocess.bselective.MPSelective:v1_0:commonapi.multiprocess.bselective.MPSelective=@GLUECODE_SO_SOMEIP@

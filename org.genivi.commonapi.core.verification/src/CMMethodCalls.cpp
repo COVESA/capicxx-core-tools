@@ -25,6 +25,12 @@ const int tasync = 20000;
 const int timeout = 300;
 const int maxTimeoutCalls = 10;
 
+#ifdef TESTS_BAT
+const unsigned int wf = 10; /* "wait-factor" when run in BAT environment */
+#else
+const unsigned int wf = 1;
+#endif
+
 using namespace v1_0::commonapi::communication;
 
 class Environment: public ::testing::Environment {
@@ -192,7 +198,7 @@ TEST_F(CMMethodCalls, AsynchronousMethodCall) {
             std::bind(&CMMethodCalls::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
     testProxy_->testMethodAsync(x, myCallback);
-    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
     EXPECT_EQ(1u, values_.size());
     EXPECT_EQ(x, values_[0]);
 }
@@ -209,7 +215,6 @@ TEST_F(CMMethodCalls, NestedSynchronousMethodCall) {
 
     testProxy_->testMethodAsync(x, [&](const CommonAPI::CallStatus& _callStatus, uint8_t _y) {
         EXPECT_EQ(_callStatus, CommonAPI::CallStatus::SUCCESS);
-        values_.push_back(_y);
 
         uint8_t y = 0;
         uint8_t x2 = 7;
@@ -217,6 +222,8 @@ TEST_F(CMMethodCalls, NestedSynchronousMethodCall) {
         testProxy_->testMethod(x2, status, y);
         EXPECT_EQ(status, CommonAPI::CallStatus::SUCCESS);
         EXPECT_EQ(x2, y);
+
+        values_.push_back(_y);
     });
 
     for (int i = 0; i < 100; ++i) {
@@ -431,14 +438,14 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallProxyBecomesAvailable) {
     ASSERT_FALSE(testProxy_->isAvailable());
 
     uint8_t x = 5;
-    CommonAPI::CallInfo info(1000);
+    CommonAPI::CallInfo info(1000 * wf);
 
     std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
             std::bind(&CMMethodCalls::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
     testProxy_->testMethodAsync(x, myCallback, &info);
 
-    std::this_thread::sleep_for(std::chrono::microseconds(tasync * 5));
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync * 5 * wf));
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
@@ -489,7 +496,7 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallProxyBecomesAvailable) {
         }, &info);
     }, &info);
 
-    std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
@@ -532,9 +539,9 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
     uint8_t x = 5;
     CommonAPI::CallInfo info(100);
     CommonAPI::CallInfo info2(100);
-    CommonAPI::CallInfo info3(2000);
-    CommonAPI::CallInfo info4(2000);
-    CommonAPI::CallInfo info5(2000);
+    CommonAPI::CallInfo info3(tasync/10*wf);
+    CommonAPI::CallInfo info4(tasync/10*wf);
+    CommonAPI::CallInfo info5(tasync/10*wf);
 
     std::function<void (const CommonAPI::CallStatus&, uint8_t)> recvValueCallback =
             std::bind(&CMMethodCalls::recvValue, this, std::placeholders::_1, std::placeholders::_2);
@@ -551,7 +558,7 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
     testProxy_->testMethodAsync(x, recvValueCallback, &info4);
     testProxy_->testMethodAsync(x, recvValueCallback, &info5);
 
-    std::this_thread::sleep_for(std::chrono::microseconds(tasync * 10));
+    std::this_thread::sleep_for(std::chrono::microseconds(tasync * 10 * wf));
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 

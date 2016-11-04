@@ -470,7 +470,7 @@ class FTypeGenerator {
     def CharSequence generateEnumBaseTypeConstructor(FEnumerationType _enumeration, String _name, String _baseName, String _backingType) '''
        «IF _enumeration.base != null»
            «generateEnumBaseTypeConstructor(_enumeration.base, _name, _baseName, _backingType)»
-           «_name»(const «_enumeration.getBaseType(_backingType)»::Literal &_value)
+           «_name»(const «_enumeration.getBaseType(_enumeration, _backingType)»::Literal &_value)
                : «_baseName»(_value) {}
        «ELSE»
             «_name»(const Literal &_value)
@@ -483,7 +483,7 @@ class FTypeGenerator {
     def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, FEnumerationType _other, PropertyAccessor _accessor) '''
         «IF _other.base != null»
             «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
-            «val baseTypeName = _other.getBaseType(backingType)»
+            «val baseTypeName = _other.getBaseType(_enumeration, backingType)»
             «_enumeration.name» &operator=(const «baseTypeName»::Literal &_value) {
                 value_ = static_cast< «backingType»>(_value);
                 return (*this);

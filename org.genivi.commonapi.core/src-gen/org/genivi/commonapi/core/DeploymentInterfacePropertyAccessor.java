@@ -4,10 +4,13 @@
 *******************************************************************************/
 package org.genivi.commonapi.core;
 
+import java.util.List;
+import java.util.ArrayList;
 import org.franca.core.franca.FInterface;
 import org.franca.core.franca.FMethod;
 import org.franca.core.franca.FEnumerationType;
 import org.franca.core.franca.FAttribute;
+import org.franca.core.franca.FBroadcast;
 import org.franca.deploymodel.core.FDeployedInterface;
 
 /**
@@ -52,6 +55,10 @@ public class DeploymentInterfacePropertyAccessor
 	
 	public Integer getTimeout (FMethod obj) {
 		return target.getInteger(obj, "Timeout");
+	}
+	
+	public List<String> getErrors (FMethod obj) {
+		return target.getStringArray(obj, "Errors");
 	}
 	
 	public Integer getTimeout (FAttribute obj) {
@@ -104,6 +111,26 @@ public class DeploymentInterfacePropertyAccessor
 		if (val.equals("NoError"))
 			return ErrorType.NoError;
 		return null;
+	}
+	
+	public enum BroadcastType {
+		signal, error
+	}
+	public BroadcastType getBroadcastType (FBroadcast obj) {
+		String e = target.getEnum(obj, "BroadcastType");
+		if (e==null) return null;
+		return convertBroadcastType(e);
+	}
+	private BroadcastType convertBroadcastType (String val) {
+		if (val.equals("signal"))
+			return BroadcastType.signal; else 
+		if (val.equals("error"))
+			return BroadcastType.error;
+		return null;
+	}
+	
+	public String getErrorName (FBroadcast obj) {
+		return target.getString(obj, "ErrorName");
 	}
 	
 	

@@ -14,6 +14,8 @@ public class CppKeywords {
 
     public List<String> keyWords = new ArrayList<String>();
 
+    public List<String> reservedWords = new ArrayList<String>();
+
     public CppKeywords() {
 
         keyWords.add("alignas");
@@ -101,9 +103,10 @@ public class CppKeywords {
         keyWords.add("xor");
         keyWords.add("xor_eq");
 
-        keyWords.add("AnonymousTypeCollection");
-        keyWords.add("instance");
-        keyWords.add("attributes");
+        reservedWords.add("AnonymousTypeCollection");
+        reservedWords.add("instance");
+        reservedWords.add("attributes");
+        reservedWords.add("info");
     }
 
 }

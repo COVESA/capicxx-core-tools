@@ -16,26 +16,27 @@ import org.franca.core.franca.FInterface
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.genivi.commonapi.core.preferences.FPreferences
 import java.util.HashMap
+import java.util.LinkedHashMap
 import org.franca.core.franca.FMethod
 import org.franca.core.franca.FEnumerationType
+import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
     var HashMap<String, Integer> counterMap;
-    var HashMap<FMethod, String> methodreplyMap;
+    var HashMap<FMethod, LinkedHashMap<String, Boolean>> methodrepliesMap;
 
-
-    def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, IResource modelid) {
+    def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
 
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
-            fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(modelid))
+            fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(deploymentAccessor, modelid))
             // should skeleton code be generated ?
             if(FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_SKELETON, "false").equals("true"))
             {
-                fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultHeader(modelid))
-                fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultSource(modelid))
+                fileSystemAccess.generateFile(fInterface.stubDefaultHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultHeader(deploymentAccessor, modelid))
+                fileSystemAccess.generateFile(fInterface.stubDefaultSourcePath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.generateStubDefaultSource(deploymentAccessor, modelid))
             }
         }
         else {
@@ -50,7 +51,7 @@ class FInterfaceStubGenerator {
         }
     }
 
-    def private generateStubHeader(FInterface fInterface, IResource modelid) '''
+    def private generateStubHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «fInterface.defineName»_STUB_HPP_
@@ -117,11 +118,13 @@ class FInterfaceStubGenerator {
                     virtual void «broadcast.unsubscribeSelectiveMethodName»(const std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
                     virtual std::shared_ptr<CommonAPI::ClientIdList> const «broadcast.stubAdapterClassSubscribersMethodName»() = 0;
                 «ELSE»
-                    /**
-                     * Sends a broadcast event for «broadcast.elementName». Should not be called directly.
-                     * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
-                     */
-                    virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») = 0;
+                    «IF (!broadcast.isErrorType(deploymentAccessor))»
+                        /**
+                        * Sends a broadcast event for «broadcast.elementName». Should not be called directly.
+                        * Instead, the "fire<broadcastName>Event" methods of the stub should be used.
+                        */
+                        virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») = 0;
+                    «ENDIF»
                 «ENDIF»
             «ENDFOR»
 
@@ -186,10 +189,10 @@ class FInterfaceStubGenerator {
         {
         public:
         «{counterMap = new HashMap<String, Integer>();""}»
-        «{methodreplyMap = new HashMap<FMethod, String>();""}»
+        «{methodrepliesMap = new HashMap<FMethod, LinkedHashMap<String, Boolean>>();""}»
         «FOR method: fInterface.methods»
             «IF !method.isFireAndForget»
-                «generateMethodReplyDeclarations(method, fInterface, counterMap, methodreplyMap)»
+                «generateMethodReplyDeclarations(deploymentAccessor, method, fInterface, counterMap, methodrepliesMap)»
             «ENDIF»
         «ENDFOR»
 
@@ -221,7 +224,7 @@ class FInterfaceStubGenerator {
                 «IF (FTypeGenerator::isdeprecated(method.comment))»
                     «{definition = " COMMONAPI_DEPRECATED";""}»
                 «ENDIF»
-                virtual«definition» void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap.get(method))») = 0;
+                virtual«definition» void «method.elementName»(«generateOverloadedStubSignature(method, methodrepliesMap.get(method))») = 0;
             «ENDFOR»
             «FOR broadcast : fInterface.broadcasts»
                 «FTypeGenerator::generateComments(broadcast, false)»
@@ -253,12 +256,14 @@ class FInterfaceStubGenerator {
                             stubAdapter->«broadcast.stubAdapterClassSendSelectiveMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»«IF(!broadcast.outArgs.empty)», «ENDIF»_receivers);
                     }
                 «ELSE»
-                    /// Sends a broadcast event for «broadcast.elementName».
-                    virtual«definition» void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
-                        auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
-                        if (stubAdapter)
-                            stubAdapter->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
-                    }
+                    «IF (!broadcast.isErrorType(deploymentAccessor))»
+                        /// Sends a broadcast event for «broadcast.elementName».
+                        virtual«definition» void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
+                            auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                            if (stubAdapter)
+                                stubAdapter->«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                        }
+                    «ENDIF»
                 «ENDIF»
             «ENDFOR»
 
@@ -299,6 +304,7 @@ class FInterfaceStubGenerator {
                     }
                 }
             «ENDFOR»
+            
             using «fInterface.stubCommonAPIClassName»::initStubAdapter;
             typedef «fInterface.stubCommonAPIClassName»::StubAdapterType StubAdapterType;
             typedef «fInterface.stubCommonAPIClassName»::RemoteEventHandlerType RemoteEventHandlerType;
@@ -314,18 +320,35 @@ class FInterfaceStubGenerator {
         #endif // «fInterface.defineName»_STUB_HPP_
     '''
 
-    def private generateMethodReplyDeclarations(FMethod fMethod, FInterface fInterface, HashMap<String, Integer> counterMap, HashMap<FMethod, String> methodreplyMap) '''
+    def private generateMethodReplyDeclarations(PropertyAccessor deploymentAccessor, FMethod fMethod, FInterface fInterface, HashMap<String, Integer> counterMap,
+        HashMap<FMethod, LinkedHashMap<String, Boolean>> methodrepliesMap
+    ) '''
+        «var replies = methodrepliesMap.get(fMethod)»
+        «IF replies == null»
+            «{replies = new LinkedHashMap<String, Boolean>();""}»
+        «ENDIF»
         «IF !(counterMap.containsKey(fMethod.elementName))»
-            «{counterMap.put(fMethod.elementName, 0);  methodreplyMap.put(fMethod, fMethod.elementName);""}»
+            «{replies.put(fMethod.elementName, false);""}»
+            «{counterMap.put(fMethod.elementName, 0);""}»
                 typedef std::function<void («fMethod.generateStubReplySignature()»)>«fMethod.elementName»Reply_t;
         «ELSE»
-            «{counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1);  methodreplyMap.put(fMethod, fMethod.elementName + counterMap.get(fMethod.elementName));""}»
-                typedef std::function<void («fMethod.generateStubReplySignature()»)>«methodreplyMap.get(fMethod)»Reply_t;
+            «counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1)»
+            «var reply = fMethod.elementName + counterMap.get(fMethod.elementName)»
+            «{replies.put(reply, false);""}»
+                typedef std::function<void («fMethod.generateStubReplySignature()»)>«reply»Reply_t;
         «ENDIF»
+        «FOR broadcast : fInterface.broadcasts»
+            «IF broadcast.isErrorType(fMethod, deploymentAccessor)»
+                «val errorReply = fMethod.elementName + broadcast.elementName.toFirstUpper»
+                «{replies.put(errorReply, true);""}»
+                    typedef std::function<void («broadcast.generateStubErrorReplySignature(deploymentAccessor)»)>«errorReply»Reply_t;
+            «ENDIF»
+        «ENDFOR»
+        «{methodrepliesMap.put(fMethod, replies);""}»
     '''
 
 
-    def private generateStubDefaultHeader(FInterface fInterface, IResource modelid) '''
+    def private generateStubDefaultHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
         #ifndef «getHeaderDefineName(fInterface)»_HPP_
@@ -385,7 +408,7 @@ class FInterfaceStubGenerator {
 
             «FOR method: fInterface.methods»
                 «FTypeGenerator::generateComments(method, false)»
-                COMMONAPI_EXPORT virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))»);
+                COMMONAPI_EXPORT virtual void «method.elementName»(«generateOverloadedStubSignature(method, methodrepliesMap?.get(method))»);
             «ENDFOR»
 
             «FOR broadcast : fInterface.broadcasts»
@@ -397,7 +420,9 @@ class FInterfaceStubGenerator {
                     /// Hook method for reacting accepting or denying new subscriptions
                     COMMONAPI_EXPORT virtual bool «broadcast.subscriptionRequestedMethodName»(const std::shared_ptr<CommonAPI::ClientId> _client);
                 «ELSE»
-                    COMMONAPI_EXPORT virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')»);
+                    «IF !broadcast.isErrorType(deploymentAccessor)»
+                        COMMONAPI_EXPORT virtual void «broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')»);
+                    «ENDIF»
                 «ENDIF»
             «ENDFOR»
 
@@ -407,7 +432,7 @@ class FInterfaceStubGenerator {
                 COMMONAPI_EXPORT bool «managed.stubDeregisterManagedName»(const std::string&);
                 COMMONAPI_EXPORT std::set<std::string>& «managed.stubManagedSetGetterName»();
             «ENDFOR»
-
+            
         protected:
             «FOR attribute : fInterface.attributes»
                 «val typeName = attribute.getTypeName(fInterface, true)»
@@ -458,7 +483,7 @@ class FInterfaceStubGenerator {
         #endif // «getHeaderDefineName(fInterface)»
     '''
 
-    def private generateStubDefaultSource(FInterface fInterface, IResource modelid) '''
+    def private generateStubDefaultSource(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader()»
         #include <«fInterface.stubDefaultHeaderPath»>
         #include <assert.h>
@@ -553,10 +578,10 @@ class FInterfaceStubGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
-            void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, methodreplyMap?.get(method))») {
+            void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, methodrepliesMap?.get(method))») {
                 (void)_client;
                 «IF !method.inArgs.empty»
-                    «method.inArgs.map['(void) _' + it.name].join(";\n")»;
+                    «method.inArgs.map['(void)_' + it.name].join(";\n")»;
                 «ENDIF»
                 «IF !method.isFireAndForget»
                     «method.generateDummyArgumentDefinitions»
@@ -570,7 +595,7 @@ class FInterfaceStubGenerator {
                     _reply(«method.generateDummyArgumentList»);
                 «ENDIF»
             }
-
+            
         «ENDFOR»
 
         «FOR broadcast : fInterface.broadcasts»
@@ -597,16 +622,18 @@ class FInterfaceStubGenerator {
                     return true;
                 }
             «ELSE»
-                void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
-                    «FOR arg : broadcast.outArgs»
-                        «IF !arg.array && arg.getType.supportsValidation»
-                            if (!_«arg.elementName».validate()) {
-                                return;
-                            }
-                        «ENDIF»
-                    «ENDFOR»
-                    «fInterface.stubClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
-                }
+                «IF !broadcast.isErrorType(deploymentAccessor)»
+                    void «fInterface.stubDefaultClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map['const ' + getTypeName(fInterface, true) + ' &_' + elementName].join(', ')») {
+                        «FOR arg : broadcast.outArgs»
+                            «IF !arg.array && arg.getType.supportsValidation»
+                                if (!_«arg.elementName».validate()) {
+                                    return;
+                                }
+                            «ENDIF»
+                        «ENDFOR»
+                        «fInterface.stubClassName»::«broadcast.stubAdapterClassFireEventMethodName»(«broadcast.outArgs.map["_" + elementName].join(', ')»);
+                    }
+                «ENDIF»
             «ENDIF»
         «ENDFOR»
 

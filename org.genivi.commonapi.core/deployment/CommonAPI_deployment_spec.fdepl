@@ -55,6 +55,11 @@ specification org.genivi.commonapi.core.deployment {
          * This deployment property is currently not supported.
          */
         PreregisteredProperties : String [] (optional);
+
+        /*
+         * provide the name of the generated source code artifact for this instance
+         */
+        CodeArtifactName : String (default: "commonapi-gen");
     }
 
     for methods {
@@ -65,6 +70,11 @@ specification org.genivi.commonapi.core.deployment {
          * -1 means no timeout.
          */
         Timeout : Integer (optional);
+
+        /*
+         * the set of errors that can be sent for this method. Enter the Franca names of the error broadcasts.
+         */
+        Errors : String [] (optional);
     }
     
     for attributes {
@@ -90,6 +100,21 @@ specification org.genivi.commonapi.core.deployment {
          * trace analysis or viewer tools, e.g. to use different colors to highlight traces. 
          */
         ErrorType : { Error, Warning, Info, NoError } (default:Error);
+    }
+
+    for broadcasts {
+        /*
+         * define the broadcast type on CommonAPI C++ level for a specific broadcast.
+         * The default broadcast type is a regular signal broadcast. An 'error' broadcast signals
+         * an occurred error due to a method call. 
+         */
+        BroadcastType: {signal, error} (default:signal);
+        
+        /*
+         * the fully qualified name of the error broadcast type. If it is an error broadcast,
+         * this definition is required.
+         */
+        ErrorName : String (optional);
     }
     
 }

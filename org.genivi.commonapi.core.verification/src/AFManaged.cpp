@@ -61,7 +61,9 @@ AFManaged() :
     specialDeviceAvailableDesiredValue_(0),
     deviceAvailableDesiredValue_(0),
     instanceAvailabilityStatusCallbackCalled_(false),
-    proxyAvailableAndMethodCallSucceeded_(false) {}
+    proxyAvailableAndMethodCallSucceeded_(false),
+    getAvailableInstancesAsyncSpecialDeviceCallbackCalled_(false),
+    getAvailableInstancesAsyncDeviceCallbackCalled_(false) {}
 
 public:
 
@@ -102,25 +104,27 @@ protected:
     }
 
     void TearDown() {
-        // Unregister callbacks
-        CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& deviceEvent =
-                testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusChangedEvent();
-        CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& specialDeviceEvent =
-                testProxy_->getProxyManagerSpecialDevice().getInstanceAvailabilityStatusChangedEvent();
-        specialDeviceEvent.unsubscribe(subscriptionIdSpecialDevice_);
-        deviceEvent.unsubscribe(subscriptionIdDevice_);
-        runtime_->unregisterService(domain, AFManagedStub::StubInterface::getInterface(), managerInstanceName);
+        if (testProxy_) {
+            // Unregister callbacks
+            CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& deviceEvent =
+                    testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusChangedEvent();
+            CommonAPI::ProxyManager::InstanceAvailabilityStatusChangedEvent& specialDeviceEvent =
+                    testProxy_->getProxyManagerSpecialDevice().getInstanceAvailabilityStatusChangedEvent();
+            specialDeviceEvent.unsubscribe(subscriptionIdSpecialDevice_);
+            deviceEvent.unsubscribe(subscriptionIdDevice_);
+            runtime_->unregisterService(domain, AFManagedStub::StubInterface::getInterface(), managerInstanceName);
 
-        // wait that proxy is not available
-        int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            counter++;
+            // wait that proxy is not available
+            int counter = 0;  // counter for avoiding endless loop
+            while ( testProxy_->isAvailable() && counter < 10 ) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                counter++;
+            }
+            ASSERT_FALSE(testProxy_->isAvailable());
         }
-        ASSERT_FALSE(testProxy_->isAvailable());
 
         if(deviceProxy_) {
-            counter = 0;
+            int counter = 0;
             while ( deviceProxy_->isAvailable() && counter < 10 ) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 counter++;
@@ -289,6 +293,7 @@ protected:
             }
             ASSERT_TRUE(allDetectedAreAvailable);
         }
+        getAvailableInstancesAsyncSpecialDeviceCallbackCalled_ = true;
     }
 
     void getAvailableInstancesAsyncDeviceCallback(
@@ -306,6 +311,7 @@ protected:
             }
             ASSERT_TRUE(allDetectedAreAvailable);
         }
+        getAvailableInstancesAsyncDeviceCallbackCalled_ = true;
     }
 
     bool received_;
@@ -336,6 +342,8 @@ protected:
 
     bool instanceAvailabilityStatusCallbackCalled_;
     bool proxyAvailableAndMethodCallSucceeded_;
+    bool getAvailableInstancesAsyncSpecialDeviceCallbackCalled_;
+    bool getAvailableInstancesAsyncDeviceCallbackCalled_;
 };
 
 /**
@@ -1476,7 +1484,7 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
 
     // Add
     testStub_->specialDeviceDetected(0);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200; i++) {
         {
             std::lock_guard<std::mutex> lock(deviceAvailableCountMutex_);
             if (specialDeviceAvailableCount_ == 1 && specialDevicesAvailable_.size() == 1) break;
@@ -1486,11 +1494,18 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_EQ(specialDeviceAvailableCount_, 1);
     ASSERT_EQ(specialDevicesAvailable_.size(), 1u);
     specialDeviceAvailableDesiredValue_ = 1;
-    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync(getAvailableInstancesAsyncSpecialDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    getAvailableInstancesAsyncSpecialDeviceCallbackCalled_ = false;
+    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync(
+            getAvailableInstancesAsyncSpecialDeviceCallbackFunc);
+
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncSpecialDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncSpecialDeviceCallbackCalled_);
 
     testStub_->deviceDetected(1);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200; i++) {
         {
             std::lock_guard<std::mutex> lock(deviceAvailableCountMutex_);
             if (deviceAvailableCount_ == 1 && devicesAvailable_.size() == 1) break;
@@ -1500,9 +1515,15 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_EQ(deviceAvailableCount_, 1);
     ASSERT_EQ(devicesAvailable_.size(), 1u);
     deviceAvailableDesiredValue_ = 1;
+    getAvailableInstancesAsyncDeviceCallbackCalled_ = false;
     testProxy_->getProxyManagerDevice().getAvailableInstancesAsync(
             getAvailableInstancesAsyncDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncDeviceCallbackCalled_);
 
     testStub_->deviceDetected(2);
     for (int i = 0; i < 100; i++) {
@@ -1515,13 +1536,19 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_EQ(deviceAvailableCount_, 2);
     ASSERT_EQ(devicesAvailable_.size(), 2u);
     deviceAvailableDesiredValue_ = 2;
+    getAvailableInstancesAsyncDeviceCallbackCalled_ = false;
     testProxy_->getProxyManagerDevice().getAvailableInstancesAsync(
             getAvailableInstancesAsyncDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncDeviceCallbackCalled_);
 
     // Remove
     testStub_->specialDeviceRemoved(0);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200; i++) {
         {
             std::lock_guard<std::mutex> lock(deviceAvailableCountMutex_);
             if (specialDeviceAvailableCount_ == 0 && specialDevicesAvailable_.size() == 0) break;
@@ -1531,8 +1558,14 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_LE(specialDeviceAvailableCount_, 0);
     ASSERT_EQ(specialDevicesAvailable_.size(), 0u);
     specialDeviceAvailableDesiredValue_ = 0;
-    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync(getAvailableInstancesAsyncSpecialDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    getAvailableInstancesAsyncSpecialDeviceCallbackCalled_ = false;
+    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync(
+            getAvailableInstancesAsyncSpecialDeviceCallbackFunc);
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncSpecialDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncSpecialDeviceCallbackCalled_);
 
     testStub_->deviceRemoved(1);
     for (int i = 0; i < 100; i++) {
@@ -1545,11 +1578,16 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_EQ(deviceAvailableCount_, 1);
     ASSERT_LE(devicesAvailable_.size(), 1u);
     deviceAvailableDesiredValue_ = 1;
+    getAvailableInstancesAsyncDeviceCallbackCalled_ = false;
     testProxy_->getProxyManagerDevice().getAvailableInstancesAsync(getAvailableInstancesAsyncDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncDeviceCallbackCalled_);
 
     testStub_->deviceRemoved(2);
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 200; i++) {
         {
             std::lock_guard<std::mutex> lock(deviceAvailableCountMutex_);
             if (deviceAvailableCount_ == 0 && devicesAvailable_.size() == 0) break;
@@ -1559,8 +1597,14 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
     ASSERT_LE(deviceAvailableCount_, 0);
     ASSERT_LE(devicesAvailable_.size(), 0u);
     deviceAvailableDesiredValue_ = 0;
-    testProxy_->getProxyManagerDevice().getAvailableInstancesAsync(getAvailableInstancesAsyncDeviceCallbackFunc);
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    getAvailableInstancesAsyncDeviceCallbackCalled_ = false;
+    testProxy_->getProxyManagerDevice().getAvailableInstancesAsync(
+            getAvailableInstancesAsyncDeviceCallbackFunc);
+    for (int i = 0; i < 200; i++) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        if (getAvailableInstancesAsyncDeviceCallbackCalled_) break;
+    }
+    ASSERT_TRUE(getAvailableInstancesAsyncDeviceCallbackCalled_);
 }
 
 /**
@@ -2038,16 +2082,22 @@ TEST_F(AFManaged, GetAvailableInstancesWithoutSubscribe) {
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
     }
-    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync([&status]
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, status);
+    ASSERT_EQ(1u, instances.size());
+
+    status = CommonAPI::CallStatus::UNKNOWN;
+    std::size_t instancesAsync(0);
+    testProxy_->getProxyManagerSpecialDevice().getAvailableInstancesAsync([&status, &instancesAsync]
             (const CommonAPI::CallStatus & _status, const std::vector<std::string> & _instances) {
         if(_status == CommonAPI::CallStatus::SUCCESS) {
             status = CommonAPI::CallStatus::SUCCESS;
         }
         ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, _status);
         ASSERT_EQ(1u, _instances.size());
+        instancesAsync = _instances.size();
     });
 
-    for (int i = 0; i < 200; ++i) {
+    for (int i = 0; i < 500; ++i) {
         if(status != CommonAPI::CallStatus::SUCCESS) {
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
         } else {
@@ -2056,6 +2106,7 @@ TEST_F(AFManaged, GetAvailableInstancesWithoutSubscribe) {
         }
     }
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, status);
+    EXPECT_EQ(1u, instancesAsync);
 }
 
 int main(int argc, char** argv) {

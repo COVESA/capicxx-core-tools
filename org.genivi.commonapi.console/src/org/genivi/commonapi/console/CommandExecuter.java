@@ -228,6 +228,10 @@ public enum CommandExecuter
                 public void handleException(Throwable throwable)
                 {
                     log(throwable);
+
+                    // Explicitly show the error to the user, otherwise we risk to just quietly log it without
+                    // giving the user a chance to know that something went wrong.
+                    throwable.printStackTrace();
                 }
             });
         }
