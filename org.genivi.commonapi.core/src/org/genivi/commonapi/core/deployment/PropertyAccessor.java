@@ -22,7 +22,6 @@ import org.franca.deploymodel.dsl.fDeploy.FDValue;
 import org.genivi.commonapi.core.DeploymentInterfacePropertyAccessor;
 import org.genivi.commonapi.core.DeploymentProviderPropertyAccessor;
 import org.genivi.commonapi.core.DeploymentTypeCollectionPropertyAccessor;
-import org.genivi.commonapi.core.DeploymentInterfacePropertyAccessor.BroadcastType;
 
 public class PropertyAccessor {
 	

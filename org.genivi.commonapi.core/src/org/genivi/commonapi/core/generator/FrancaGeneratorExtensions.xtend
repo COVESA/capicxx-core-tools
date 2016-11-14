@@ -80,6 +80,7 @@ import org.osgi.framework.FrameworkUtil
 import static com.google.common.base.Preconditions.*
 
 import static extension java.lang.Integer.*
+import org.franca.deploymodel.dsl.fDeploy.FDeployFactory
 
 class FrancaGeneratorExtensions {
 
@@ -2006,7 +2007,7 @@ class FrancaGeneratorExtensions {
 
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDInterface) {
-                var specname = depl.spec.name
+                var specname = depl.spec?.name
                 if(specname != null && specname.contains(selector)) {
                     fdinterfaces.add(depl);
                 }
@@ -2079,12 +2080,13 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDAttribute t : _target.attributes) {
                     if (s.target.equals(t.target)) {
-                        t.properties.addAll(s.properties)
+                        for (p : s.properties)
+                            t.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
                 if (!hasBeenMerged)
-                    itsNewAttributes.add(s)
+                    itsNewAttributes.add(EcoreUtil.copy(s))
             }
 
             // Merge broadcasts
@@ -2092,12 +2094,13 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDBroadcast t : _target.broadcasts) {
                     if (s.target.equals(t.target)) {
-                        t.properties.addAll(s.properties)
+                        for (p : s.properties)
+                            t.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
                 if (!hasBeenMerged) {
-                    itsNewBroadcasts.add(s)
+                    itsNewBroadcasts.add(EcoreUtil.copy(s))
                 }
             }
 
@@ -2106,12 +2109,13 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDMethod t : _target.methods) {
                     if (s.target.equals(t.target)) {
-                        t.properties.addAll(s.properties)
+                        for (p : s.properties)
+                            t.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
                 if (!hasBeenMerged)
-                    itsNewMethods.add(s)
+                    itsNewMethods.add(EcoreUtil.copy(s))
             }
 
             _target.attributes.addAll(itsNewAttributes)
@@ -2122,6 +2126,10 @@ class FrancaGeneratorExtensions {
             mergeDeployments(_source.types, _target.types)
         }
     }
+    
+    def mergeDeployments(FDTypes _source, FDInterface _target) {
+        mergeDeployments(_source.types, _target.types)
+    }
 
     def mergeDeployments(FDTypes _source, FDTypes _target) {
         if (_source != null && _source.target != null &&
@@ -2130,10 +2138,18 @@ class FrancaGeneratorExtensions {
             mergeDeployments(_source.types, _target.types)
         }
     }
-        
+
+    def mergeDeploymentsExt(FDTypes _source, FDTypes _target) {
+        if (_source != null && _source.target != null &&
+            _target != null && _target.target != null) {
+            // Merge types
+            mergeDeployments(_source.types, _target.types)
+        }
+    }
+
     def mergeDeployments(EList<FDTypeDef> _source, EList<FDTypeDef> _target) {
         var List<FDTypeDef> itsNewTypeDefs = new ArrayList<FDTypeDef>()
-        
+
         for (FDTypeDef s : _source) {
             var boolean hasBeenMerged = false
             for (FDTypeDef t : _target) {
@@ -2141,36 +2157,40 @@ class FrancaGeneratorExtensions {
                     val FDArray itsSourceArray = s as FDArray
                     val FDArray itsTargetArray = t as FDArray
                     if (itsSourceArray.target.equals(itsTargetArray.target)) {
-                        itsTargetArray.properties.addAll(itsSourceArray.properties)
+                        for (p : itsSourceArray.properties)
+                            itsTargetArray.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDEnumeration && t instanceof FDEnumeration) {
                     val FDEnumeration itsSourceEnumeration = s as FDEnumeration
                     val FDEnumeration itsTargetEnumeration = t as FDEnumeration
                     if (itsSourceEnumeration.target.equals(itsTargetEnumeration.target)) {
-                        itsTargetEnumeration.properties.addAll(itsSourceEnumeration.properties)
+                        for (p : itsSourceEnumeration.properties)
+                            itsTargetEnumeration.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDStruct && t instanceof FDStruct) {
                     val FDStruct itsSourceStruct = s as FDStruct
                     val FDStruct itsTargetStruct = t as FDStruct
                     if (itsSourceStruct.target.equals(itsTargetStruct.target)) {
-                        itsTargetStruct.properties.addAll(itsSourceStruct.properties)
+                        for (p : itsSourceStruct.properties)
+                            itsTargetStruct.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDUnion && t instanceof FDUnion) {
                     val FDUnion itsSourceUnion = s as FDUnion
                     val FDUnion itsTargetUnion = t as FDUnion
                     if (itsSourceUnion.target.equals(itsTargetUnion.target)) {
-                        itsTargetUnion.properties.addAll(itsSourceUnion.properties)
+                        for (p : itsSourceUnion.properties)
+                            itsTargetUnion.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } 
             } 
             if (!hasBeenMerged)
-                itsNewTypeDefs.add(s);
+                itsNewTypeDefs.add(EcoreUtil.copy(s))
         }
-        
+
         _target.addAll(itsNewTypeDefs)
     }
 

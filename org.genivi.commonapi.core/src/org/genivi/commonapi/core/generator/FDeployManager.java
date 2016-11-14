@@ -3,7 +3,9 @@ package org.genivi.commonapi.core.generator;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -14,6 +16,7 @@ import org.franca.core.franca.FModel;
 import org.franca.core.utils.ImportsProvider;
 import org.franca.deploymodel.dsl.FDeployImportsProvider;
 import org.franca.deploymodel.dsl.fDeploy.FDModel;
+import org.franca.deploymodel.dsl.fDeploy.FDSpecification;
 import org.franca.deploymodel.dsl.fDeploy.Import;
 
 /**
@@ -37,6 +40,7 @@ public class FDeployManager {
 
 	private Map<String, FDModel> deploymentModels = new HashMap<String, FDModel>();
 	private Map<String, FModel> fidlModels = new HashMap<String, FModel>();
+	private Map<String, FDSpecification> specifications = new HashMap<String, FDSpecification>();
 
 	public FDeployManager() {
 
@@ -116,8 +120,18 @@ public class FDeployManager {
 				String uriName = resolvedURI.toString();
 				EObject importModel = loadModel(resolvedURI, root);
 				if (importModel != null) {
-					if(importModel instanceof FDModel && !(uriName.contains("_spec"))) {
-						deploymentModels.put(uriName, (FDModel) importModel);
+					if(importModel instanceof FDModel) {
+						// CommonAPI models do _NOT_ contain specifications 
+						List<FDSpecification> itsSpecifications = ((FDModel)importModel).getSpecifications();
+						if (itsSpecifications.size() == 0) {
+							deploymentModels.put(uriName, (FDModel) importModel);
+						} else {
+							for (FDSpecification s : itsSpecifications) {
+								if (!specifications.containsKey(s.getName())) {
+									specifications.put(s.getName(), s);
+								}
+							}
+						}
 					}
 					else if(importModel instanceof FModel) {
 						fidlModels.put(uriName, (FModel) importModel);
@@ -179,5 +193,9 @@ public class FDeployManager {
 
 	public void clearFidlModels() {
 		fidlModels.clear();
+	}
+	
+	public FDSpecification getDeploymentSpecification(String name) {
+		return specifications.get(name);
 	}
 }

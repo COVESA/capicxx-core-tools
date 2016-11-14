@@ -4,8 +4,8 @@
 *******************************************************************************/
 package org.genivi.commonapi.core;
 
-import org.franca.core.franca.FInterface;
 import org.franca.core.franca.FEnumerationType;
+import org.franca.core.franca.FInterface;
 import org.franca.deploymodel.core.FDeployedTypeCollection;
 
 /**

@@ -7,19 +7,18 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
+import java.util.HashMap
 import java.util.HashSet
+import java.util.LinkedHashMap
 import javax.inject.Inject
 import org.eclipse.core.resources.IResource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FInterface
-import org.genivi.commonapi.core.preferences.PreferenceConstants
-import org.genivi.commonapi.core.preferences.FPreferences
-import java.util.HashMap
-import java.util.LinkedHashMap
 import org.franca.core.franca.FMethod
-import org.franca.core.franca.FEnumerationType
 import org.genivi.commonapi.core.deployment.PropertyAccessor
+import org.genivi.commonapi.core.preferences.FPreferences
+import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 class FInterfaceStubGenerator {
     @Inject private extension FTypeGenerator
