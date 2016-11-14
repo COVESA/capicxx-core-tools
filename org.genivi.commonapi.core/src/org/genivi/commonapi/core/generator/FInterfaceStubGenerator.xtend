@@ -332,7 +332,7 @@ class FInterfaceStubGenerator {
             «{counterMap.put(fMethod.elementName, 0);""}»
                 typedef std::function<void («fMethod.generateStubReplySignature()»)>«fMethod.elementName»Reply_t;
         «ELSE»
-            «counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1)»
+            «{counterMap.put(fMethod.elementName, counterMap.get(fMethod.elementName) + 1);""}»
             «var reply = fMethod.elementName + counterMap.get(fMethod.elementName)»
             «{replies.put(reply, false);""}»
                 typedef std::function<void («fMethod.generateStubReplySignature()»)>«reply»Reply_t;
