@@ -1205,10 +1205,10 @@ class FrancaGeneratorExtensions {
     }
 
     def private getMaximumEnumerationValue(FEnumerationType _enumeration) {
-        var int maximum = 0;
+        var BigInteger maximum = BigInteger.ZERO;
         for (literal : _enumeration.enumerators) {
             if (literal.value != null && literal.value != "") {
-                val int literalValue = Integer.parseInt(literal.value.enumeratorValue)
+                val BigInteger literalValue = new BigInteger(literal.value.enumeratorValue)
                 if (maximum < literalValue)
                     maximum = literalValue
             }
@@ -1217,7 +1217,7 @@ class FrancaGeneratorExtensions {
     }
 
     def void setEnumerationValues(FEnumerationType _enumeration) {
-        var int currentValue = 0
+        var BigInteger currentValue = BigInteger.ZERO;
         val predefineEnumValues = new ArrayList<String>()
 
         // collect all predefined enum values
@@ -1228,7 +1228,7 @@ class FrancaGeneratorExtensions {
         }
         if (_enumeration.base != null) {
             setEnumerationValues(_enumeration.base)
-            currentValue = getMaximumEnumerationValue(_enumeration.base) + 1
+            currentValue = getMaximumEnumerationValue(_enumeration.base) + BigInteger.ONE
         }
 
         for (literal : _enumeration.enumerators) {
@@ -1236,23 +1236,23 @@ class FrancaGeneratorExtensions {
                 // not predefined
                 while (predefineEnumValues.contains(String.valueOf(currentValue))) {
                     // increment it, if this was found in the list of predefined values
-                    currentValue += 1
+                    currentValue += BigInteger.ONE
                 }
-                literal.setValue(toExpression(Integer.toString(currentValue)))
+                literal.setValue(toExpression(currentValue.toString()))
             } else {
                 var enumValue = literal.value.enumeratorValue
                 if (enumValue != null) {
                     try {
-                        val int literalValue = Integer.parseInt(enumValue)
-                        literal.setValue(toExpression(Integer.toString(literalValue)))
+                        val BigInteger literalValue = new BigInteger(enumValue)
+                        literal.setValue(toExpression(literalValue.toString()))
                     } catch (NumberFormatException e) {
-                        literal.setValue(toExpression(Integer.toString(currentValue)))
+                        literal.setValue(toExpression(currentValue.toString()))
                     }
                 } else {
-                    literal.setValue(toExpression(Integer.toString(currentValue)))
+                    literal.setValue(toExpression(currentValue.toString()))
                 }
             }
-            currentValue += 1
+            currentValue += BigInteger.ONE
         }
     }
 
