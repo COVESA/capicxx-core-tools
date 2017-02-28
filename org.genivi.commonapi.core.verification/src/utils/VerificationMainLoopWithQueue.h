@@ -14,7 +14,8 @@
 #include <memory>
 #include <condition_variable>
 #include <cstdio>
-#ifdef WIN32
+#include <atomic>
+#ifdef _WIN32
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #define DEFAULT_BUFLEN 512
@@ -94,11 +95,10 @@ class VerificationMainLoop {
      explicit VerificationMainLoop(std::shared_ptr<MainLoopContext> context, std::shared_ptr<VerificationMainLoopEventQueue> eventQueue) :
         context_(context),
         currentMinimalTimeoutInterval_(TIMEOUT_INFINITE),
-        breakLoop_(false),
         running_(false),
         eventQueue_(eventQueue)
     {
-    #ifdef WIN32
+    #ifdef _WIN32
          WSADATA wsaData;
          int iResult;
 
@@ -260,7 +260,7 @@ class VerificationMainLoop {
          context_->unsubscribeForTimeouts(timeoutSourceListenerSubscription_);
          context_->unsubscribeForWakeupEvents(wakeupListenerSubscription_);
 
-     #ifdef WIN32
+     #ifdef _WIN32
          // shutdown the connection since no more data will be sent
          int iResult = shutdown(wakeFd_.fd, SD_SEND);
          if (iResult == SOCKET_ERROR) {
@@ -517,20 +517,44 @@ class VerificationMainLoop {
     }
 
     void poll() {
-        int managedFileDescriptorOffset = 0;
+
+        // copy file descriptors
+        std::vector<pollfd> fileDescriptors;
         {
             std::lock_guard<std::mutex> itsLock(fileDescriptorsMutex_);
-            for (auto fileDescriptor = managedFileDescriptors_.begin() + managedFileDescriptorOffset; fileDescriptor != managedFileDescriptors_.end(); ++fileDescriptor) {
+            for (auto fileDescriptor = managedFileDescriptors_.begin();
+                    fileDescriptor != managedFileDescriptors_.end();
+                    ++fileDescriptor) {
                 (*fileDescriptor).revents = 0;
+                fileDescriptors.push_back(*fileDescriptor);
             }
         }
 
-    #ifdef WIN32
-        int numReadyFileDescriptors = WSAPoll(&managedFileDescriptors_[0], managedFileDescriptors_.size(), int(currentMinimalTimeoutInterval_));
-    #else
-        int numReadyFileDescriptors = ::poll(&(managedFileDescriptors_[0]),
-                managedFileDescriptors_.size(), int(currentMinimalTimeoutInterval_));
-    #endif
+#ifdef _WIN32
+        int numReadyFileDescriptors = WSAPoll(&fileDescriptors[0], fileDescriptors.size(), int(currentMinimalTimeoutInterval_));
+#else
+        int numReadyFileDescriptors = ::poll(&(fileDescriptors[0]),
+                fileDescriptors.size(), int(currentMinimalTimeoutInterval_));
+#endif
+
+        // update file descriptors
+        {
+            std::lock_guard<std::mutex> itsLock(fileDescriptorsMutex_);
+            for (auto itFds = fileDescriptors.begin();
+                    itFds != fileDescriptors.end();
+                    itFds++) {
+                for(auto itManagedFds = managedFileDescriptors_.begin();
+                        itManagedFds != managedFileDescriptors_.end();
+                        ++itManagedFds) {
+                    if((*itFds).fd == (*itManagedFds).fd &&
+                            (*itFds).events == (*itManagedFds).events) {
+                        (*itManagedFds).revents = (*itFds).revents;
+                        continue;
+                    }
+                }
+            }
+        }
+
         if (!numReadyFileDescriptors) {
             int64_t currentContextTime = getCurrentTimeInMs();
 
@@ -625,7 +649,7 @@ class VerificationMainLoop {
     }
 
     void wakeup() {
-    #ifdef WIN32
+    #ifdef _WIN32
         // Send an initial buffer
         char *sendbuf = "1";
 
@@ -646,7 +670,7 @@ class VerificationMainLoop {
     }
 
     void wakeupAck() {
-    #ifdef WIN32
+    #ifdef _WIN32
         // Receive until the peer closes the connection
         int iResult;
         char recvbuf[DEFAULT_BUFLEN];
@@ -957,12 +981,11 @@ class VerificationMainLoop {
     TimeoutSourceListenerSubscription timeoutSourceListenerSubscription_;
     WakeupListenerSubscription wakeupListenerSubscription_;
 
-    int64_t currentMinimalTimeoutInterval_;
-    bool breakLoop_;
-    bool hasToStop_;
-    bool running_;
+    std::atomic<int64_t> currentMinimalTimeoutInterval_;
+    std::atomic<bool> hasToStop_;
+    std::atomic<bool> running_;
 
-#ifdef WIN32
+#ifdef _WIN32
     pollfd sendFd_;
 #endif
 

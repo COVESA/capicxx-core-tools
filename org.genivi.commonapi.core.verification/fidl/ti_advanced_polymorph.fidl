@@ -95,4 +95,15 @@ interface TestInterface {
         PStructStruct2 s2
     }    
 */    
+
+    struct DoublyUsedBase polymorphic {
+    }
+    struct SubStructA extends DoublyUsedBase {
+        Int32 i32
+    }
+
+    struct SubStructB extends DoublyUsedBase {
+        Int32 i32
+    }
+    attribute DoublyUsedBase a_dub
 }

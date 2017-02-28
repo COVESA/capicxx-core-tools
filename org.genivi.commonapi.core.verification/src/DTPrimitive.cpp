@@ -13,6 +13,7 @@
 #include <mutex>
 #include <thread>
 #include <fstream>
+#include <atomic>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
@@ -70,7 +71,7 @@ protected:
         ASSERT_FALSE(testProxy_->isAvailable());
     }
 
-    bool received_;
+    std::atomic<bool> received_;
     bool serviceRegistered_;
     std::shared_ptr<CommonAPI::Runtime> runtime_;
 
@@ -275,7 +276,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
     bool booleanTestValue = true;
     float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
-    std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
+    const std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
     CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
 
     uint8_t uint8ResultValue = 0;
@@ -371,7 +372,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
 TEST_F(DTPrimitive, EmptyBroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-    std::int32_t callbackCalled = 0;
+    std::atomic<std::int32_t> callbackCalled(0);
     int numberFunctionCalls = 2;
 
     received_ = false;

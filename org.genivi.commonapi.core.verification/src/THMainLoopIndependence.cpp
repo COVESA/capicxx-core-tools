@@ -145,16 +145,22 @@ protected:
         mainLoopThread1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
         mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
-        for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
-            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        ASSERT_TRUE((bool)threadCtx1_.proxy_);
+        if (threadCtx1_.proxy_) {
+            for (unsigned int i = 0; !threadCtx1_.proxy_->isAvailable() && i < 100; ++i) {
+                std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+            }
+            ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
         }
 
-        for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
-            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        ASSERT_TRUE((bool)threadCtx2_.proxy_);
+        if (threadCtx2_.proxy_) {
+            for (unsigned int i = 0; !threadCtx2_.proxy_->isAvailable() && i < 100; ++i) {
+                std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+            }
+            ASSERT_TRUE(threadCtx2_.proxy_->isAvailable());
         }
 
-        ASSERT_TRUE(threadCtx1_.proxy_->isAvailable());
-        ASSERT_TRUE(threadCtx2_.proxy_->isAvailable());
 
         // wait until threads are running
         while (!threadCtx1_.mainLoop_->isRunning() || !threadCtx2_.mainLoop_->isRunning()) {

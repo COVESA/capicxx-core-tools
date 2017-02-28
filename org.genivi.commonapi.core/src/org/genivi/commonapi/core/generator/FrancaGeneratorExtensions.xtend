@@ -1458,6 +1458,7 @@ class FrancaGeneratorExtensions {
         if (fStructType.base != null)
             hasher.putFTypeObject(fStructType.base)
 
+        hasher.putString(fStructType.fullyQualifiedName, Charsets::UTF_8)
         hasher.putString('FStructType', Charsets::UTF_8)
         fStructType.elements.forEach [
             hasher.putFTypeRef(type)

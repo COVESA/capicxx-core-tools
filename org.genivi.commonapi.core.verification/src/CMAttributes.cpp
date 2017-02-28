@@ -87,7 +87,7 @@ protected:
         ASSERT_FALSE(testProxy_->isAvailable());
     }
 
-    uint8_t value_;
+    std::atomic<uint8_t> value_;
     std::shared_ptr<CommonAPI::Runtime> runtime_;
     std::shared_ptr<CMAttributesStub> testStub_;
     std::shared_ptr<TestInterfaceProxy<>> testProxy_;

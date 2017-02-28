@@ -460,12 +460,14 @@ class FInterfaceStubGenerator {
             private:
                 «fInterface.stubDefaultClassName» *defaultStub_;
             };
-        private:
+        protected:
             «fInterface.stubDefaultClassName»::RemoteEventHandler remoteEventHandler_;
+        
+        private:
             «IF !fInterface.managedInterfaces.empty»
                 uint32_t autoInstanceCounter_;
             «ENDIF»
-
+        
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
                 «attribute.getTypeName(fInterface, true)» «attribute.stubDefaultClassVariableName» {};
@@ -577,12 +579,23 @@ class FInterfaceStubGenerator {
 
         «FOR method : fInterface.methods»
             «FTypeGenerator::generateComments(method, false)»
-            void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, methodrepliesMap?.get(method))») {
+            «var replies = methodrepliesMap?.get(method)»
+            void «fInterface.stubDefaultClassName»::«method.elementName»(«generateOverloadedStubSignature(method, replies)») {
                 (void)_client;
                 «IF !method.inArgs.empty»
                     «method.inArgs.map['(void)_' + it.name].join(";\n")»;
                 «ENDIF»
                 «IF !method.isFireAndForget»
+                    «IF replies != null && replies.containsValue(true)»
+                        (void)_callId;
+                        «FOR reply : replies.entrySet»
+                            «var methodName = reply.key»
+                            «var isErrorReply = reply.value»
+                            «IF isErrorReply»
+                                (void)_«methodName»Reply;
+                            «ENDIF»
+                        «ENDFOR»
+                    «ENDIF»
                     «method.generateDummyArgumentDefinitions»
                     «FOR arg : method.outArgs»
                         «IF !arg.array && arg.getType.supportsValidation»

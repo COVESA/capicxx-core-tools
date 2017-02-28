@@ -12,6 +12,7 @@
 #include <mutex>
 #include <thread>
 #include <fstream>
+#include <atomic>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/advanced/bselective/TestInterfaceProxy.hpp"
@@ -112,8 +113,8 @@ protected:
 TEST_F(AFSelective, SelectiveBroadcastRejected) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result(0);
     uint8_t in_ = 0;
     uint8_t out_ = 0;
        
@@ -164,8 +165,9 @@ TEST_F(AFSelective, SelectiveBroadcastRejected) {
 TEST_F(AFSelective, SelectiveBroadcast) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result;
+    result = 0;
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
@@ -219,9 +221,9 @@ TEST_F(AFSelective, SelectiveBroadcast) {
 TEST_F(AFSelective, SelectiveMultiBroadcast) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
-    uint8_t result2 = 0;    
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result(0);
+    std::atomic<uint8_t> result2(0);
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
@@ -326,8 +328,9 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
                 runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, "blub");
         proxy->isAvailableBlocking();
 
-        uint8_t result = 0;
-        CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::UNKNOWN;
+        std::atomic<uint8_t> result;
+        result = 0;
+        std::atomic<CommonAPI::CallStatus> callStatus(CommonAPI::CallStatus::UNKNOWN);
         proxy->getBTestSelectiveSelectiveEvent().subscribe([&](
             const uint8_t &y
         ) {
@@ -339,14 +342,18 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
             callStatus = status;
         });
 
-        while (callStatus != CommonAPI::CallStatus::SUCCESS) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        // check that value was correctly received
+        for (int i = 0; i < 100; i++) {
+            if (callStatus == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
-        // send value '3' via a method call - this tells stub to broadcast through the selective bc
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
 
+        // send value '3' via a method call - this tells stub to broadcast through the selective bc
         uint8_t in = 3;
         uint8_t out = 0;
-        proxy->testMethod(in, callStatus, out);
+        CommonAPI::CallStatus callStatus2(CommonAPI::CallStatus::UNKNOWN);
+        proxy->testMethod(in, callStatus2, out);
 
         // check that value was correctly received
         for (int i = 0; i < 100; i++) {
@@ -362,8 +369,8 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
                 runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, "blub");
         proxy->isAvailableBlocking();
 
-        uint8_t result;
-        CommonAPI::CallStatus callStatus = CommonAPI::CallStatus::UNKNOWN;
+        std::atomic<uint8_t> result;
+        std::atomic<CommonAPI::CallStatus> callStatus(CommonAPI::CallStatus::UNKNOWN);
         proxy->getBTestSelectiveSelectiveEvent().subscribe([&](
             const uint8_t &y
         ) {
@@ -375,15 +382,19 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
             callStatus = status;
         });
 
-        while (callStatus != CommonAPI::CallStatus::SUCCESS) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        // check that value was correctly received
+        for (int i = 0; i < 100; i++) {
+            if (callStatus == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
 
         // send value '3' via a method call - this tells stub to broadcast through the selective bc
         result = 0;
         uint8_t in = 3;
         uint8_t out = 0;
-        proxy->testMethod(in, callStatus, out);
+        CommonAPI::CallStatus callStatus2(CommonAPI::CallStatus::UNKNOWN);
+        proxy->testMethod(in, callStatus2, out);
 
         // check that value was correctly received
         for (int i = 0; i < 100; i++) {
@@ -398,10 +409,10 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
 TEST_F(AFSelective, SelectiveRejectedMultiBroadcast) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
-    uint8_t result2 = 0;
-    uint8_t result3 = 0;     
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result(0);
+    std::atomic<uint8_t> result2(0);
+    std::atomic<uint8_t> result3(0);
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
@@ -505,10 +516,10 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
             runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, "blub");
     my_proxy3->isAvailableBlocking();
 
-    uint32_t counter = 0;
-    uint8_t result1 = 0;
-    CommonAPI::CallStatus callStatus1 = CommonAPI::CallStatus::UNKNOWN;
-    CommonAPI::CallStatus callStatus11 = CommonAPI::CallStatus::UNKNOWN;
+    std::atomic<uint32_t> counter(0);
+    std::atomic<uint8_t> result1(0);
+    std::atomic<CommonAPI::CallStatus> callStatus1(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> callStatus11(CommonAPI::CallStatus::UNKNOWN);
     my_proxy1->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -520,7 +531,7 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
         callStatus1 = status;
         ++counter;
     });
-    uint8_t result11 = 0;
+    std::atomic<uint8_t> result11(0);
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
     my_proxy1->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
@@ -534,9 +545,9 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
         ++counter;
     });
 
-    uint8_t result2 = 0;
-    CommonAPI::CallStatus callStatus2 = CommonAPI::CallStatus::UNKNOWN;
-    CommonAPI::CallStatus callStatus22 = CommonAPI::CallStatus::UNKNOWN;
+    std::atomic<uint8_t> result2(0);
+    std::atomic<CommonAPI::CallStatus> callStatus2(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> callStatus22(CommonAPI::CallStatus::UNKNOWN);
     my_proxy2->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -548,7 +559,7 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
         callStatus2 = status;
         ++counter;
     });
-    uint8_t result22 = 0;
+    std::atomic<uint8_t> result22(0);
     my_proxy2->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -560,8 +571,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
         callStatus22 = status;
         ++counter;
     });
-    uint8_t result3 = 0;
-    CommonAPI::CallStatus callStatus3 = CommonAPI::CallStatus::UNKNOWN;
+    std::atomic<uint8_t> result3(0);
+    std::atomic<CommonAPI::CallStatus> callStatus3(CommonAPI::CallStatus::UNKNOWN);
     my_proxy3->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -617,9 +628,10 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
 }
 
 TEST_F(AFSelective, Fire_Selective_Within_Subscription_Changed_Hook) {
-    CommonAPI::CallStatus callStatus, subStatus;
+    CommonAPI::CallStatus callStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus;
     uint8_t out_ = 0;
-    uint8_t result = 0;
+    std::atomic<uint8_t> result(0);
 
     // send value '5' via a method call - this tells stub to fire in changed hook
     uint8_t in_ = 5;
@@ -671,6 +683,129 @@ TEST_F(AFSelective, Fire_Selective_Within_Subscription_Changed_Hook) {
 
      EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
      EXPECT_EQ(1, result);
+}
+
+TEST_F(AFSelective, Two_proxies_subscribe_delete_one_proxy) {
+    CommonAPI::CallStatus callStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    uint8_t out, in = 0;
+    std::atomic<uint8_t> result, result2;
+    result = 0;
+    result2 = 0;
+
+    in = 4;
+    testProxy_->testMethod(in, callStatus, out);
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
+
+    // subscribe first Proxy
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // Build another proxy - same connection - subscribe as well
+    auto another_proxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    int i = 0;
+    while(!another_proxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(another_proxy->isAvailable());
+
+    uint32_t subscription = another_proxy->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result2 = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    in = 3;
+    out = 0;
+    testProxy_->testMethod(in, callStatus, out);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1 && result2 == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_EQ(1, result);
+    ASSERT_EQ(1, result2);
+
+    result = 0;
+    result2 = 0;
+
+    another_proxy.reset();
+
+    in = 3;
+    out = 0;
+    testProxy_->testMethod(in, callStatus, out);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_EQ(1, result);
+
+    result = 0;
+    result2 = 0;
+
+    testProxy_->getBTestSelectiveSelectiveEvent().unsubscribe(subscription);
+
+    // Build another proxy - same connection - subscribe as well
+    another_proxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    i = 0;
+    while(!another_proxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(another_proxy->isAvailable());
+
+    another_proxy->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result2 = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // subscribe first Proxy
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    in = 3;
+    out = 0;
+    testProxy_->testMethod(in, callStatus, out);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1 && result2 == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_EQ(1, result);
+    ASSERT_EQ(1, result2);
+
 }
 
 int main(int argc, char** argv) {

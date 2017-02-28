@@ -57,6 +57,7 @@ public:
 
     void recvValue(const CommonAPI::CallStatus& callStatus, uint8_t y) {
         EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
         values_.push_back(y);
     }
 
@@ -69,9 +70,11 @@ public:
 
     void timeoutCallback(const CommonAPI::CallStatus& callStatus, uint8_t result) {
         (void)result;
-        std::lock_guard<std::mutex> timeoutsLock(timeoutsMutex_);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::REMOTE_ERROR);
-        timeoutsOccured_.push_back(true);
+        {
+            std::lock_guard<std::mutex> timeoutsLock(timeoutsMutex_);
+            EXPECT_EQ(callStatus, CommonAPI::CallStatus::REMOTE_ERROR);
+            timeoutsOccured_.push_back(true);
+        }
         CommonAPI::CallInfo callInfo(timeout);
         if(timeoutCalls_ < maxTimeoutCalls) {
             testProxy_->testMethodTimeoutAsync(
@@ -87,9 +90,11 @@ public:
 
     void timeoutCallback2(const CommonAPI::CallStatus& callStatus, uint8_t result) {
         (void)result;
-        std::lock_guard<std::mutex> timeoutsLock(timeoutsMutex_);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::REMOTE_ERROR);
-        timeoutsOccured_.push_back(true);
+        {
+            std::lock_guard<std::mutex> timeoutsLock(timeoutsMutex_);
+            EXPECT_EQ(callStatus, CommonAPI::CallStatus::REMOTE_ERROR);
+            timeoutsOccured_.push_back(true);
+        }
         CommonAPI::CallInfo callInfo(timeout);
         if(timeoutCalls_ < maxTimeoutCalls) {
             testProxy2_->testMethodTimeoutAsync(
@@ -151,11 +156,12 @@ protected:
         timeoutsOccured_.clear();
     }
 
+    std::mutex values_mutex_;
     std::vector<uint8_t> values_;
 
     std::mutex timeoutsMutex_;
     std::vector<bool> timeoutsOccured_;
-    uint8_t timeoutCalls_;
+    std::atomic<uint8_t> timeoutCalls_;
 
     std::shared_ptr<CommonAPI::Runtime> runtime_;
     std::shared_ptr<TestInterfaceStub> testStub_;
@@ -199,8 +205,11 @@ TEST_F(CMMethodCalls, AsynchronousMethodCall) {
 
     testProxy_->testMethodAsync(x, myCallback);
     std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
-    EXPECT_EQ(1u, values_.size());
-    EXPECT_EQ(x, values_[0]);
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(1u, values_.size());
+        EXPECT_EQ(x, values_[0]);
+    }
 }
 
 /**
@@ -222,17 +231,25 @@ TEST_F(CMMethodCalls, NestedSynchronousMethodCall) {
         testProxy_->testMethod(x2, status, y);
         EXPECT_EQ(status, CommonAPI::CallStatus::SUCCESS);
         EXPECT_EQ(x2, y);
-
-        values_.push_back(_y);
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            values_.push_back(_y);
+        }
     });
 
     for (int i = 0; i < 100; ++i) {
-        if (values_.size()) break;
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            if (values_.size()) break;
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(1u, values_.size());
-    if (values_.size()) {
-        EXPECT_EQ(x, values_[0]);
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(1u, values_.size());
+        if (values_.size()) {
+            EXPECT_EQ(x, values_[0]);
+        }
     }
 }
 
@@ -250,21 +267,33 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCall) {
 
     testProxy_->testMethodAsync(x, [this, &x2](const CommonAPI::CallStatus& callStatus, uint8_t y) {
         EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        values_.push_back(y);
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            values_.push_back(y);
+        }
         testProxy_->testMethodAsync(x2, [this](const CommonAPI::CallStatus& callStatus, uint8_t y) {
             EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-            values_.push_back(y);
+            {
+                std::lock_guard<std::mutex> itsLock(values_mutex_);
+                values_.push_back(y);
+            }
         });
     });
 
     for (int i = 0; i < 100; ++i) {
-        if (values_.size() == 2) break;
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            if (values_.size() == 2) break;
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(2u, values_.size());
-    if (values_.size() == 2) {
-        EXPECT_EQ(x, values_[0]);
-        EXPECT_EQ(x2, values_[1]);
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(2u, values_.size());
+        if (values_.size() == 2) {
+            EXPECT_EQ(x, values_[0]);
+            EXPECT_EQ(x2, values_[1]);
+        }
     }
 }
 
@@ -290,7 +319,6 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallsTimedOut) {
     testProxy2_->isAvailableBlocking();
     ASSERT_TRUE(testProxy2_->isAvailable());
 
-    timeoutsMutex_.lock();
 
     CommonAPI::CallInfo callInfo(timeout);
     testProxy_->testMethodTimeoutAsync(
@@ -311,6 +339,7 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallsTimedOut) {
             &callInfo);
     timeoutCalls_++;
 
+    timeoutsMutex_.lock();
     uint8_t t=0;
     while(timeoutsOccured_.size() < timeoutCalls_ && t <= timeoutCalls_) {
         timeoutsMutex_.unlock();
@@ -453,12 +482,18 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallProxyBecomesAvailable) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {
-        if (values_.size()) break;
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            if (values_.size()) break;
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(1u, values_.size());
-    if (values_.size())
-        EXPECT_EQ(x, values_[0]);
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(1u, values_.size());
+        if (values_.size())
+            EXPECT_EQ(x, values_[0]);
+    }
 }
 
 /**
@@ -489,10 +524,16 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallProxyBecomesAvailable) {
 
     testProxy_->testMethodAsync(x, [this,&x2,&info](const CommonAPI::CallStatus& callStatus, uint8_t y) {
         EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-        values_.push_back(y);
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            values_.push_back(y);
+        }
         testProxy_->testMethodAsync(x2, [this](const CommonAPI::CallStatus& callStatus, uint8_t y) {
             EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-            values_.push_back(y);
+            {
+                std::lock_guard<std::mutex> itsLock(values_mutex_);
+                values_.push_back(y);
+            }
         }, &info);
     }, &info);
 
@@ -504,13 +545,19 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallProxyBecomesAvailable) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {
-        if (values_.size() == 2) break;
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            if (values_.size() == 2) break;
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-    EXPECT_EQ(2u, values_.size());
-    if (values_.size() == 2) {
-        EXPECT_EQ(x, values_[0]);
-        EXPECT_EQ(x2, values_[1]);
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(2u, values_.size());
+        if (values_.size() == 2) {
+            EXPECT_EQ(x, values_[0]);
+            EXPECT_EQ(x2, values_[1]);
+        }
     }
 }
 
@@ -566,15 +613,20 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {
-        if (values_.size() == 3) break;
+        {
+            std::lock_guard<std::mutex> itsLock(values_mutex_);
+            if (values_.size() == 3) break;
+        }
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
-
-    EXPECT_EQ(3u, values_.size());
-    auto it_values = values_.begin();
-    while(it_values != values_.end()) {
-        EXPECT_EQ(x, *it_values);
-        ++it_values;
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        EXPECT_EQ(3u, values_.size());
+        auto it_values = values_.begin();
+        while(it_values != values_.end()) {
+            EXPECT_EQ(x, *it_values);
+            ++it_values;
+        }
     }
 
     for (int i = 0; i < 100; ++i) {
@@ -583,10 +635,13 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
     }
 
     EXPECT_EQ(2u, timeoutsOccured_.size());
-    auto it_timeouts = values_.begin();
-    while(it_timeouts != values_.end()) {
-        EXPECT_EQ(x, *it_timeouts);
-        ++it_timeouts;
+    {
+        std::lock_guard<std::mutex> itsLock(values_mutex_);
+        auto it_timeouts = values_.begin();
+        while(it_timeouts != values_.end()) {
+            EXPECT_EQ(x, *it_timeouts);
+            ++it_timeouts;
+        }
     }
 }
 

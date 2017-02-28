@@ -75,9 +75,11 @@ public:
     }
 
     void myCallback(const uint8_t& val) {
-
         testAttribute_ = val;
-        myQueue_.push_back(val);
+        {
+            std::lock_guard<std::mutex> itsLock(myQueueMutex_);
+            myQueue_.push_back(val);
+        }
 
         /* for test purposes, magic value 99 unsubscribes the attribute. */
         if (val == 99) {
@@ -107,7 +109,7 @@ public:
     }
 
     void cancelSubscribe() {
-        if (subscriptionStarted_) {
+        if (subscriptionStarted_ && myProxy_) {
             myProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener_);
             subscriptionStarted_ = false;
         }
@@ -138,16 +140,17 @@ public:
         return false;
     }
 
+    std::mutex myQueueMutex_;
     std::deque<uint8_t> myQueue_;
 
 private:
 
     bool subscriptionStarted_;
-    uint8_t testAttribute_;
+    std::atomic<uint8_t> testAttribute_;
     ProxyPtr myProxy_;
     std::promise<bool> *subscribedToAttributePromise_;
 
-    CommonAPI::AvailabilityStatus availabilityStatus_;
+    std::atomic<CommonAPI::AvailabilityStatus> availabilityStatus_;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener_;
 
     std::function<void(const uint8_t&)> callbackTestAttribute_;
@@ -203,8 +206,8 @@ public:
     }
 private:
 
-    uint8_t okAttribute_;
-    uint8_t notOkAttribute_;
+    std::atomic<uint8_t> okAttribute_;
+    std::atomic<uint8_t> notOkAttribute_;
 };
 
 class ThreeCallbackHandler {
@@ -271,13 +274,13 @@ public:
     }
 
 private:
-    uint8_t callbackCounter_1_;
-    uint8_t callbackCounter_2_;
-    uint8_t callbackCounter_3_;
+    std::atomic<uint8_t> callbackCounter_1_;
+    std::atomic<uint8_t> callbackCounter_2_;
+    std::atomic<uint8_t> callbackCounter_3_;
 
-    uint8_t callbackValue_1_;
-    uint8_t callbackValue_2_;
-    uint8_t callbackValue_3_;
+    std::atomic<uint8_t> callbackValue_1_;
+    std::atomic<uint8_t> callbackValue_2_;
+    std::atomic<uint8_t> callbackValue_3_;
 };
 
 void testSubscription(ProxyPtr pp,
@@ -289,20 +292,25 @@ void testSubscription(ProxyPtr pp,
     std::function<void(const CommonAPI::AvailabilityStatus&)> callbackAvailabilityStatus =
             std::bind(&SubscriptionHandler::receiveServiceAvailable, &subscriptionHandler, std::placeholders::_1);
 
-    pp->getProxyStatusEvent().subscribe(callbackAvailabilityStatus);
+    CommonAPI::Event<>::Subscription availabilitySubscriptionId =
+            pp->getProxyStatusEvent().subscribe(callbackAvailabilityStatus);
 
     if (subscribedToProxyStatusPromise != nullptr) {
         subscribedToProxyStatusPromise->set_value(true);
     }
 
     int cnt = 0;
-    while (!(subscriptionHandler.getSubscriptedTestAttribute() > 0
-            && subscriptionHandler.getAvailabilityStatus()
-                    == CommonAPI::AvailabilityStatus::NOT_AVAILABLE)
+    while ((subscriptionHandler.getSubscriptedTestAttribute() == 0
+            || subscriptionHandler.getAvailabilityStatus()
+                    != CommonAPI::AvailabilityStatus::AVAILABLE)
             && cnt < 100) {
         std::this_thread::sleep_for(std::chrono::microseconds(wt));
         cnt++;
     }
+
+    EXPECT_GT(subscriptionHandler.getSubscriptedTestAttribute(), 0);
+
+    pp->getProxyStatusEvent().unsubscribe(availabilitySubscriptionId);
 
     std::lock_guard < std::mutex > lk(mut);
     data_queue.push_back(subscriptionHandler.getSubscriptedTestAttribute());
@@ -411,9 +419,12 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
     for (int i = 0; i < 100; i++) {
         std::this_thread::sleep_for(
                 std::chrono::microseconds(std::chrono::microseconds(wt * wf)));
-        if (subscriptionHandler.myQueue_.size()
-                == std::deque<uint8_t>::size_type(testNumber + 1)) {
-            break;
+        {
+            std::lock_guard<std::mutex> itsLock(subscriptionHandler.myQueueMutex_);
+            if (subscriptionHandler.myQueue_.size()
+                    == std::deque<uint8_t>::size_type(testNumber + 1)) {
+                break;
+            }
         }
     }
     // + 1 due to the reason, that by subscription the current value is returned
@@ -1389,6 +1400,303 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeAndReSubscribe) {
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
 }
+
+
+/**
+ * @test Test of behaviour in case subscribe and unsubscribe is done for multiple proxys on the same attribute and afterwards all proxys resubscribe
+ *  - set default value
+ *  - register service
+ *  - subscribe for the attribute with proxyA
+ *  - subscribe for the attribute with proxyB
+ *  - current value must be communicated to the proxyA
+ *  - current value must be communicated to the proxyB
+ *  - value of attribute is changed
+ *  - changed value must be communicated to the proxyA
+ *  - changed value must be communicated to the proxyB
+ *  - proxyA and proxy B unsubscribe for the attribute
+ *  - value of attribute is not changed
+ *  - value received is reset to 0
+ *  - proxyA and proxyB resubscribe for the attribute
+ *  - current value must be communicated to the proxy as initial value
+ *  - value received must be equal to value received before last unsubscribe call
+ *  - unregister service
+ */
+TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe) {
+
+    testStub_->setTestAttributeAttribute(42);
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    testProxy_->isAvailableBlocking();
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+
+    std::shared_ptr<TestInterfaceProxy<>> testProxyB_;
+    testProxyB_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    ASSERT_TRUE((bool)testProxyB_);
+
+    //subscribe proxy A
+    SubscriptionHandler subscriptionHandler(testProxy_);
+    std::function<void (const uint8_t&)> myCallback =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    subscriptionHandler.wait_Attribute(42);
+
+    //subscribe proxy B
+    SubscriptionHandler subscriptionHandlerB(testProxyB_);
+    std::function<void (const uint8_t&)> myCallbackB =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
+            testProxyB_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallbackB);
+    subscriptionHandlerB.wait_Attribute(42);
+
+    // check for initial value proxy A
+    EXPECT_EQ(42, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // check for initial value proxy B
+    EXPECT_EQ(42, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    testStub_->setTestAttributeAttribute(12);
+
+    subscriptionHandler.wait_Attribute(12);
+    subscriptionHandlerB.wait_Attribute(12);
+
+    // check for changed value proxy A
+    EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
+    // check for changed value proxy B
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    // unsubscribe proxy A
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
+
+    // unsubscribe proxy B
+    testProxyB_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListenerB);
+
+    // reset received values
+    subscriptionHandler.resetSubcriptedTestAttribute();
+    EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
+    subscriptionHandlerB.resetSubcriptedTestAttribute();
+    EXPECT_EQ(0, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    // resubscribe proxyA without changing the value on stub side
+    subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+
+    // expect same value for initial event as before unsubscribing on proxyA
+    subscriptionHandler.wait_Attribute(12);
+    EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // resubscribe proxyB without changing the value on stub side
+    subscribedListener =
+            testProxyB_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallbackB);
+
+    // expect same value for initial event as before unsubscribing on proxyA
+    subscriptionHandlerB.wait_Attribute(12);
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+
+    bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
+    ASSERT_TRUE(serviceUnregistered);
+}
+
+
+/**
+ * @test Test of behaviour in case subscribe and unsubscribe is done for multiple proxys on attributes in the same eventgroup and afterwards all proxys resubscribe
+ *  - set default value
+ *  - register service
+ *  - subscribe for the attribute 1 with proxyA
+ *  - subscribe for the attribute 2 with proxyB
+ *  - current value must be communicated to the proxyA
+ *  - current value must be communicated to the proxyB
+ *  - value of attribute is changed
+ *  - changed value must be communicated to the proxyA
+ *  - changed value must be communicated to the proxyB
+ *  - proxyA and proxy B unsubscribe for the attributes
+ *  - value of attributes is not changed
+ *  - value received is reset to 0
+ *  - proxyA and proxyB resubscribe for the attribute 1 and 2
+ *  - current value must be communicated to the proxys as initial value
+ *  - value received must be equal to value received before last unsubscribe call
+ *  - unregister service
+ */
+TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribeSameEventgroup) {
+
+    testStub_->setTestAttributeAttribute(42);
+    testStub_->setTestDAttribute(42);
+
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    testProxy_->isAvailableBlocking();
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+
+    std::shared_ptr<TestInterfaceProxy<>> testProxyB_;
+    testProxyB_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    ASSERT_TRUE((bool)testProxyB_);
+
+    //subscribe proxy A
+    SubscriptionHandler subscriptionHandler(testProxy_);
+    std::function<void (const uint8_t&)> myCallback =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    subscriptionHandler.wait_Attribute(42);
+
+    //subscribe proxy B
+    SubscriptionHandler subscriptionHandlerB(testProxyB_);
+    std::function<void (const uint8_t&)> myCallbackB =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+    subscriptionHandlerB.wait_Attribute(42);
+
+    // check for initial value proxy A
+    EXPECT_EQ(42, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // check for initial value proxy B
+    EXPECT_EQ(42, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    testStub_->setTestAttributeAttribute(12);
+    testStub_->setTestDAttribute(12);
+
+    subscriptionHandler.wait_Attribute(12);
+    subscriptionHandlerB.wait_Attribute(12);
+
+    // check for changed value proxy A
+    EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
+    // check for changed value proxy B
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    // unsubscribe proxy A
+    testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
+
+    // unsubscribe proxy B
+    testProxyB_->getTestDAttribute().getChangedEvent().unsubscribe(subscribedListenerB);
+
+    // reset received values
+    subscriptionHandler.resetSubcriptedTestAttribute();
+    EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
+    subscriptionHandlerB.resetSubcriptedTestAttribute();
+    EXPECT_EQ(0, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    // resubscribe proxyA without changing the value on stub side
+    subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+
+    // expect same value for initial event as before unsubscribing on proxyA
+    subscriptionHandler.wait_Attribute(12);
+    EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // resubscribe proxyB without changing the value on stub side
+    subscribedListener =
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+
+    // expect same value for initial event as before unsubscribing on proxyA
+    subscriptionHandlerB.wait_Attribute(12);
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+
+    bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
+    ASSERT_TRUE(serviceUnregistered);
+}
+
+
+
+/**
+ * @test Test of behaviour in case two proxys A and B subscribe to events that are in one eventgroup,
+ *  proxyB unsubscribes, and proxy A is still expected to receive changed values.
+ *  - set default value
+ *  - register service
+ *  - subscribe for the attribute with proxyA
+ *  - subscribe for the attribute with proxyB
+ *  - current value must be communicated to the proxyA
+ *  - current value must be communicated to the proxyB
+ *  - value of attribute is changed
+ *  - changed value must be communicated to the proxyA
+ *  - changed value must be communicated to the proxyB
+ *  - proxyB unsubscribes for the attribute
+ *  - value of attribute is changed
+ *  - value received must be equal to changed value  for proxy A
+ *  - unregister service
+ */
+TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribeSameEventgroup) {
+
+    testStub_->setTestAttributeAttribute(42);
+    testStub_->setTestDAttribute(42);
+
+
+    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+    ASSERT_TRUE(serviceRegistered);
+
+    testProxy_->isAvailableBlocking();
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+
+    std::shared_ptr<TestInterfaceProxy<>> testProxyB_;
+    testProxyB_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    ASSERT_TRUE((bool)testProxyB_);
+
+    //subscribe proxy A
+    SubscriptionHandler subscriptionHandler(testProxy_);
+    std::function<void (const uint8_t&)> myCallback =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    subscriptionHandler.wait_Attribute(42);
+
+    //subscribe proxy B
+    SubscriptionHandler subscriptionHandlerB(testProxyB_);
+    std::function<void (const uint8_t&)> myCallbackB =
+            std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
+    CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+    subscriptionHandlerB.wait_Attribute(42);
+
+    // check for initial value proxy A
+    EXPECT_EQ(42, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // check for initial value proxy B
+    EXPECT_EQ(42, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    testStub_->setTestAttributeAttribute(12);
+    testStub_->setTestDAttribute(12);
+
+    subscriptionHandler.wait_Attribute(12);
+    subscriptionHandlerB.wait_Attribute(12);
+
+    // check for changed value proxy A
+    EXPECT_EQ(12, subscriptionHandler.getSubscriptedTestAttribute());
+    // check for changed value proxy B
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+
+    // unsubscribe proxy B
+    testProxyB_->getTestDAttribute().getChangedEvent().unsubscribe(subscribedListenerB);
+
+    // change value for attribute 1
+    testStub_->setTestAttributeAttribute(14);
+    subscriptionHandler.wait_Attribute(14);
+
+    // check for changed value proxy A
+    EXPECT_EQ(14, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // check for unchanged value proxy B
+    EXPECT_EQ(12, subscriptionHandlerB.getSubscriptedTestAttribute());
+
+    // reset received values
+    subscriptionHandler.resetSubcriptedTestAttribute();
+    EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
+
+    bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
+    ASSERT_TRUE(serviceUnregistered);
+}
+
+
+
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

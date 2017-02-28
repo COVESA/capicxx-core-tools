@@ -56,8 +56,9 @@ TEST_F(RTBuildProxiesAndStubs, LoadedRuntimeCanBuildProxiesAndStubs) {
     std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
     ASSERT_TRUE((bool)runtime);
 
-    std::thread t1([&runtime](){
-        auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxy;
+    std::thread t1([&runtime, &testProxy](){
+        testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
         testProxy->isAvailableBlocking();
         ASSERT_TRUE((bool)testProxy);
     });
@@ -71,6 +72,13 @@ TEST_F(RTBuildProxiesAndStubs, LoadedRuntimeCanBuildProxiesAndStubs) {
         t1.join();
     }
     ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+    int counter = 0;
+    while (testProxy->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        counter++;
+    }
+    ASSERT_FALSE(testProxy->isAvailable());
 }
 
 /**
@@ -113,6 +121,13 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
         }
 
         ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+        int counter = 0;
+        while (testProxy->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000));
+            counter++;
+        }
+        ASSERT_FALSE(testProxy->isAvailable());
     }
 
     // second build sequence for proxy and stub
@@ -132,6 +147,13 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
 
         ASSERT_TRUE(testProxy->isAvailable());
         ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+        int counter = 0;
+        while (testProxy->isAvailable() && counter < 100 ) {
+            std::this_thread::sleep_for(std::chrono::microseconds(10000));
+            counter++;
+        }
+        ASSERT_FALSE(testProxy->isAvailable());
     }
 }
 
@@ -173,6 +195,13 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxyTwoTimesWithReassigningAndStub) {
     EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+    int counter = 0;
+    while (testProxy->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        counter++;
+    }
+    ASSERT_FALSE(testProxy->isAvailable());
 }
 
 int main(int argc, char** argv) {

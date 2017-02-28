@@ -13,6 +13,7 @@
 #include <mutex>
 #include <thread>
 #include <fstream>
+#include <atomic>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 
@@ -119,7 +120,7 @@ TEST_F(DTDeployment, TryGetNoSubsriptionAttributeWithGetterIDSetToZeroInDeployme
 TEST_F(DTDeployment, TryGetAttributeWithGetterIDSetToZeroInDeployment) {
 
     std::uint32_t testValue(4711);
-    std::uint32_t resultValueSubscription(0);
+    std::atomic<std::uint32_t> resultValueSubscription(0);
     CommonAPI::CallStatus callStatus;
 
     testProxy_->getMyAttrGetterIsZeroSetterIsNotZeroNotifierIsNotZeroAttribute().getChangedEvent().subscribe(

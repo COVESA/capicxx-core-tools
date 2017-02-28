@@ -246,7 +246,8 @@ TEST_F(AFExtended, Attributes) {
 TEST_F(AFExtended, Broadcast) {
 
     CommonAPI::CallStatus callStatus;
-    uint8_t result = 0;
+    std::atomic<uint8_t> result;
+    result = 0;
 
     // subscribe to broadcast
     testProxyBase_->getBBaseEvent().subscribe([&](

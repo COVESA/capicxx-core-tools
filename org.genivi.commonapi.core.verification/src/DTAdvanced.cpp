@@ -13,7 +13,10 @@
 #include <mutex>
 #include <thread>
 #include <fstream>
+#include <atomic>
+
 #include <gtest/gtest.h>
+
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/datatypes/advanced/TestInterfaceProxy.hpp"
@@ -83,7 +86,7 @@ protected:
         ASSERT_FALSE(testProxy_->isAvailable());
     }
 
-    bool received_;
+    std::atomic<bool> received_;
     bool serviceRegistered_;
     std::shared_ptr<CommonAPI::Runtime> runtime_;
 
@@ -471,6 +474,7 @@ TEST_F(DTAdvanced, AttributeSet) {
 */
 TEST_F(DTAdvanced, BroadcastReceive) {
 
+    std::mutex m;
     CommonAPI::CallStatus callStatus;
 
     v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
@@ -480,26 +484,31 @@ TEST_F(DTAdvanced, BroadcastReceive) {
     v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
 
-    arrayTestValue.push_back("Test1");
-    arrayTestValue.push_back("Test2");
-    arrayTestValue.push_back("Test3");
-
-    enumerationTestValue = v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE2;
-
-    structTestValue.setBooleanMember(true);
-    structTestValue.setUint8Member(42);
-    structTestValue.setStringMember("Hello World");
-
-    uint8_t u = 53;
-    unionTestValue = u;
-
-    mapTestValue[1] = "Hello";
-    mapTestValue[2] = "World";
-
-    typedefTestValue = 64;
-
     std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
-    enumArrayIn.push_back(enumerationTestValue);
+
+    {
+        std::lock_guard<std::mutex> itsLock(m);
+
+        arrayTestValue.push_back("Test1");
+        arrayTestValue.push_back("Test2");
+        arrayTestValue.push_back("Test3");
+
+        enumerationTestValue = v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::VALUE2;
+
+        structTestValue.setBooleanMember(true);
+        structTestValue.setUint8Member(42);
+        structTestValue.setStringMember("Hello World");
+
+        uint8_t u = 53;
+        unionTestValue = u;
+
+        mapTestValue[1] = "Hello";
+        mapTestValue[2] = "World";
+
+        typedefTestValue = 64;
+
+        enumArrayIn.push_back(enumerationTestValue);
+    }
 
     v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayResultValue;
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
@@ -518,6 +527,7 @@ TEST_F(DTAdvanced, BroadcastReceive) {
             const v1_0::commonapi::datatypes::advanced::TestInterface::tMap& mapResultValue,
             const v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef& typedefResultValue
             ) {
+        std::lock_guard<std::mutex> itsLock(m);
         EXPECT_EQ(arrayTestValue, arrayResultValue);
         EXPECT_EQ(enumerationTestValue, enumerationResultValue);
         EXPECT_EQ(structTestValue, structResultValue);
@@ -552,9 +562,12 @@ TEST_F(DTAdvanced, BroadcastReceive) {
     ASSERT_TRUE(received_);
     received_ = false;
 
-    mapTestValue.clear();
-    mapTestValue[4] = "Test";
-    mapTestValue[5] = "123";
+    {
+        std::lock_guard<std::mutex> itsLock(m);
+        mapTestValue.clear();
+        mapTestValue[4] = "Test";
+        mapTestValue[5] = "123";
+    }
 
     testProxy_->fTest(
             arrayTestValue,
@@ -581,9 +594,12 @@ TEST_F(DTAdvanced, BroadcastReceive) {
     ASSERT_TRUE(received_);
     received_ = false;
 
-    mapTestValue.clear();
-    mapTestValue[11] = "blub";
-    mapTestValue[22] = "blah";
+    {
+        std::lock_guard<std::mutex> itsLock(m);
+        mapTestValue.clear();
+        mapTestValue[11] = "blub";
+        mapTestValue[22] = "blah";
+    }
 
     testProxy_->fTest(
             arrayTestValue,

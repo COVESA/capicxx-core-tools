@@ -13,7 +13,10 @@
 #include <mutex>
 #include <thread>
 #include <fstream>
+#include <atomic>
+
 #include <gtest/gtest.h>
+
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
 #include "stub/CMBroadcastsStub.h"
@@ -101,7 +104,8 @@ protected:
 TEST_F(CMBroadcasts, NormalBroadcast) {
 
     CommonAPI::CallStatus callStatus;
-    uint8_t result = 0;
+    std::atomic<uint8_t> result;
+    result = 0;
 
     // subscribe to broadcast
     testProxy_->getBTestEvent().subscribe([&](
@@ -135,8 +139,9 @@ TEST_F(CMBroadcasts, NormalBroadcast) {
 TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result;
+    result = 0;
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
@@ -190,8 +195,9 @@ TEST_F(CMBroadcasts, SelectiveBroadcastRejected) {
 TEST_F(CMBroadcasts, SelectiveBroadcast) {
 
     CommonAPI::CallStatus callStatus;
-    CommonAPI::CallStatus subStatus;
-    uint8_t result = 0;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<uint8_t> result;
+    result = 0;
     uint8_t in_ = 0;
     uint8_t out_ = 0;
 
@@ -247,7 +253,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcast) {
 */
 TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
     CommonAPI::CallStatus callStatus;
-    uint8_t result = 0;
+    std::atomic<uint8_t> result;
+    result = 0;
 
     runtime_->unregisterService(domain, CMBroadcastsStub::StubInterface::getInterface(),
                             testAddress);
@@ -341,7 +348,8 @@ TEST_F(CMBroadcasts, BroadcastStubGoesOfflineOnlineAgain) {
 */
 TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     CommonAPI::CallStatus callStatus;
-    uint8_t result = 0;
+    std::atomic<uint8_t> result;
+    result = 0;
     uint8_t in_ = 1;
     uint8_t out_ = 0;
 
@@ -361,7 +369,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     }
     ASSERT_FALSE(testProxy_->isAvailable());
 
-    uint32_t errorHandlerCount = 0;
+    std::atomic<uint32_t> errorHandlerCount;
+    errorHandlerCount = 0;
     // subscribe to broadcast
     testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
         const uint8_t &y
@@ -440,6 +449,106 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
     }
     EXPECT_EQ(result, 1);
     EXPECT_EQ(errorHandlerCount, 2u);
+}
+
+TEST_F(CMBroadcasts, NormalBroadcast_Two_proxies_subscribe_and_one_reset) {
+    CommonAPI::CallStatus callStatus;
+    std::atomic<uint8_t> result, result2;
+    result = 0;
+    result2 = 0;
+
+    auto anotherProxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    int i = 0;
+    while(!anotherProxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(anotherProxy->isAvailable());
+
+    // subscribe to broadcast
+    uint32_t subscription = testProxy_->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    });
+
+    // subscribe to broadcast
+    anotherProxy->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result2 = y;
+    });
+
+    // send value '1' via a method call - this tells stub to broadcast
+    uint8_t in_ = 1;
+    uint8_t out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1 && result2 == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(result, 1);
+    EXPECT_EQ(result2, 1);
+
+    result = 0;
+    result2 = 0;
+
+    anotherProxy.reset();
+
+    // send value '1' via a method call - this tells stub to broadcast
+    in_ = 1;
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(result, 1);
+
+    testProxy_->getBTestEvent().unsubscribe(subscription);
+
+    result = 0;
+    result2 = 0;
+
+    anotherProxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    i = 0;
+    while(!anotherProxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(anotherProxy->isAvailable());
+
+    // subscribe to broadcast
+    testProxy_->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    });
+
+    // subscribe to broadcast
+    anotherProxy->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result2 = y;
+    });
+
+    // send value '1' via a method call - this tells stub to broadcast
+    in_ = 1;
+    out_ = 0;
+    testProxy_->testMethod(in_, callStatus, out_);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    // check that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1 && result2 == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(result, 1);
+    EXPECT_EQ(result2, 1);
 }
 
 int main(int argc, char** argv) {

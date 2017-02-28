@@ -28,7 +28,7 @@ const int MAXREGCOUNT = 16;
 const int MESSAGESIZE = 80;
 const int MAXSUBSCRIPTIONSETS = 10;
 
-#ifdef WIN32
+#ifdef _WIN32
 std::mutex gtestMutex;
 #endif
 
@@ -52,7 +52,7 @@ protected:
         runtime_ = CommonAPI::Runtime::get();
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE((bool)runtime_);
@@ -62,7 +62,7 @@ protected:
         serviceRegistered_ = runtime_->registerService(domain, testAddress, testStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -71,7 +71,7 @@ protected:
         testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE((bool)testProxy_);
@@ -80,7 +80,7 @@ protected:
         testProxy_->isAvailableBlocking();
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(testProxy_->isAvailable());
@@ -91,7 +91,7 @@ protected:
         bool unregistered = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(unregistered);
@@ -134,7 +134,7 @@ TEST_F(StabilitySP, RepeatedRegistrations) {
             serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
             {
-#ifdef WIN32
+#ifdef _WIN32
                 std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                 ASSERT_TRUE(serviceRegistered_);
@@ -144,7 +144,7 @@ TEST_F(StabilitySP, RepeatedRegistrations) {
             serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
             {
-#ifdef WIN32
+#ifdef _WIN32
                 std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                 ASSERT_TRUE(serviceUnregistered_);
@@ -156,14 +156,18 @@ TEST_F(StabilitySP, RepeatedRegistrations) {
 /* Helper class. Creates proxies for each server and calls a method for each */
 class ProxyThread {
 public:
-    int asyncCounter = 0;
+    ProxyThread() :
+        asyncCounter(0)
+    {
+    }
+    std::atomic<int> asyncCounter;
     std::shared_ptr<TestInterfaceProxy<>> proxy_[MAXSERVERCOUNT];
     // callback for asynchronous attribute functions.
     void recvValue(const CommonAPI::CallStatus& callStatus, TestInterface::tArray arrayResultValue) {
         std::lock_guard<std::mutex> lock(recvValue_mutex_);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -180,14 +184,14 @@ public:
 
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
@@ -196,7 +200,7 @@ public:
         if(arrayTestValue.size() == arrayResultValue.size()) {
             for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
                 {
-#ifdef WIN32
+#ifdef _WIN32
                     std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                     EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
@@ -227,14 +231,14 @@ public:
         arrayTestValue.shrink_to_fit();
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_EQ(arrayTestValue.size(), arrayResultValue.size()) << "Vectors arrayTestValue and arrayResultValue are of unequal length";
@@ -243,7 +247,7 @@ public:
         if(arrayTestValue.size() == arrayResultValue.size()) {
             for (std::uint32_t i = 0; i < arrayTestValue.size(); ++i) {
                 {
-#ifdef WIN32
+#ifdef _WIN32
                     std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                     EXPECT_EQ(arrayTestValue[i], arrayResultValue[i]) << "Vectors arrayTestValue and arrayResultValue differ at index " << i;
@@ -263,7 +267,7 @@ public:
             success_ = success_ && (bool)proxy_[proxycount];
 
             {
-#ifdef WIN32
+#ifdef _WIN32
                 std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                 EXPECT_TRUE(success_);
@@ -277,7 +281,7 @@ public:
                 std::cout << testAddress + std::to_string(proxycount) << std::endl;
 
             {
-#ifdef WIN32
+#ifdef _WIN32
                 std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
                 EXPECT_TRUE(proxy_[proxycount]->isAvailable());
@@ -329,7 +333,7 @@ public:
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(expected, asyncCounter);
@@ -412,7 +416,7 @@ public:
         proxy->testMethod(arrayTestValue, callStatus, arrayResultValue);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
@@ -423,7 +427,7 @@ public:
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
@@ -443,7 +447,7 @@ public:
         proxy->getTestAttributeAttribute().setValue(arrayTestValue, callStatus, arrayResultValue);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
@@ -454,7 +458,7 @@ public:
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
@@ -476,7 +480,7 @@ public:
         proxy->getTestAttributeAttribute().setValue(arrayTestValue, callStatus, arrayResultValue);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
@@ -487,7 +491,7 @@ public:
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
@@ -508,7 +512,7 @@ public:
         proxy->getTestAttributeAttribute().getValue(callStatus, arrayResultValue);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             bool status = callStatus == CommonAPI::CallStatus::SUCCESS;
@@ -519,7 +523,7 @@ public:
         }
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             EXPECT_EQ(arrayTestValue, arrayResultValue);
@@ -575,7 +579,7 @@ TEST_F(StabilitySP, MultipleMethodCalls) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -599,7 +603,7 @@ TEST_F(StabilitySP, MultipleMethodCalls) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);
@@ -636,7 +640,7 @@ TEST_F(StabilitySP, MultipleAttributeSets) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -657,7 +661,7 @@ TEST_F(StabilitySP, MultipleAttributeSets) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);
@@ -696,7 +700,7 @@ TEST_F(StabilitySP, MultipleAttributeGets) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -725,7 +729,7 @@ TEST_F(StabilitySP, MultipleAttributeGets) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);
@@ -764,7 +768,7 @@ TEST_F(StabilitySP, MultipleAttributeGetAsyncs) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -792,7 +796,7 @@ TEST_F(StabilitySP, MultipleAttributeGetAsyncs) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);
@@ -831,7 +835,7 @@ TEST_F(StabilitySP, MultipleAttributeSetAsyncs) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -859,7 +863,7 @@ TEST_F(StabilitySP, MultipleAttributeSetAsyncs) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);
@@ -898,7 +902,7 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
         serviceRegistered_ = runtime_->registerService(domain, testAddress + std::to_string(regcount), testMultiRegisterStub_, serviceId);
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceRegistered_);
@@ -945,7 +949,7 @@ TEST_F(StabilitySP, MultipleAttributeSubscriptions) {
         serviceUnregistered_ = runtime_->unregisterService(domain, StabilitySPStub::StubInterface::getInterface(), testAddress + std::to_string(regcount));
 
         {
-#ifdef WIN32
+#ifdef _WIN32
             std::lock_guard<std::mutex> gtestLock(gtestMutex);
 #endif
             ASSERT_TRUE(serviceUnregistered_);

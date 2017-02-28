@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: CommonAPI Console
 Bundle-SymbolicName: org.genivi.commonapi.console;singleton:=true
-Bundle-Version: 3.1.10.qualifier
+Bundle-Version: 3.1.11.qualifier
 Bundle-Vendor: BMW AG
 Require-Bundle: org.eclipse.core.runtime;bundle-version="[3.8.0,4.0.0)";visibility:=reexport,
  org.apache.commons.cli;bundle-version="[1.2.0,2.0.0)";visibility:=reexport,

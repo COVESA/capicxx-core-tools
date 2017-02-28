@@ -270,8 +270,8 @@ TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     std::uint32_t broadcastTestValue(1234);
-    std::uint32_t selectiveHandlerCalled(0);
-    std::uint32_t selectiveErrorHandlerCalled(0);
+    std::atomic<std::uint32_t> selectiveHandlerCalled(0);
+    std::atomic<std::uint32_t> selectiveErrorHandlerCalled(0);
 
     testStub_->setSecondTestBroadcastValueToFireOnSubscription_(broadcastTestValue);
 

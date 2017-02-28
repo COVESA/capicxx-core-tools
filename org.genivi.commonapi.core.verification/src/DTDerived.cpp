@@ -61,15 +61,17 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 100 ) {
-            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
-            counter++;
-        }
+        if (testProxy_) {
+            while ( testProxy_->isAvailable() && counter < 100 ) {
+                std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+                counter++;
+            }
 
-        ASSERT_FALSE(testProxy_->isAvailable());
+            ASSERT_FALSE(testProxy_->isAvailable());
+        }
     }
 
-    bool received_;
+    std::atomic<bool> received_;
     bool serviceRegistered_;
     std::shared_ptr<CommonAPI::Runtime> runtime_;
 

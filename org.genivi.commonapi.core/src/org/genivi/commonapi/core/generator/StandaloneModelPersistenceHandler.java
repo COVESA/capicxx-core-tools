@@ -106,6 +106,8 @@ public class StandaloneModelPersistenceHandler {
                 e.printStackTrace();
             return null;
         }
+        if (resource.getContents().size() == 0)
+            return null;
         EObject model = resource.getContents().get(0);
 
         // load all its imports recursively

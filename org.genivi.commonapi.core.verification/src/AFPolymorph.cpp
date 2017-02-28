@@ -63,12 +63,14 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
-        while ( testProxy_->isAvailable() && counter < 10 ) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            counter++;
-        }
+        if (testProxy_) {
+            while ( testProxy_->isAvailable() && counter < 10 ) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                counter++;
+            }
 
-        ASSERT_FALSE(testProxy_->isAvailable());
+            ASSERT_FALSE(testProxy_->isAvailable());
+        }
     }
 
     bool received_;
@@ -264,7 +266,7 @@ TEST_F(AFPolymorph, MethodCall) {
 TEST_F(AFPolymorph, Broadcast) {
 
     CommonAPI::CallStatus callStatus;
-    int result;
+    std::atomic<int> result;
     // subscribe to broadcast
     testProxy_->getBTestEvent().subscribe([&](
         const std::shared_ptr<TestInterface::PStructBase> &y
@@ -300,6 +302,35 @@ TEST_F(AFPolymorph, Broadcast) {
     EXPECT_EQ(result, 1);
 
 }
+/**
+ * @test
+ *  - Set and get an attribute through a polymorphic structure whose Base
+ *    is also used by another identical structure.
+ *  - verify that the received data matches the transmitted data
+ */
+TEST_F(AFPolymorph, SetAndGetAttributeDoublyUsedBaseStruct) {
+
+    CommonAPI::CallStatus callStatus;
+
+    auto a1 = std::make_shared<TestInterface::SubStructA>(123);
+    std::shared_ptr<TestInterface::DoublyUsedBase> a2 = std::make_shared<TestInterface::DoublyUsedBase>();
+    std::shared_ptr<TestInterface::DoublyUsedBase> a3 = std::make_shared<TestInterface::DoublyUsedBase>();
+
+    a2 = static_cast<std::shared_ptr<TestInterface::DoublyUsedBase>>(a1);
+
+    testProxy_->getA_dubAttribute().setValue(a2, callStatus, a3);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    testProxy_->getA_dubAttribute().getValue(callStatus, a3);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    std::shared_ptr<TestInterface::SubStructA> sp =
+        std::dynamic_pointer_cast<TestInterface::SubStructA>(a3);
+
+    ASSERT_TRUE(sp != nullptr);
+    EXPECT_EQ((int)sp->getI32(), 123);
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::AddGlobalTestEnvironment(new Environment());

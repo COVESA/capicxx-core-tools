@@ -9,7 +9,7 @@
 #include <cassert>
 #include <ctime>
 
-#ifdef WIN32
+#ifdef _WIN32
     #include <chrono>
 #endif
 
@@ -31,7 +31,7 @@ StopWatch::usec_t StopWatch::getTotalElapsedSeconds() const {
 }
 
 StopWatch::usec_t StopWatch::now() {
-#ifdef WIN32
+#ifdef _WIN32
     return std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 #else
     struct timespec ts;

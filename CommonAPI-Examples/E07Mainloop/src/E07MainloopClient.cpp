@@ -6,7 +6,7 @@
 
 #include <iostream>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <unistd.h>
 #endif
 
@@ -120,7 +120,7 @@ gboolean gWatchDispatcher ( GIOChannel *source, GIOCondition condition, gpointer
 
     CommonAPI::Watch* watch = static_cast<CommonAPI::Watch*>(userData);
 
-#ifdef WIN32
+#ifdef _WIN32
     condition = static_cast<GIOCondition>(POLLIN);
 #endif
 
@@ -136,7 +136,7 @@ gboolean gTimeoutDispatcher ( void* userData ) {
 void watchAddedCallback ( CommonAPI::Watch* watch, const CommonAPI::DispatchPriority dispatchPriority ) {
     const pollfd& fileDesc = watch->getAssociatedFileDescriptor();
 
-#ifdef WIN32
+#ifdef _WIN32
     channel = g_io_channel_win32_new_socket(fileDesc.fd);
     GSource* gWatch = g_io_create_watch(channel, GIOCondition::G_IO_IN);
 #else
@@ -191,7 +191,7 @@ int main() {
 
     std::cout << "Checking availability" << std::flush;
     static 
-        #ifndef WIN32
+        #ifndef _WIN32
             constexpr
         #endif
     bool mayBlock = false;
