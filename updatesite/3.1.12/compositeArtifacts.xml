@@ -1,18 +1,12 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <?compositeArtifactRepository version='1.0.0'?>
-<repository name='&quot;GENIVI CommonAPI releases&quot;'
+<repository name='&quot;GENIVI CommonAPI 3.1 releases&quot;'
     type='org.eclipse.equinox.internal.p2.artifact.repository.CompositeArtifactRepository' version='1.0.0'>
   <properties size='1'>
     <property name='p2.timestamp' value='1426002734609'/>
   </properties>
- <children size='8'>
-	<child location='3.1.5'/>
-	<child location='3.1.8'/>
-	<child location='3.1.9'/>
-	<child location='3.1.10'/>
-	<child location='3.1.10.1'/>
-	<child location='3.1.10.2'/>
-	<child location='3.1.11'/>
-	<child location='3.1.12'/>
+ <children size='2'>
+	<child location='core'/>
+	<child location='http://franca.github.io/franca/update_site/releases/0.9.1'/>
   </children>
 </repository>
