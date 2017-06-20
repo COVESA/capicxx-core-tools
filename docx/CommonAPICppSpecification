@@ -1005,20 +1005,23 @@ The proxy base class has the following interface (slightly simplified):
 ----
 class Proxy {
 public:
-	virtual ~Proxy() {}
+	virtual ~Proxy();
 
 	const Address &getAddress() const;
+	std::future<void> getCompletionFuture();
 	virtual bool isAvailable() const = 0;
 	virtual bool isAvailableBlocking() const = 0;
 	virtual ProxyStatusEvent& getProxyStatusEvent() = 0;
 
 protected:
 	Address address_;
+	std::promise<void> completed_;
 };
 ----
 
 - _isAvailable_ is a non-blocking check whether the remote service for this proxy currently is available. Always returns false until the availability of the proxy is determined. The proxy actively determines its availability status asynchronously and ASAP as soon as it is created, and maintains the correct state afterwards.
 - _isAvailableBlocking_ blocks until the service is available.
+- _getCompletionFuture_ returns the std::future associated with std::promise variable +completed_+, which is fulfilled when the proxy destructor is called. Hence the future object returned is useful to determine when the last reference to a proxy by std::shared_ptr<..Proxy> has been released (what includes internal references from CommonAPI bindings, which may not be controlled by the user directly). Note that _getCompletionFuture_ can only be invoked once per proxy, otherwise future_already_retrieved exception is thrown, i.e. when sharing the future's state is desired, returned std::future can be converted into a std::shared_future at the user's discretion.
 - You may subscribe to the _ProxyStatusEvent_ in order to have a callback notified whenever the availability status of the proxy changes. It is guaranteed that the callback is notified of the proxy's currently known availability status at the same instant in which the subscription is done (i.e. the callback will most likely be called with a value of false if you subscribe for this event right after the proxy has been instantiated).
 - Calls to synchronous methods will block until the initial availability status of the proxy is determined. As soon as the availability status has been determined at least once, calls to synchronous methods will return NOT_AVAILABLE as value for the CallStatus whenever isAvailable() would return false.
 - Calls to asynchronous methods do not wait for the initial availability status to be determined. Calls to asynchronous methods will instantly call the given callback with NOT_AVAILABLE as value for the CallStatus whenever isAvailable() would return false.
@@ -1065,6 +1068,8 @@ This is an arbitrary name for the instance of the interface implementation.
 |_Domain_ |
 The domain is again an arbitrary name; the default name is +local+.
 |=========================================================
+
+The member variable +completed_+ keeps the std::promise which is fulfilled in case the proxy is destroyed, in order to signal the std::future returned by +getCompletionFuture+, what allows users to find out when a proxy is asctually destroyed, e.g. it is useful to find out when it is safe to free callbacks previously passed to a proxy. As proxy instance lifetime is controlled by std::shared_ptr it might not always been clear when the last reference from a std::shared_ptr has been released, thus a proxy is destroyed.
 
 === Configuring CommonAPI
 

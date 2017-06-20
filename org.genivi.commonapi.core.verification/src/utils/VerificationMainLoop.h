@@ -202,8 +202,6 @@ class VerificationMainLoop {
                         std::placeholders::_1));
         wakeupListenerSubscription_ = context_->subscribeForWakeupEvents(
                 std::bind(&VerificationMainLoop::wakeup, this));
-
-        stopPromise = new std::promise<bool>;
     }
 
     ~VerificationMainLoop() {
@@ -231,7 +229,6 @@ class VerificationMainLoop {
         close(wakeFd_.fd);
     #endif
 
-        delete stopPromise;
         cleanup();
     }
 
@@ -248,9 +245,6 @@ class VerificationMainLoop {
         while(!hasToStop_) {
             doSingleIteration(timeoutInterval);
         }
-        if (stopPromise) {
-            stopPromise->set_value(true);
-        }
         running_ = false;
     }
 
@@ -265,22 +259,14 @@ class VerificationMainLoop {
             ti--;
             doVerificationIteration(dispatchTimeoutAndWatches, dispatchDispatchSources);
         }
-        if ( hasToStop_ && stopPromise) {
-            stopPromise->set_value(true);
-        }
+
         running_ = false;
         wakeup();
     }
 
-    std::future<bool> stop() {
-        // delete old promise to secure, that always a new future object is returned
-        delete stopPromise;
-        stopPromise = new std::promise<bool>;
-
+    void stop() {
         hasToStop_ = true;
         wakeup();
-
-        return stopPromise->get_future();
     }
 
     bool isRunning() {
@@ -983,8 +969,6 @@ class VerificationMainLoop {
     pollfd wakeFd_;
 
     bool isBroken_;
-
-    std::promise<bool>* stopPromise;
 };
 
 

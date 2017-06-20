@@ -10,6 +10,9 @@ message("Project name: ${PROJECT_NAME}")
 OPTION(USE_INSTALLED_COMMONAPI "Set to OFF to use the local (build tree) version of CommonAPI" ON)
 message("USE_INSTALLED_COMMONAPI is set to value: ${USE_INSTALLED_COMMONAPI}")
 
+OPTION(USE_INSTALLED_GTEST "Set to ON to use an installed version of GTEST" OFF)
+message("USE_INSTALLED_GTEST is set to value: ${USE_INSTALLED_GTEST}")
+
 SET(CMAKE_GLUECODE_DBUS_NAME "na" CACHE STRING "The cmake name of the gluecode library without cmake extension e.g. DBusGlue.")
 if("${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
   message(WARNING "The cmake name of the D-Bus gluecode library without cmake extension needs to be specified. Use '-DCMAKE_GLUECODE_DBUS_NAME=' to do so.")
@@ -36,12 +39,16 @@ endif(NOT CMAKE_BUILD_TYPE)
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
 
+SET(COMMONAPI_SRC_GEN_DEST "src-gen" CACHE STRING "Path to the destination directory of the generated sources")
+message("The path to the destination directory of the generated sources is set to: ${COMMONAPI_SRC_GEN_DEST}")
+
 ##############################################################################
 # add COMMONAPI install path to cmake find root path
 
 message("CMAKE_FIND_ROOT_PATH: ${CMAKE_FIND_ROOT_PATH}")
 
-FIND_PACKAGE(PkgConfig)
+find_package(PkgConfig)
+find_package(Threads REQUIRED)
 
 # find gluecode for D-Bus
 if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
@@ -76,7 +83,7 @@ message("COMMONAPI_INCLUDE_DIRS: ${COMMONAPI_INCLUDE_DIRS}")
 ##############################################################################
 # generate code from fidl
 file(GLOB FIDL_FILES "fidl/*.fidl")
-execute_process(COMMAND ${COMMONAPI_TOOL_GENERATOR} --dest src-gen --skel ${FIDL_FILES}
+execute_process(COMMAND ${COMMONAPI_TOOL_GENERATOR} --dest ${COMMONAPI_SRC_GEN_DEST} --skel ${FIDL_FILES}
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                         )
 
@@ -135,9 +142,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/conf/commonapi4someip.ini.in
 ##############################################################################
 # google test
 
-# check for set environment variable
+#check for set environment variable
 if(DEFINED ENV{GTEST_ROOT})
-    message("GTEST_ROOT is set. GTEST_ROOT = $ENV{GTEST_ROOT}")
+message("GTEST_ROOT is set. GTEST_ROOT = $ENV{GTEST_ROOT}")
 else()
     message("GTEST_ROOT is not defined. For building the tests environment variable
              GTEST_ROOT have to be defined. Tests can not be built.")
@@ -145,23 +152,33 @@ else()
     return()  # test can not be build -> make check is not available
 endif()
 
-# build google test as static library (always) -> therefore deactivate BUILD_SHARED_LIBS in case it is active
-set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 0)
-if ("${BUILD_SHARED_LIBS}" STREQUAL "ON")
-    set(BUILD_SHARED_LIBS OFF)
-    set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 1)
-endif()
-
-# ...but visual studio needs a shared CRT for gtest, otherwise the linker won't work correctly with the testcases.
-if (MSVC)
-    set( gtest_force_shared_crt ON CACHE BOOL "Always use msvcrt.dll" )
-endif()
-
-add_subdirectory($ENV{GTEST_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/gtest EXCLUDE_FROM_ALL)
-if ("${BUILD_SHARED_LIBS_AUTOMATIC_OFF}" STREQUAL "1")
-    set(BUILD_SHARED_LIBS ON)
+if ("${USE_INSTALLED_GTEST}" STREQUAL "ON")
+    find_package(GTest REQUIRED)
+else()
+    # build google test as static library (always) -> therefore deactivate BUILD_SHARED_LIBS in case it is active
     set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 0)
+    if ("${BUILD_SHARED_LIBS}" STREQUAL "ON")
+       set(BUILD_SHARED_LIBS OFF)
+       set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 1)
+    endif()
+
+    # ...but visual studio needs a shared CRT for gtest, otherwise the linker won't work correctly with the testcases.
+    if (MSVC)
+       set( gtest_force_shared_crt ON CACHE BOOL "Always use msvcrt.dll" )
+    endif()
+
+    add_subdirectory($ENV{GTEST_ROOT} ${CMAKE_CURRENT_BINARY_DIR}/gtest EXCLUDE_FROM_ALL)
+    if ("${BUILD_SHARED_LIBS_AUTOMATIC_OFF}" STREQUAL "1")
+        set(BUILD_SHARED_LIBS ON)
+        set(BUILD_SHARED_LIBS_AUTOMATIC_OFF 0)
+    endif()
+
+    set(GTEST_INCLUDE_DIRS  ${gtest_SOURCE_DIR}/include)
+    set(GTEST_LIBRARIES gtest)
 endif()
+
+# Enable gtest
+enable_testing()
 
 ##############################################################################
 # verification tests build section
@@ -172,7 +189,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /EHsc /wd\\
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCOMMONAPI_INTERNAL_COMPILATION /wd\\\"4503\\\"")
 set(USE_RT "")
 else()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall -Wextra -Wformat -Wformat-security -Wconversion -fexceptions -fstrict-aliasing -fstack-protector -fasynchronous-unwind-tables -fno-omit-frame-pointer -D_GLIBCXX_USE_NANOSLEEP")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -pthread -Wall -Wextra -Wformat -Wformat-security -Wconversion -fexceptions -fstrict-aliasing -fstack-protector -fasynchronous-unwind-tables -fno-omit-frame-pointer -D_GLIBCXX_USE_NANOSLEEP")
 set(USE_RT "rt")
 endif()
 
@@ -180,12 +197,10 @@ message("Compiler options: ${CMAKE_CXX_FLAGS}")
 
 include_directories(
     src
-    src-gen
+    ${COMMONAPI_SRC_GEN_DEST}
     ${COMMONAPI_INCLUDE_DIRS}
-    ${gtest_SOURCE_DIR}/include
+    ${GTEST_INCLUDE_DIRS}
 )
-
-enable_testing()
 
 set(CMAKE_CTEST_COMMAND ctest -V)
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
@@ -197,9 +212,9 @@ SET(TESTS_EXTRA "ON" CACHE BOOL
     "Controls whether extra tests should be build or not")
 
 if (MSVC)
-set(TEST_LINK_LIBRARIES CommonAPI gtest ws2_32)
+set(TEST_LINK_LIBRARIES CommonAPI ${GTEST_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ws2_32)
 else()
-set(TEST_LINK_LIBRARIES CommonAPI gtest)
+set(TEST_LINK_LIBRARIES CommonAPI ${GTEST_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
 endif()
 
 if (${TESTS_BAT})
@@ -212,40 +227,40 @@ if (NOT ${TESTS_BAT})
 
     add_executable(RTBuildProxiesAndStubs
         src/RTBuildProxiesAndStubs.cpp
-        src-gen/v1/commonapi/runtime/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/runtime/TestInterfaceStubDefault.cpp)
     target_link_libraries(RTBuildProxiesAndStubs ${TEST_LINK_LIBRARIES})
 endif()
 
 add_executable(CMMethodCalls
     src/CMMethodCalls.cpp
     src/stub/CMMethodCallsStub.cpp
-    src-gen/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
 target_link_libraries(CMMethodCalls ${TEST_LINK_LIBRARIES})
 
 add_executable(CMAttributes
     src/CMAttributes.cpp
     src/stub/CMAttributesStub.cpp
-    src-gen/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
 target_link_libraries(CMAttributes ${TEST_LINK_LIBRARIES})
 
 add_executable(CMAttributeSubscription
     src/CMAttributeSubscription.cpp
-    src-gen/v1/commonapi/communication/TestInterfaceStubDefault.cpp
-    src-gen/v1/commonapi/communication/DaemonStubDefault.cpp)
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/DaemonStubDefault.cpp)
 target_link_libraries(CMAttributeSubscription ${TEST_LINK_LIBRARIES})
 
 add_executable(CMBroadcasts
     src/CMBroadcasts.cpp
     src/stub/CMBroadcastsStub.cpp
-    src-gen/v1/commonapi/communication/TestInterfaceStubDefault.cpp
-    src-gen/v1/commonapi/communication/DaemonStubDefault.cpp)
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp
+    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/DaemonStubDefault.cpp)
 target_link_libraries(CMBroadcasts ${TEST_LINK_LIBRARIES})
 
 if (NOT ${TESTS_BAT})
     add_executable(AFSelective
         src/AFSelective.cpp
         src/stub/AFSelectiveStub.cpp
-        src-gen/v1/commonapi/advanced/bselective/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/bselective/TestInterfaceStubDefault.cpp)
     target_link_libraries(AFSelective ${TEST_LINK_LIBRARIES})
 
     add_executable(AFManaged
@@ -256,74 +271,74 @@ if (NOT ${TESTS_BAT})
         src/stub/HLevelTopStubImpl.cpp
         src/stub/HLevelMiddleStubImpl.cpp
         src/stub/HLevelBottomStubImpl.cpp
-        src-gen/v1/commonapi/advanced/managed/HLevelTopStubDefault.cpp
-        src-gen/v1/commonapi/advanced/managed/HLevelMiddleStubDefault.cpp
-        src-gen/v1/commonapi/advanced/managed/HLevelBottomStubDefault.cpp
-        src-gen/v1/commonapi/advanced/managed/DeviceStubDefault.cpp
-        src-gen/v1/commonapi/advanced/managed/SpecialDeviceStubDefault.cpp
-        src-gen/v1/commonapi/advanced/managed/ManagerStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelTopStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelMiddleStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelBottomStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/DeviceStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/SpecialDeviceStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/ManagerStubDefault.cpp)
     target_link_libraries(AFManaged ${TEST_LINK_LIBRARIES})
 
     add_executable(AFExtended
         src/AFExtended.cpp
         src/stub/AFExtendedStub.cpp
-        src-gen/v1/commonapi/advanced/extended/AFExtendedBaseStubDefault.cpp
-        src-gen/v1/commonapi/advanced/extended/AFExtendedOnceStubDefault.cpp
-        src-gen/v1/commonapi/advanced/extended/AFExtendedTwiceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedBaseStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedOnceStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedTwiceStubDefault.cpp)
     target_link_libraries(AFExtended ${TEST_LINK_LIBRARIES})
 
     add_executable(AFPolymorph
         src/AFPolymorph.cpp
         src/stub/AFPolymorphStub.cpp
-        src-gen/v1/commonapi/advanced/polymorph/TestInterfaceStubDefault.cpp
-        src-gen/v1/commonapi/advanced/polymorph/TestInterface.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/polymorph/TestInterfaceStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/polymorph/TestInterface.cpp)
     target_link_libraries(AFPolymorph ${TEST_LINK_LIBRARIES})
 
     add_executable(DTPrimitive
         src/DTPrimitive.cpp
         src/stub/DTPrimitiveStub.cpp
-        src-gen/v1/commonapi/datatypes/primitive/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/primitive/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTPrimitive ${TEST_LINK_LIBRARIES})
 
     add_executable(DTAdvanced
         src/DTAdvanced.cpp
         src/stub/DTAdvancedStub.cpp
-        src-gen/v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTAdvanced ${TEST_LINK_LIBRARIES})
 
     add_executable(DTDerived
         src/DTDerived.cpp
         src/stub/DTDerivedStub.cpp
-        src-gen/v1/commonapi/datatypes/derived/TestInterfaceStubDefault.cpp
-        src-gen/v1/commonapi/datatypes/derived/TestInterface.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/derived/TestInterfaceStubDefault.cpp
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/derived/TestInterface.cpp)
     target_link_libraries(DTDerived ${TEST_LINK_LIBRARIES})
 
     add_executable(DTCombined
         src/DTCombined.cpp
         src/stub/DTCombinedStub.cpp
-        src-gen/v1/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
 
     add_executable(DTDeployment
         src/DTDeployment.cpp
         src/stub/DTDeploymentStub.cpp
-        src-gen/v1/commonapi/datatypes/deployment/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/deployment/TestInterfaceStubDefault.cpp)
     target_link_libraries(DTDeployment ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopIntegration
         src/THMainLoopIntegration.cpp
         src/stub/THMainLoopIntegrationStub.cpp
-        src-gen/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
     target_link_libraries(THMainLoopIntegration ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopIndependence
         src/THMainLoopIndependence.cpp
-        src-gen/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
     target_link_libraries(THMainLoopIndependence ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopTwoThreads
         src/THMainLoopTwoThreads.cpp
-        src-gen/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
     target_link_libraries(THMainLoopTwoThreads ${TEST_LINK_LIBRARIES})
 
     if(${TESTS_EXTRA})
@@ -331,20 +346,20 @@ if (NOT ${TESTS_BAT})
             src/PFPrimitive.cpp
             src/stub/PFPrimitiveStub.cpp
             src/utils/StopWatch.cpp
-            src-gen/v1/commonapi/performance/primitive/TestInterfaceStubDefault.cpp)
+            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/performance/primitive/TestInterfaceStubDefault.cpp)
         target_link_libraries(PFPrimitive ${TEST_LINK_LIBRARIES} ${USE_RT})
 
         add_executable(PFComplex
             src/PFComplex.cpp
             src/stub/PFComplexStub.cpp
             src/utils/StopWatch.cpp
-            src-gen/v1/commonapi/performance/complex/TestInterfaceStubDefault.cpp)
+            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/performance/complex/TestInterfaceStubDefault.cpp)
         target_link_libraries(PFComplex ${TEST_LINK_LIBRARIES} ${USE_RT})
 
         add_executable(StabilitySP
             src/StabilitySP.cpp
             src/stub/StabilitySPStub.cpp
-            src-gen/v1/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
+            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
         target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
 
     endif()

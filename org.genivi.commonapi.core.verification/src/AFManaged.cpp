@@ -60,7 +60,8 @@ AFManaged() :
     specialDeviceAvailableCount_(0),
     specialDeviceAvailableDesiredValue_(0),
     deviceAvailableDesiredValue_(0),
-    instanceAvailabilityStatusCallbackCalled_(false),
+    instanceAvailabilityStatusCallbackAvailableCalled_(false),
+    instanceAvailabilityStatusCallbackNotAvailableCalled_(false),
     proxyAvailableAndMethodCallSucceeded_(false),
     getAvailableInstancesAsyncSpecialDeviceCallbackCalled_(false),
     getAvailableInstancesAsyncDeviceCallbackCalled_(false) {}
@@ -72,7 +73,7 @@ public:
             const CommonAPI::AvailabilityStatus &_availabilityStatus) {
         ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, _callStatus);
         ASSERT_EQ(CommonAPI::AvailabilityStatus::AVAILABLE, _availabilityStatus);
-        instanceAvailabilityStatusCallbackCalled_ = true;
+        instanceAvailabilityStatusCallbackAvailableCalled_ = true;
     }
 
     void getInstanceAvailabilityStatusAsyncCallbackNotAvailable(
@@ -80,7 +81,7 @@ public:
             const CommonAPI::AvailabilityStatus &_availabilityStatus) {
         ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, _callStatus);
         ASSERT_EQ(CommonAPI::AvailabilityStatus::NOT_AVAILABLE, _availabilityStatus);
-        instanceAvailabilityStatusCallbackCalled_ = true;
+        instanceAvailabilityStatusCallbackNotAvailableCalled_ = true;
     }
 
 protected:
@@ -200,7 +201,7 @@ protected:
                                                                  * when using someip the number of dispatchers must be set to > 1
                                                                  * if no further connection should be used.
                                                                  */
-
+                ASSERT_TRUE(deviceProxy ? true : false);
                 while (!deviceProxy->isAvailable()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
@@ -227,11 +228,18 @@ protected:
                                              * when using someip the number of dispatchers must be set to > 1. Otherwise
                                              * a further connection must be used.
                                              */
+                ASSERT_TRUE(deviceProxy_ ? true : false);
                 deviceProxy_->getProxyStatusEvent().subscribe([&]
-                                                              (const CommonAPI::AvailabilityStatus _status) {
-                    if(_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+                                                              (const CommonAPI::AvailabilityStatus _inner_status) {
+                    if(_inner_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
                         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
-                        deviceProxy_->doSomething(call);
+                        if (deviceProxy_) {
+                            deviceProxy_->doSomething(call);
+                        } else {
+                            ADD_FAILURE() << "newDeviceAvailableBuildProxyAndSubscribeToProxyStatusEventCallback"
+                                    << " deviceProxy_ is null, AvailabilityStatus is: " << static_cast<std::uint32_t>(_inner_status);
+                            return;
+                        }
                         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
                         proxyAvailableAndMethodCallSucceeded_ = true;
                     }
@@ -346,7 +354,8 @@ protected:
     std::atomic<int> specialDeviceAvailableDesiredValue_;
     std::atomic<int> deviceAvailableDesiredValue_;
 
-    std::atomic<bool> instanceAvailabilityStatusCallbackCalled_;
+    std::atomic<bool> instanceAvailabilityStatusCallbackAvailableCalled_;
+    std::atomic<bool> instanceAvailabilityStatusCallbackNotAvailableCalled_;
     std::atomic<bool> proxyAvailableAndMethodCallSucceeded_;
     std::atomic<bool> getAvailableInstancesAsyncSpecialDeviceCallbackCalled_;
     std::atomic<bool> getAvailableInstancesAsyncDeviceCallbackCalled_;
@@ -812,9 +821,11 @@ TEST_F(AFManaged, BuildProxyThroughManagerAndMethodCallSingleDeregistrationImpli
         std::shared_ptr<DeviceProxy<>> deviceProxy =
                 testProxy_->getProxyManagerDevice().buildProxy<DeviceProxy>(
                         deviceInstance);
-        while (!deviceProxy->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        for (int j = 0; j < 100; j++) {
+            if (deviceProxy->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
         }
+        ASSERT_TRUE(deviceProxy->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         deviceProxy->doSomething(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
@@ -875,19 +886,23 @@ TEST_F(AFManaged, BuildProxyThroughManagerAndMethodCallMultipleDeregistrationExp
         }
     }
 
-    for(const auto &dp : deviceProxies) {
-        while (!dp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &dp : deviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (dp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(dp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         dp->doSomething(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
     }
 
-    for(const auto &sdp : specialDeviceProxies) {
-        while (!sdp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &sdp : specialDeviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (sdp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(sdp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         sdp->doSomethingSpecial(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
@@ -964,19 +979,23 @@ TEST_F(AFManaged, BuildProxyThroughManagerAndMethodCallMultipleDeregistrationExp
         }
     }
 
-    for(const auto &dp : deviceProxies) {
-        while (!dp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &dp : deviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (dp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(dp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         dp->doSomething(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
     }
 
-    for(const auto &sdp : specialDeviceProxies) {
-        while (!sdp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &sdp : specialDeviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (sdp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(sdp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         sdp->doSomethingSpecial(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
@@ -1053,19 +1072,23 @@ TEST_F(AFManaged, BuildProxyThroughManagerAndMethodCallMultipleDeregistrationImp
         }
     }
 
-    for(const auto &dp : deviceProxies) {
-        while (!dp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &dp : deviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (dp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(dp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         dp->doSomething(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
     }
 
-    for(const auto &sdp : specialDeviceProxies) {
-        while (!sdp->isAvailable()) {
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+    for (const auto &sdp : specialDeviceProxies) {
+        for (int i = 0; i < 100; i++) {
+            if (sdp->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(sleepMilli));
         }
+        ASSERT_TRUE(sdp->isAvailable());
         CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
         sdp->doSomethingSpecial(call);
         ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
@@ -1201,7 +1224,7 @@ TEST_F(AFManaged, BuildProxyThroughManagerInAvailabilityEventAndMethodCallInProx
  */
 TEST_F(AFManaged, DeleteManagerProxyInsideProxyStatusEventCallbackAndMethodCall) {
 
-    bool managerProxyDeleted = false;
+    std::atomic<bool> managerProxyDeleted(false);
     testProxy_->getProxyStatusEvent().subscribe([&] (const CommonAPI::AvailabilityStatus _status) {
         if(_status == CommonAPI::AvailabilityStatus::NOT_AVAILABLE) {
             // delete proxy
@@ -1652,7 +1675,7 @@ TEST_F(AFManaged, ProxyManagerTestNonPrimitiveMethodsAsync) {
  *  - Remove all the managed interfaces from the manager
  *  - Check that the client is notified about the removed interfaces
  */
-TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
+TEST_F(AFManaged, ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     subscribe();
     std::function<
             void(const CommonAPI::CallStatus &,
@@ -1686,7 +1709,7 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     ASSERT_EQ(availableSpecialDevices.size(), 1u);
     bool allDetectedAreAvailable = false;
-    instanceAvailabilityStatusCallbackCalled_ = false;
+    instanceAvailabilityStatusCallbackAvailableCalled_ = false;
     for(auto &i : availableSpecialDevices) {
         for(auto &j : specialDevicesAvailable_) {
             if(i == j.getInstance()) {
@@ -1694,10 +1717,12 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
                 testProxy_->getProxyManagerSpecialDevice().getInstanceAvailabilityStatusAsync(
                         j.getInstance(),
                         getInstanceAvailabilityStatusAsyncCallbackAvailableFunc);
-                std::this_thread::sleep_for(
-                        std::chrono::milliseconds(sleepMilli));
-                ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-                instanceAvailabilityStatusCallbackCalled_ = false;
+                for (int k = 0; k < 100; k++) {
+                    if (instanceAvailabilityStatusCallbackAvailableCalled_) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+                }
+                ASSERT_TRUE(instanceAvailabilityStatusCallbackAvailableCalled_);
+                instanceAvailabilityStatusCallbackAvailableCalled_ = false;
                 break;
             }
         }
@@ -1728,10 +1753,12 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
                 testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusAsync(
                         j.getInstance(),
                         getInstanceAvailabilityStatusAsyncCallbackAvailableFunc);
-                std::this_thread::sleep_for(
-                        std::chrono::milliseconds(sleepMilli));
-                ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-                instanceAvailabilityStatusCallbackCalled_ = false;
+                for (int k = 0; k < 100; k++) {
+                    if (instanceAvailabilityStatusCallbackAvailableCalled_) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+                }
+                ASSERT_TRUE(instanceAvailabilityStatusCallbackAvailableCalled_);
+                instanceAvailabilityStatusCallbackAvailableCalled_ = false;
                 break;
             }
         }
@@ -1762,10 +1789,12 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
                 testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusAsync(
                         j.getInstance(),
                         getInstanceAvailabilityStatusAsyncCallbackAvailableFunc);
-                std::this_thread::sleep_for(
-                        std::chrono::milliseconds(sleepMilli));
-                ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-                instanceAvailabilityStatusCallbackCalled_ = false;
+                for (int k = 0; k < 100; k++) {
+                    if (instanceAvailabilityStatusCallbackAvailableCalled_) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+                }
+                ASSERT_TRUE(instanceAvailabilityStatusCallbackAvailableCalled_);
+                instanceAvailabilityStatusCallbackAvailableCalled_ = false;
                 break;
             }
         }
@@ -1773,6 +1802,7 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     }
 
     // Remove
+    instanceAvailabilityStatusCallbackNotAvailableCalled_ = false;
     testStub_->specialDeviceRemoved(0);
     for (int i = 0; i < 100; i++) {
         {
@@ -1790,12 +1820,14 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     ASSERT_EQ(availableSpecialDevices.size(), 0u);
     testProxy_->getProxyManagerSpecialDevice().getInstanceAvailabilityStatusAsync(
-            "managedTest.Manager.specialDevice00",
+            "commonapi.advanced.managed.Manager.specialDevice00",
             getInstanceAvailabilityStatusAsyncCallbackNotAvailableFunc);
-    std::this_thread::sleep_for(
-            std::chrono::milliseconds(sleepMilli));
-    ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-    instanceAvailabilityStatusCallbackCalled_ = false;
+    for (int i = 0; i < 100; i++) {
+        if (instanceAvailabilityStatusCallbackNotAvailableCalled_) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    }
+    ASSERT_TRUE(instanceAvailabilityStatusCallbackNotAvailableCalled_);
+    instanceAvailabilityStatusCallbackNotAvailableCalled_ = false;
 
     testStub_->deviceRemoved(1);
     for (int i = 0; i < 100; i++) {
@@ -1816,10 +1848,11 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusAsync(
             "commonapi.advanced.managed.Manager.device01",
             getInstanceAvailabilityStatusAsyncCallbackNotAvailableFunc);
-    std::this_thread::sleep_for(
-            std::chrono::milliseconds(sleepMilli));
-    ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-    instanceAvailabilityStatusCallbackCalled_ = false;
+    for (int i = 0; i < 100; i++) {
+        if (instanceAvailabilityStatusCallbackNotAvailableCalled_) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    }
+    ASSERT_TRUE(instanceAvailabilityStatusCallbackNotAvailableCalled_);
     allDetectedAreAvailable = false;
     for(auto &i : availableDevices) {
         for(auto &j : devicesAvailable_) {
@@ -1828,17 +1861,19 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
                 testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusAsync(
                         j.getInstance(),
                         getInstanceAvailabilityStatusAsyncCallbackAvailableFunc);
-                std::this_thread::sleep_for(
-                        std::chrono::milliseconds(sleepMilli));
-                ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
-                instanceAvailabilityStatusCallbackCalled_ = false;
+                for (int k = 0; k < 100; k++) {
+                    if (instanceAvailabilityStatusCallbackAvailableCalled_) break;
+                    std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+                }
+                ASSERT_TRUE(instanceAvailabilityStatusCallbackAvailableCalled_);
+                instanceAvailabilityStatusCallbackAvailableCalled_ = false;
                 break;
             }
         }
         ASSERT_TRUE(allDetectedAreAvailable);
     }
 
-
+    instanceAvailabilityStatusCallbackNotAvailableCalled_ = false;
     testStub_->deviceRemoved(2);
     for (int i = 0; i < 100; i++) {
         {
@@ -1858,9 +1893,11 @@ TEST_F(AFManaged, DISABLED_ProxyManagerTestGetInstanceAvailabilityStatusAsync) {
     testProxy_->getProxyManagerDevice().getInstanceAvailabilityStatusAsync(
             "commonapi.advanced.managed.Manager.device02",
             getInstanceAvailabilityStatusAsyncCallbackNotAvailableFunc);
-    std::this_thread::sleep_for(
-            std::chrono::milliseconds(sleepMilli));
-    ASSERT_TRUE(instanceAvailabilityStatusCallbackCalled_);
+    for (int i = 0; i < 100; i++) {
+        if (instanceAvailabilityStatusCallbackNotAvailableCalled_) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+    }
+    ASSERT_TRUE(instanceAvailabilityStatusCallbackNotAvailableCalled_);
 }
 
 TEST_F(AFManaged, AddRemoveHierarchicalManagedInterface) {
@@ -1925,11 +1962,14 @@ TEST_F(AFManaged, AddRemoveHierarchicalManagedInterface) {
 
   // Add a managed stub
   hLevelMiddleStub = hLevelTopStub->deviceDetected(1);
-  std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
-  {
-      std::lock_guard<std::mutex> lock(hLevelMiddleAvailableCountMutex);
-      ASSERT_EQ(hLevelMiddleAvailableCount, 1);
+  for (int i = 0; i < 100; i++) {
+      {
+          std::lock_guard<std::mutex> lock(hLevelMiddleAvailableCountMutex);
+          if (hLevelMiddleAvailableCount == 1) break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
   }
+  ASSERT_EQ(hLevelMiddleAvailableCount, 1);
 
   // check that the new stub is registered and reachable
   std::mutex h2_availabilityMutex;
@@ -1978,11 +2018,14 @@ TEST_F(AFManaged, AddRemoveHierarchicalManagedInterface) {
 
   // add a 'device' to the level 1 stub
   hLevelMiddleStub->deviceDetected(1);
-  std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
-  {
-      std::lock_guard<std::mutex> lock(hLevelBottomAvailableCountMutex);
-      ASSERT_EQ(hLevelBottomAvailableCount, 1);
+  for (int i = 0; i < 100; i++) {
+      {
+          std::lock_guard<std::mutex> lock(hLevelBottomAvailableCountMutex);
+          if (hLevelBottomAvailableCount == 1) break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
   }
+  ASSERT_EQ(hLevelBottomAvailableCount, 1);
 
   // check that the new stub is registered and reachable
   std::mutex h3_availabilityMutex;

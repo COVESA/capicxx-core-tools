@@ -49,6 +49,7 @@ protected:
         ASSERT_TRUE(serviceRegistered_);
 
         testProxy_ = runtime_->buildProxy<v1_0::commonapi::datatypes::deployment::TestInterfaceProxy>(domain, testAddress, connectionIdClient);
+        ASSERT_TRUE((bool)testProxy_);
         int i = 0;
         while(!testProxy_->isAvailable() && i++ < 100) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));

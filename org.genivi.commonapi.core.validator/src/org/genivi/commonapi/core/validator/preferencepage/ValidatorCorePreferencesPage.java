@@ -27,13 +27,12 @@ public class ValidatorCorePreferencesPage extends FieldEditorPreferencePage
     @Override
     public void createFieldEditors() {
         addField(new BooleanFieldEditor(PreferenceConstants.P_ENABLE_CORE_VALIDATOR,
-                "validator enabled", getFieldEditorParent()));
+                "Enable CommonAPI-Core specific validation of Franca IDL files", getFieldEditorParent()));
     }
 
     @Override
     public void init(IWorkbench workbench) {
         IPreferenceStore prefStore = CommonApiUiPlugin.getValidatorPreferences();
         setPreferenceStore(prefStore);
-        setDescription("Disable or enable the core validator!");
     }
 }

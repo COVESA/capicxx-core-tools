@@ -16,12 +16,12 @@ struct typeIdOf;
 template <typename SearchT, typename T>
 struct typeIdOf<SearchT, T> {
 
-    static const int value = std::is_same<SearchT, T>::value ? 1 : -1;
+    static const std::size_t value = std::is_same<SearchT, T>::value ? 1 : -1;
 };
 
 template <typename SearchT, typename T1, typename... T>
 struct typeIdOf<SearchT, T1, T...> {
-    static const int value = std::is_same<SearchT, T1>::value ? sizeof...(T)+1 : typeIdOf<SearchT, T...>::value;
+    static const std::size_t value = std::is_same<SearchT, T1>::value ? sizeof...(T)+1 : typeIdOf<SearchT, T...>::value;
 };
 
 #endif // DE_BMW_EXAMPLES_TYPE_UTILS_H_

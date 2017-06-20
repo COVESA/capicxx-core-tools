@@ -23,6 +23,8 @@ public:
 
     void testMethodTimeout(const std::shared_ptr<CommonAPI::ClientId> _clientId,
         testMethodReply_t _reply);
+
+    void testDontCare(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x);
 };
 
 } /* namespace v1 */

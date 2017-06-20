@@ -14,7 +14,7 @@
                 <page
                       class="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
                       id="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
-                      name="Validator Core">
+                      name="CommonAPI Validator">
                 </page>
              </extension>
 </plugin>

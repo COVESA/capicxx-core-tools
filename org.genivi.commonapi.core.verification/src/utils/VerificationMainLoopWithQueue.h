@@ -35,11 +35,9 @@ public:
 
     VerificationMainLoopEventQueue() :
         running_(false) {
-        stopPromise = new std::promise<bool>;
     }
 
     ~VerificationMainLoopEventQueue() {
-        delete stopPromise;
     }
 
     void run(const int64_t& timeoutInterval = TIMEOUT_INFINITE) {
@@ -53,21 +51,12 @@ public:
                 queue_.at(i)();
             }
         }
-
-        if (stopPromise) {
-            stopPromise->set_value(true);
-        }
     }
 
-    std::future<bool> stop() {
-        delete stopPromise;
-        stopPromise = new std::promise<bool>;
-
+    void stop() {
         std::unique_lock<std::mutex> queueUniqueLock(queueLock_);
         running_ = false;
         queueCondition_.notify_one();
-
-        return stopPromise->get_future();
     }
 
     void pushToQueue(std::function<void()> func) {
@@ -76,12 +65,15 @@ public:
         queueCondition_.notify_one();
     }
 
+    bool isRunning() {
+        return running_;
+    }
+
 private:
     bool running_;
     std::vector<std::function<void()>> queue_;
     std::condition_variable queueCondition_;
     std::mutex queueLock_;
-    std::promise<bool>* stopPromise;
 };
 
 class VerificationMainLoop {
@@ -247,8 +239,6 @@ class VerificationMainLoop {
                         std::placeholders::_1));
         wakeupListenerSubscription_ = context_->subscribeForWakeupEvents(
                 std::bind(&VerificationMainLoop::wakeup, this));
-
-        stopPromise = new std::promise<bool>;
     }
 
      ~VerificationMainLoop() {
@@ -276,7 +266,6 @@ class VerificationMainLoop {
          close(wakeFd_.fd);
      #endif
 
-         delete stopPromise;
          cleanup();
     }
 
@@ -293,23 +282,22 @@ class VerificationMainLoop {
         while(!hasToStop_) {
             doSingleIteration(timeoutInterval);
         }
-        if (stopPromise) {
-            stopPromise->set_value(true);
-        }
         running_ = false;
     }
 
-    std::future<bool> stop() {
-        // delete old promise to secure, that always a new future object is returned
-        delete stopPromise;
-        stopPromise = new std::promise<bool>;
-
+    void stop() {
         hasToStop_ = true;
         wakeup();
 
-        eventQueue_->stop().get();
+        eventQueue_->stop();
 
-        return stopPromise->get_future();
+        while(eventQueue_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+    }
+
+    bool isRunning() {
+        return running_;
     }
 
     /**
@@ -328,6 +316,7 @@ class VerificationMainLoop {
      * @param timeout The maximum poll-timeout for this iteration.
      */
     void doSingleIteration(const int64_t& timeout = TIMEOUT_INFINITE) {
+        externalIterationMutex_.lock();
         {
             std::lock_guard<std::mutex> itsDispatchSourcesLock(dispatchSourcesMutex_);
             std::lock_guard<std::mutex> itsWatchesLock(watchesMutex_);
@@ -455,6 +444,7 @@ class VerificationMainLoop {
                 dispatch();
             }
         }
+        externalIterationMutex_.unlock();
     }
 
     /*
@@ -638,11 +628,14 @@ class VerificationMainLoop {
     }
 
     void dispatch() {
+        externalIterationMutex_.unlock();
         eventQueue_->pushToQueue(std::bind(&VerificationMainLoop::doExternalIteration, this));
+        externalIterationMutex_.lock();
     }
 
     void doExternalIteration()
     {
+        std::lock_guard<std::mutex> itsExternalIterationLock(externalIterationMutex_);
         dispatchTimeouts();
         dispatchWatches();
         dispatchSources();
@@ -851,11 +844,11 @@ class VerificationMainLoop {
     }
 
     void registerWatch(Watch* watch, const DispatchPriority dispatchPriority) {
-
-        std::lock_guard<std::mutex> itsLock(watchesMutex_);
         pollfd fdToRegister = watch->getAssociatedFileDescriptor();
 
         registerFileDescriptor(fdToRegister);
+
+        std::lock_guard<std::mutex> itsLock(watchesMutex_);
         std::mutex* mtx = new std::mutex;
 
         WatchToDispatchStruct* watchStruct = new WatchToDispatchStruct(fdToRegister.fd, watch, mtx, false, false);
@@ -993,10 +986,9 @@ class VerificationMainLoop {
 
     bool isBroken_;
 
-
     std::shared_ptr<VerificationMainLoopEventQueue> eventQueue_;
 
-    std::promise<bool>* stopPromise;
+    std::mutex externalIterationMutex_;
 };
 
 

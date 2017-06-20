@@ -37,7 +37,6 @@ import static extension org.genivi.commonapi.core.generator.FrancaGeneratorExten
 
 class FTypeGenerator {
     @Inject private extension FrancaGeneratorExtensions francaGeneratorExtensions
-    static final int CommentLineLength = 80
 
     def static isdeprecated(FAnnotationBlock annotations) {
         if(annotations == null)
@@ -49,31 +48,22 @@ class FTypeGenerator {
         return false
     }
 
-    def private static findNextBreak(String text) {
-        var breakIndex = text.substring(0, CommentLineLength).lastIndexOf(" ");
-        if (breakIndex > 0) {
-            return breakIndex;
-        } else {
-                return Math.min(CommentLineLength, text.length);
-        }
-    }
-
     def static breaktext(String text, FAnnotationType annotation) {
         var commentBody = ""
-        var line = ""
         var startIndex = 0
-        var endIndex = CommentLineLength
-        var commentText = text.replace("\r\n", " ")
-
+        var endIndex = 0
+        var commentText = text.replace("\r\n", "\n")
         commentBody += " * " + annotation.getName() + ": "
-        while(endIndex < commentText.length)  {
-            line = commentText.substring(startIndex, endIndex)
-            endIndex = findNextBreak(line)
-            commentBody += commentText.substring(startIndex, startIndex + endIndex) + "\n *  ";
-            startIndex += endIndex
-            endIndex = startIndex + CommentLineLength
+        // do for all lines in the comment
+        while (startIndex < commentText.length) {
+            endIndex = commentText.indexOf('\n', startIndex);
+            if (endIndex == -1) {
+                endIndex = commentText.length
+            }
+            commentBody += "\n * " + commentText.substring(startIndex, endIndex).trim()
+            startIndex = endIndex + 1
         }
-        commentBody += commentText.substring(startIndex, commentText.length) + "\n";
+
         return commentBody;
     }
 
@@ -83,8 +73,8 @@ class FTypeGenerator {
         var annoCommentText = ""
         if( model != null && model.comment != null){
             if(!inline) {
-                intro = "/**\n"
-                tail = " */"
+                intro = "/*\n"
+                tail = "\n */"
             }
             for(annoComment : model.comment.elements) {
                 if(annoComment != null){
@@ -400,12 +390,17 @@ class FTypeGenerator {
         return "Literal::" + enumPrefix + _enumeration.enumerators.head.elementName
     }
 
-    def String generateLiterals(FEnumerationType _enumeration) {
+    def String generateLiterals(FEnumerationType _enumeration, String _backingType) {
         var String literals = new String()
+        var String comment = ""
         if (_enumeration.base != null)
-            literals += _enumeration.base.generateLiterals + ",\n"
+            literals += _enumeration.base.generateLiterals(_backingType) + ",\n"
         for (enumerator : _enumeration.enumerators) {
-            literals += enumPrefix + enumerator.elementName + " = " + enumerator.value.enumeratorValue
+            comment = generateComments(enumerator, false)
+            if (comment != "") {
+                literals += comment + "\n"
+            }
+            literals += enumPrefix + enumerator.elementName + " = " + enumerator.value.enumeratorValue.doCast(_backingType)
             if (enumerator != _enumeration.enumerators.last) literals += ",\n"
         }
         return literals
@@ -432,7 +427,7 @@ class FTypeGenerator {
 
         struct «_enumeration.name» : CommonAPI::Enumeration< «backingType»> {
             enum Literal : «backingType» {
-                «_enumeration.generateLiterals»
+                «_enumeration.generateLiterals(backingType)»
             };
 
             «_enumeration.name»()

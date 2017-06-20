@@ -36,15 +36,13 @@ class PingPongTestStub : public v1_0::commonapi::threading::TestInterfaceStubDef
 
 class MainLoopThreadContext {
 public:
-    void setupRuntime(std::promise<bool>& p) {
-        runtime_ = CommonAPI::Runtime::get();
-        p.set_value(true);
+    void setRuntime(std::shared_ptr<CommonAPI::Runtime> _runtime) {
+        runtime_ = _runtime;
     }
 
-    void setupMainLoopContext(std::promise<bool>& p, std::string mainloopName) {
+    void setupMainLoopContext(std::string mainloopName) {
         mainLoopContext_ = std::make_shared<CommonAPI::MainLoopContext>(mainloopName);
         mainLoop_ = new CommonAPI::VerificationMainLoop(mainLoopContext_);
-        p.set_value(true);
     }
 
     void setAddresses(const std::string own, const std::string other, const std::string thirdParty) {
@@ -81,59 +79,22 @@ protected:
     void SetUp() {
         std::shared_ptr<CommonAPI::Runtime> runtimePtr1_, runtimePtr2_;
 
-        std::promise<bool> promiseRuntime1, promiseRuntime2;
-        std::future<bool> futureRuntime1 = promiseRuntime1.get_future();
-        std::future<bool> futureRuntime2 = promiseRuntime2.get_future();
-
-        mainLoopThread1_ = std::thread(
-                        std::bind(&MainLoopThreadContext::setupRuntime, &threadCtx1_, std::move(promiseRuntime1)));
-        mainLoopThread2_ = std::thread(
-                        std::bind(&MainLoopThreadContext::setupRuntime, &threadCtx2_, std::move(promiseRuntime2)));
-
-        mainLoopThread1_.detach();
-        mainLoopThread2_.detach();
-
-        futureRuntime1.wait_for(std::chrono::milliseconds(200));
-        futureRuntime2.wait_for(std::chrono::milliseconds(200));
+        std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+        threadCtx1_.setRuntime(runtime);
+        threadCtx2_.setRuntime(runtime);
 
         // check that both threads have a runtime and it is the same
         ASSERT_TRUE((bool)threadCtx1_.runtime_);
         ASSERT_TRUE((bool)threadCtx2_.runtime_);
         ASSERT_EQ(threadCtx1_.runtime_, threadCtx2_.runtime_);
 
-        std::promise<bool> promiseContext1, promiseContext2;
-        std::future<bool> futureContext1 = promiseContext1.get_future();
-        std::future<bool> futureContext2 = promiseContext2.get_future();
-
-        mainLoopThread1_ = std::thread(
-                        std::bind(
-                                        &MainLoopThreadContext::setupMainLoopContext,
-                                        &threadCtx1_,
-                                        std::move(promiseContext1),
-                                        mainloopName1));
-        mainLoopThread2_ = std::thread(
-                        std::bind(
-                                        &MainLoopThreadContext::setupMainLoopContext,
-                                        &threadCtx2_,
-                                        std::move(promiseContext2),
-                                        mainloopName2));
-        mainLoopThread1_.detach();
-        mainLoopThread2_.detach();
-
-        futureContext1.wait_for(std::chrono::milliseconds(200));
-        futureContext2.wait_for(std::chrono::milliseconds(200));
+        threadCtx1_.setupMainLoopContext(mainloopName1);
+        threadCtx2_.setupMainLoopContext(mainloopName2);
 
         // check that both threads have an own mainloop context
         ASSERT_TRUE((bool)threadCtx1_.mainLoopContext_);
         ASSERT_TRUE((bool)threadCtx2_.mainLoopContext_);
         ASSERT_NE(threadCtx1_.mainLoopContext_, threadCtx2_.mainLoopContext_);
-
-        std::promise<bool> promiseFactory1, promiseFactory2;
-        std::future<bool> futureFactory1 = promiseFactory1.get_future();
-        std::future<bool> futureFactory2 = promiseFactory2.get_future();
-
-        futureFactory1.wait_for(std::chrono::milliseconds(200));
-        futureFactory2.wait_for(std::chrono::milliseconds(200));
 
         // set addresses
         threadCtx1_.setAddresses(instance7, instance8, instance6);
@@ -167,11 +128,12 @@ protected:
             std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
-        std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-        threadCtx1MainStopped.get();
-        
-        std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-        threadCtx2MainStopped.get();
+        threadCtx1_.mainLoop_->stop();
+        threadCtx2_.mainLoop_->stop();
+
+        while(threadCtx1_.mainLoop_->isRunning() || threadCtx2_.mainLoop_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
 
         if(mainLoopThread1_.joinable()) {
             mainLoopThread1_.join();
@@ -187,12 +149,15 @@ protected:
         threadCtx2_.runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance8);
 
         if (threadCtx1_.mainLoop_->isRunning()) {
-            std::future<bool> threadCtx1MainStopped = threadCtx1_.mainLoop_->stop();
-            threadCtx1MainStopped.get();
+            threadCtx1_.mainLoop_->stop();
         }
+
         if (threadCtx2_.mainLoop_->isRunning()) {
-            std::future<bool> threadCtx2MainStopped = threadCtx2_.mainLoop_->stop();
-            threadCtx2MainStopped.get();
+            threadCtx2_.mainLoop_->stop();
+        }
+
+        while(threadCtx1_.mainLoop_->isRunning() || threadCtx2_.mainLoop_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
         if(mainLoopThread1_.joinable()) {
@@ -201,6 +166,13 @@ protected:
         if(mainLoopThread2_.joinable()) {
             mainLoopThread2_.join();
         }
+        if(mainLoopRunnerProxy1_.joinable()) {
+            mainLoopRunnerProxy1_.join();
+        }
+        if(mainLoopRunnerProxy2_.joinable()) {
+            mainLoopRunnerProxy2_.join();
+        }
+
         threadCtx1_.proxy_.reset();
         threadCtx1_.proxyThirdParty_.reset();
         threadCtx2_.proxy_.reset();
@@ -213,7 +185,9 @@ protected:
     }
 
     MainLoopThreadContext threadCtx1_, threadCtx2_;
-    std::thread mainLoopThread1_, mainLoopThread2_;
+    std::thread mainLoopThread1_, mainLoopThread2_, mainLoopRunnerProxy1_, mainLoopRunnerProxy2_;
+    std::condition_variable condVar1_, condVar2_;
+    std::mutex m1_, m2_;
 };
 
 /**
@@ -227,30 +201,35 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 
     CommonAPI::CallStatus callStatus;
 
-    uint8_t x, y;
-    x = 1;
-    y = 0;
+    bool finish = false;
 
-    std::thread mainLoopRunnerProxy([&]() { threadCtx1_.mainLoop_->runVerification(5000, true, true); });
-    mainLoopRunnerProxy.detach();
+    uint8_t x = 1;
 
-    mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxy_->testMethod(x, callStatus, y); });
-    mainLoopThread1_.detach();
+    mainLoopRunnerProxy1_ = std::thread([&]() { threadCtx1_.mainLoop_->runVerification(5000, true, true); });
+
+    mainLoopThread1_ = std::thread([&]() { 
+        uint8_t y = 0;
+        threadCtx1_.proxy_->testMethod(x, callStatus, y);
+        for (int i = 0; i < 100; ++i) {
+            if (y == 1) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        }
+        // now the stub mainloop also runs, so the proxy should receive the answer
+        ASSERT_EQ(1, y);
+
+        std::unique_lock<std::mutex> lock(m1_);
+        finish = true;
+        condVar1_.notify_one();
+    });
 
     std::this_thread::sleep_for(std::chrono::microseconds(tasync));
-    // proxy should not receive answer, if the stub mainloop does not run
-    ASSERT_EQ(0, y);
 
     mainLoopThread2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
-    mainLoopThread2_.detach();
 
-    for (int i = 0; i < 100; ++i) {
-        if (y == 1) break;
-        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    std::unique_lock<std::mutex> lock(m1_);
+    while(!finish) {
+        condVar1_.wait(lock);
     }
-
-    // now the stub mainloop also runs, so the proxy should receive the answer
-    ASSERT_EQ(1, y);
 }
 
 /**
@@ -266,32 +245,60 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
 
     CommonAPI::CallStatus callStatusProxy1, callStatusProxy2;
 
-    uint8_t x1, y1, x2, y2;
-    x1 = 1;
-    x2 = 2;
-    y1 = y2 = 0;
+    bool finish1, finish2 = false;
 
-    std::thread mainLoopRunnerProxy1([&]() { threadCtx1_.mainLoop_->run(); });
-    std::thread mainLoopRunnerProxy2([&]() { threadCtx2_.mainLoop_->run(); });
-    mainLoopRunnerProxy1.detach();
-    mainLoopRunnerProxy2.detach();
+    mainLoopRunnerProxy1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
+    mainLoopRunnerProxy2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
 
     while(!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
 
-    mainLoopThread1_ = std::thread([&]() {  threadCtx1_.proxyThirdParty_->testMethod(x1, callStatusProxy1, y1); });
-    mainLoopThread2_ = std::thread([&]() {  threadCtx2_.proxyThirdParty_->testMethod(x2, callStatusProxy2, y2); });
-    mainLoopThread1_.detach();
-    mainLoopThread2_.detach();
+    mainLoopThread1_ = std::thread([&]() {
+        uint8_t x1, y1;
+        x1 = 1;
+        y1 = 0;
 
-    for (int i = 0; i < 100; ++i) {
-        if (y1 == 1 && y2 == 2) break;
-        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        threadCtx1_.proxyThirdParty_->testMethod(x1, callStatusProxy1, y1);
+
+        for (int i = 0; i < 100; ++i) {
+            if (y1 == 1) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        }
+        ASSERT_EQ(1, y1);
+
+        std::unique_lock<std::mutex> lock(m1_);
+        finish1 = true;
+        condVar1_.notify_one();
+    });
+
+    mainLoopThread2_ = std::thread([&]() { 
+        uint8_t x2, y2;
+        x2 = 2;
+        y2 = 0;
+
+        threadCtx2_.proxyThirdParty_->testMethod(x2, callStatusProxy2, y2);
+
+        for (int i = 0; i < 100; ++i) {
+            if (y2 == 2) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        }
+        ASSERT_EQ(2, y2);
+
+        std::unique_lock<std::mutex> lock(m2_);
+        finish2 = true;
+        condVar2_.notify_one();
+    });
+
+    std::unique_lock<std::mutex> lock1(m1_);
+    while(!finish1) {
+        condVar1_.wait(lock1);
     }
-    // now each proxy should have received the answer to his own request
-    ASSERT_EQ(1, y1);
-    ASSERT_EQ(2, y2);
+
+    std::unique_lock<std::mutex> lock2(m2_);
+    while(!finish2) {
+        condVar2_.wait(lock2);
+    }
 }
 
 int main(int argc, char** argv) {

@@ -16,8 +16,8 @@ import java.math.BigInteger
 import java.util.ArrayList
 import java.util.Collection
 import java.util.HashMap
-import java.util.LinkedHashMap
 import java.util.HashSet
+import java.util.LinkedHashMap
 import java.util.LinkedList
 import java.util.List
 import java.util.Map
@@ -80,7 +80,6 @@ import org.osgi.framework.FrameworkUtil
 import static com.google.common.base.Preconditions.*
 
 import static extension java.lang.Integer.*
-import org.franca.deploymodel.dsl.fDeploy.FDeployFactory
 
 class FrancaGeneratorExtensions {
 
@@ -129,6 +128,43 @@ class FrancaGeneratorExtensions {
 
         return ""
     }
+    
+    def boolean isSignedBackingType(String _backingType) {
+        return (_backingType == "int8_t" ||
+                _backingType == "int16_t" ||
+                _backingType == "int32_t" ||
+                _backingType == "int64_t")
+    }
+    
+    def String doCast(String _value, String _backingType) {
+        if (_backingType.isSignedBackingType) {
+            var BigInteger itsValue = new BigInteger(_value)
+            var BigInteger itsSignedMax
+            var BigInteger itsUnsignedMax
+            
+            if (_backingType == "int8_t") {
+                itsSignedMax = new BigInteger("127");
+                itsUnsignedMax = new BigInteger("255");
+            } else if (_backingType == "int16_t") {
+                itsSignedMax = new BigInteger("32767");
+                itsUnsignedMax = new BigInteger("65535");
+            } else if (_backingType == "int32_t") {
+                itsSignedMax = new BigInteger("2147483647");
+                itsUnsignedMax = new BigInteger("4294967295");
+            } else {
+                itsSignedMax = new BigInteger("9223372036854775807");
+                itsUnsignedMax = new BigInteger("18446744073709551615");
+            }                
+            
+            if (itsValue.compareTo(itsSignedMax) == 1 &&
+                itsValue.compareTo(itsUnsignedMax) != 1) {
+                itsValue = itsValue.subtract(itsUnsignedMax).subtract(BigInteger.ONE);
+                return itsValue.toString
+            }
+        }
+        
+        return _value
+    }
 
     def String generateIndent(int _indent) {
         var String  empty = ""
@@ -156,7 +192,7 @@ class FrancaGeneratorExtensions {
     }
 
     def String getInterfaceVersion(FInterface _interface) {
-    	return "v" + _interface.version.major + "_" +_interface.version.minor
+        return "v" + _interface.version.major + "_" +_interface.version.minor
     }
 
     def String getFullyQualifiedNameWithVersion(FInterface _interface) {
@@ -660,16 +696,15 @@ class FrancaGeneratorExtensions {
         if ((type instanceof FArrayType) || (type instanceof FCompoundType)) {
             " = {}"
         } else if (type instanceof FEnumerationType) {
-            val enumType = type as FEnumerationType
-            if (enumType.enumerators.empty) {
+            if (type.enumerators.empty) {
                 " = " + getTypeName(list_element, fMethod, true) + "(0u)"
             } else {
-                " = " + getTypeName(list_element, fMethod, true) + "::" + enumPrefix + enumType.enumerators.get(0).elementName
+                " = " + getTypeName(list_element, fMethod, true) + "::" + enumPrefix + type.enumerators.get(0).elementName
             }
         } else if (type instanceof FIntegerInterval) {
-            " = " + (type as FIntegerInterval).lowerBound
+            " = " + type.lowerBound
         } else if (type instanceof FTypeDef) {
-            (type as FTypeDef).actualType.generateDummyArgumentInitialization(list_element, fMethod)
+            type.actualType.generateDummyArgumentInitialization(list_element, fMethod)
         } else {
             ""
         }
@@ -1063,7 +1098,7 @@ class FrancaGeneratorExtensions {
             definition = parentClassName + '::' + definition + parentClassName + '::'
 
         definition = definition + 'get' + fBroadcast.className + '()'
-	
+    
         if (FTypeGenerator::isdeprecated(fBroadcast.comment))
             definition = "COMMONAPI_DEPRECATED " + definition
 
@@ -1205,10 +1240,10 @@ class FrancaGeneratorExtensions {
     }
 
     def private getMaximumEnumerationValue(FEnumerationType _enumeration) {
-        var int maximum = 0;
+        var BigInteger maximum = BigInteger.ZERO;
         for (literal : _enumeration.enumerators) {
             if (literal.value != null && literal.value != "") {
-                val int literalValue = Integer.parseInt(literal.value.enumeratorValue)
+                val BigInteger literalValue = new BigInteger(literal.value.enumeratorValue)
                 if (maximum < literalValue)
                     maximum = literalValue
             }
@@ -1217,7 +1252,7 @@ class FrancaGeneratorExtensions {
     }
 
     def void setEnumerationValues(FEnumerationType _enumeration) {
-        var int currentValue = 0
+        var BigInteger currentValue = BigInteger.ZERO
         val predefineEnumValues = new ArrayList<String>()
 
         // collect all predefined enum values
@@ -1228,7 +1263,7 @@ class FrancaGeneratorExtensions {
         }
         if (_enumeration.base != null) {
             setEnumerationValues(_enumeration.base)
-            currentValue = getMaximumEnumerationValue(_enumeration.base) + 1
+            currentValue = getMaximumEnumerationValue(_enumeration.base) + BigInteger.ONE
         }
 
         for (literal : _enumeration.enumerators) {
@@ -1236,23 +1271,23 @@ class FrancaGeneratorExtensions {
                 // not predefined
                 while (predefineEnumValues.contains(String.valueOf(currentValue))) {
                     // increment it, if this was found in the list of predefined values
-                    currentValue += 1
+                    currentValue += BigInteger.ONE
                 }
-                literal.setValue(toExpression(Integer.toString(currentValue)))
+                literal.setValue(toExpression(currentValue.toString()))
             } else {
                 var enumValue = literal.value.enumeratorValue
                 if (enumValue != null) {
                     try {
-                        val int literalValue = Integer.parseInt(enumValue)
-                        literal.setValue(toExpression(Integer.toString(literalValue)))
+                        val BigInteger literalValue = new BigInteger(enumValue)
+                        literal.setValue(toExpression(literalValue.toString()))
                     } catch (NumberFormatException e) {
-                        literal.setValue(toExpression(Integer.toString(currentValue)))
+                        literal.setValue(toExpression(currentValue.toString()))
                     }
                 } else {
-                    literal.setValue(toExpression(Integer.toString(currentValue)))
+                    literal.setValue(toExpression(currentValue.toString()))
                 }
             }
-            currentValue += 1
+            currentValue += BigInteger.ONE
         }
     }
 

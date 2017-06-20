@@ -56,6 +56,9 @@ protected:
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
         ASSERT_TRUE(testProxy_->isAvailable());
+
+        byteBufferTestValue.push_back(5);
+        byteBufferTestValue.push_back(0);
     }
 
     void TearDown() {
@@ -77,18 +80,6 @@ protected:
 
     std::shared_ptr<v1_0::commonapi::datatypes::primitive::TestInterfaceProxy<>> testProxy_;
     std::shared_ptr<v1_0::commonapi::datatypes::primitive::DTPrimitiveStub> testStub_;
-};
-
-/**
-* @test Test function call with primitive types
-*   - Primitive types are:  uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t, bool, float, double, std::string, ByteBuffer
-*   - Function call of a function that has for each primitive type one argument (test values) and one return value
-*   - The stub copies the test values to the return values
-*   - On client side the test values are compared with the return values
-*/
-TEST_F(DTPrimitive, SendAndReceive) {
-
-    CommonAPI::CallStatus callStatus;
 
     uint8_t uint8TestValue = +101;
     int8_t int8TestValue = -101;
@@ -101,8 +92,20 @@ TEST_F(DTPrimitive, SendAndReceive) {
     bool booleanTestValue = true;
     float floatTestValue = 1.01f;
     double doubleTestValue = 12345.12345;
-    std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
+    const std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
+    CommonAPI::ByteBuffer byteBufferTestValue;
+};
+
+/**
+* @test Test function call with primitive types
+*   - Primitive types are:  uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t, bool, float, double, std::string, ByteBuffer
+*   - Function call of a function that has for each primitive type one argument (test values) and one return value
+*   - The stub copies the test values to the return values
+*   - On client side the test values are compared with the return values
+*/
+TEST_F(DTPrimitive, SendAndReceive) {
+
+    CommonAPI::CallStatus callStatus;
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -173,20 +176,6 @@ TEST_F(DTPrimitive, SendAndReceive) {
 TEST_F(DTPrimitive, AttributeSet) {
 
     CommonAPI::CallStatus callStatus;
-
-    uint8_t uint8TestValue = +101;
-    int8_t int8TestValue = -101;
-    uint16_t uint16TestValue = +40004;
-    int16_t int16TestValue = -5005;
-    uint32_t uint32TestValue = +1000000001;
-    int32_t int32TestValue = -20002;
-    uint64_t uint64TestValue = +4000000000000000004;
-    int64_t int64TestValue = -5000000005;
-    bool booleanTestValue = true;
-    float floatTestValue = 1.01f;
-    double doubleTestValue = 12345.12345;
-    std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -264,20 +253,7 @@ TEST_F(DTPrimitive, AttributeSet) {
 TEST_F(DTPrimitive, BroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-
-    uint8_t uint8TestValue = +101;
-    int8_t int8TestValue = -101;
-    uint16_t uint16TestValue = +40004;
-    int16_t int16TestValue = -5005;
-    uint32_t uint32TestValue = +1000000001;
-    int32_t int32TestValue = -20002;
-    uint64_t uint64TestValue = +4000000000000000004;
-    int64_t int64TestValue = -5000000005;
-    bool booleanTestValue = true;
-    float floatTestValue = 1.01f;
-    double doubleTestValue = 12345.12345;
-    const std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
-    CommonAPI::ByteBuffer byteBufferTestValue(5, 0);
+    std::atomic<CommonAPI::CallStatus> subStatus;
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -324,7 +300,19 @@ TEST_F(DTPrimitive, BroadcastReceive) {
         EXPECT_EQ(stringTestValue, stringResultValue);
         EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
         received_ = true;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
     });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     testProxy_->fTest(
             uint8TestValue,
@@ -372,6 +360,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
 TEST_F(DTPrimitive, EmptyBroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus;
     std::atomic<std::int32_t> callbackCalled(0);
     int numberFunctionCalls = 2;
 
@@ -379,7 +368,19 @@ TEST_F(DTPrimitive, EmptyBroadcastReceive) {
     testProxy_->getBTestEmptyEvent().subscribe([&]() {
         received_ = true;
         callbackCalled++;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
     });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     for (int var = 0; var < numberFunctionCalls; ++var) {
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));

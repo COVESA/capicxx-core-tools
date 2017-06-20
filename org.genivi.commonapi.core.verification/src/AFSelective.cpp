@@ -81,18 +81,23 @@ protected:
 
          // wait that proxies are not available
          int counter = 0;  // counter for avoiding endless loop
-         while ( testProxy_->isAvailable() && counter < 100 ) {
-             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-             counter++;
+
+         if (testProxy_) {
+             while ( testProxy_->isAvailable() && counter < 100 ) {
+                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                 counter++;
+             }
+             ASSERT_FALSE(testProxy_->isAvailable());
          }
-         ASSERT_FALSE(testProxy_->isAvailable());
 
          counter = 0;  // counter for avoiding endless loop
-         while ( testProxy2_->isAvailable() && counter < 100 ) {
-             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-             counter++;
+         if (testProxy2_) {
+             while ( testProxy2_->isAvailable() && counter < 100 ) {
+                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                 counter++;
+             }
+             ASSERT_FALSE(testProxy2_->isAvailable());
          }
-         ASSERT_FALSE(testProxy2_->isAvailable());
     }
 
     uint8_t value_;
@@ -321,7 +326,7 @@ TEST_F(AFSelective, ProxyBuildAndDestroy) {
     {
         std::shared_ptr<TestInterfaceProxy<>> bad_proxy =
                 runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, "blub");
-
+        ASSERT_TRUE((bool)bad_proxy);
         bad_proxy->isAvailableBlocking();
 
         std::shared_ptr<TestInterfaceProxy<>> proxy =
@@ -528,8 +533,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        callStatus1 = status;
         ++counter;
+        callStatus1 = status;
     });
     std::atomic<uint8_t> result11(0);
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
@@ -541,8 +546,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        callStatus11 = status;
         ++counter;
+        callStatus11 = status;
     });
 
     std::atomic<uint8_t> result2(0);
@@ -556,8 +561,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        callStatus2 = status;
         ++counter;
+        callStatus2 = status;
     });
     std::atomic<uint8_t> result22(0);
     my_proxy2->getBTestSelectiveSelectiveEvent().subscribe([&](
@@ -568,8 +573,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        callStatus22 = status;
         ++counter;
+        callStatus22 = status;
     });
     std::atomic<uint8_t> result3(0);
     std::atomic<CommonAPI::CallStatus> callStatus3(CommonAPI::CallStatus::UNKNOWN);
@@ -581,8 +586,8 @@ TEST_F(AFSelective, Multiple_Subscriptions_SameConnection_CallErrorHandler) {
     [&](
         const CommonAPI::CallStatus &status
     ) {
-        callStatus3 = status;
         ++counter;
+        callStatus3 = status;
     });
 
     uint32_t count = 0;
@@ -806,6 +811,133 @@ TEST_F(AFSelective, Two_proxies_subscribe_delete_one_proxy) {
     ASSERT_EQ(1, result);
     ASSERT_EQ(1, result2);
 
+}
+
+TEST_F(AFSelective, Two_proxies_subscribe_delete_one_proxy_error_listener_test) {
+    CommonAPI::CallStatus callStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus2;
+    std::atomic<CommonAPI::CallStatus> subStatus3;
+    uint8_t out, in = 0;
+    std::atomic<uint8_t> result, result2;
+    result = 0;
+    result2 = 0;
+
+    in = 4;
+    testProxy_->testMethod(in, callStatus, out);
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
+
+    // subscribe first Proxy
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+    // check that status was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
+    // subscribe second Proxy (another connection)
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    testProxy2_->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus2 = status;
+    });
+
+    // Build second proxy on same connection than first proxy
+    auto secondProxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    int i = 0;
+    while(!secondProxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(secondProxy->isAvailable());
+
+    // subscribe second Proxy same connection
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    secondProxy->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // Build third proxy on same connection than first proxy
+    auto thirdProxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    i = 0;
+    while(!thirdProxy->isAvailable() && i++ < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    ASSERT_TRUE(thirdProxy->isAvailable());
+    // subscribe second Proxy same connection
+    subStatus3 = CommonAPI::CallStatus::UNKNOWN;
+    thirdProxy->getBTestSelectiveSelectiveEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus3 = status;
+    });
+
+    // Delete first proxy to ensure same and other connection receive their status anyways!
+    testProxy_.reset();
+
+    // check that all states were correctly received after service comes up again
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS &&
+                subStatus2 == CommonAPI::CallStatus::SUCCESS &&
+                subStatus3 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
+    ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus3);
+
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    subStatus2 = CommonAPI::CallStatus::UNKNOWN;
+    subStatus3 = CommonAPI::CallStatus::UNKNOWN;
+
+    bool serviceUnregistered =
+            runtime_->unregisterService(domain, AFSelectiveStub::StubInterface::getInterface(),
+                    testAddress);
+     ASSERT_TRUE(serviceUnregistered);
+
+     std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+
+     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+     ASSERT_TRUE(serviceRegistered);
+
+     // check that all states were correctly received after service comes up again
+     for (int i = 0; i < 100; i++) {
+         if (subStatus == CommonAPI::CallStatus::SUCCESS &&
+                 subStatus2 == CommonAPI::CallStatus::SUCCESS &&
+                 subStatus3 == CommonAPI::CallStatus::SUCCESS) break;
+         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+     }
+     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
+     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus3);
 }
 
 int main(int argc, char** argv) {

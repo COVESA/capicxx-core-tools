@@ -49,15 +49,19 @@ class SubscriptionHandler {
 
 public:
 
-    SubscriptionHandler(ProxyPtr pp) : SubscriptionHandler(pp, nullptr) { }
-
-    SubscriptionHandler(ProxyPtr pp, std::promise<bool> *subscribedToAttributePromise) :
-        myProxy_(pp),
-        subscribedToAttributePromise_(subscribedToAttributePromise) {
+    SubscriptionHandler(ProxyPtr pp) :
+        myProxy_(pp) {
         availabilityStatus_ = CommonAPI::AvailabilityStatus::UNKNOWN;
         callbackTestAttribute_ = std::bind(&SubscriptionHandler::myCallback, this, std::placeholders::_1);
         subscriptionStarted_ = false;
         testAttribute_ = 0;
+        subscriptionStatus_ = CommonAPI::CallStatus::UNKNOWN;
+        subscriptionStatusCallCount_ = 0;
+    }
+
+    SubscriptionHandler(ProxyPtr pp, std::shared_ptr<std::promise<bool>> subscribedToAttributePromise) :
+    SubscriptionHandler(pp) {
+        subscribedToAttributePromise_ = std::move(subscribedToAttributePromise);
     }
 
     void receiveServiceAvailable(CommonAPI::AvailabilityStatus as) {
@@ -100,9 +104,17 @@ public:
     void startSubscribe() {
         if (!subscriptionStarted_) {
             subscribedListener_ =
-                    myProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackTestAttribute_);
+                    myProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackTestAttribute_,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        ++subscriptionStatusCallCount_;
+                        subscriptionStatus_ = status;
+
+                    });
+
             subscriptionStarted_ = true;
-            if (subscribedToAttributePromise_ != nullptr) {
+            if(subscribedToAttributePromise_) {
                 subscribedToAttributePromise_->set_value(true);
             }
         }
@@ -140,20 +152,41 @@ public:
         return false;
     }
 
-    std::mutex myQueueMutex_;
-    std::deque<uint8_t> myQueue_;
+    CommonAPI::CallStatus getSubscriptionStatus() {
+        return subscriptionStatus_;
+    }
+
+    uint32_t getSubscriptionCallCount() {
+        return subscriptionStatusCallCount_;
+    }
+
+    uint64_t getMyQueueSize() {
+        std::lock_guard<std::mutex> itsLock(myQueueMutex_);
+        return myQueue_.size();
+    }
+
+    std::deque<uint8_t> getMyQueue() {
+        std::lock_guard<std::mutex> itsLock(myQueueMutex_);
+        return myQueue_;
+    }
 
 private:
 
     bool subscriptionStarted_;
     std::atomic<uint8_t> testAttribute_;
     ProxyPtr myProxy_;
-    std::promise<bool> *subscribedToAttributePromise_;
+    std::shared_ptr<std::promise<bool>> subscribedToAttributePromise_;
 
     std::atomic<CommonAPI::AvailabilityStatus> availabilityStatus_;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener_;
 
     std::function<void(const uint8_t&)> callbackTestAttribute_;
+
+    std::atomic<CommonAPI::CallStatus> subscriptionStatus_;
+    std::atomic<uint32_t> subscriptionStatusCallCount_;
+
+    std::mutex myQueueMutex_;
+    std::deque<uint8_t> myQueue_;
 };
 
 class SubscribeUnsubscribeHandler {
@@ -284,10 +317,10 @@ private:
 };
 
 void testSubscription(ProxyPtr pp,
-                      std::promise<bool> *subscribedToProxyStatusPromise,
-                      std::promise<bool> *subscribedToAttributePromise) {
+                      std::shared_ptr<std::promise<bool>> subscribedToProxyStatusPromise,
+                      std::shared_ptr<std::promise<bool>> subscribedToAttributePromise) {
 
-    SubscriptionHandler subscriptionHandler(pp, subscribedToAttributePromise);
+    SubscriptionHandler subscriptionHandler(pp, std::move(subscribedToAttributePromise));
 
     std::function<void(const CommonAPI::AvailabilityStatus&)> callbackAvailabilityStatus =
             std::bind(&SubscriptionHandler::receiveServiceAvailable, &subscriptionHandler, std::placeholders::_1);
@@ -295,20 +328,37 @@ void testSubscription(ProxyPtr pp,
     CommonAPI::Event<>::Subscription availabilitySubscriptionId =
             pp->getProxyStatusEvent().subscribe(callbackAvailabilityStatus);
 
-    if (subscribedToProxyStatusPromise != nullptr) {
+    if(subscribedToProxyStatusPromise) {
         subscribedToProxyStatusPromise->set_value(true);
     }
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subscriptionHandler.getSubscriptionStatus() == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subscriptionHandler.getSubscriptionStatus());
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subscriptionHandler.getSubscriptionStatus() == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subscriptionHandler.getSubscriptionStatus());
 
     int cnt = 0;
     while ((subscriptionHandler.getSubscriptedTestAttribute() == 0
             || subscriptionHandler.getAvailabilityStatus()
                     != CommonAPI::AvailabilityStatus::AVAILABLE)
             && cnt < 100) {
-        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        std::this_thread::sleep_for(std::chrono::microseconds(wt * wf));
         cnt++;
     }
 
     EXPECT_GT(subscriptionHandler.getSubscriptedTestAttribute(), 0);
+
+    // We only excpect subscription status listener to be called once!
+    EXPECT_EQ(1u, subscriptionHandler.getSubscriptionCallCount());
 
     pp->getProxyStatusEvent().unsubscribe(availabilitySubscriptionId);
 
@@ -343,6 +393,7 @@ protected:
 
         // wait that proxy is not available
         int counter = 0;  // counter for avoiding endless loop
+        ASSERT_TRUE((bool)testProxy_);
         while ( testProxy_->isAvailable() && counter < 100 ) {
             std::this_thread::sleep_for(std::chrono::microseconds(wt));
             counter++;
@@ -400,15 +451,31 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+            [&](
+                const CommonAPI::CallStatus &status
+            ) {
+                subStatus = status;
+
+            });
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     const uint8_t testNumber = 10;
     for (uint8_t i=1; i<testNumber+1; i++) {
@@ -420,19 +487,19 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
         std::this_thread::sleep_for(
                 std::chrono::microseconds(std::chrono::microseconds(wt * wf)));
         {
-            std::lock_guard<std::mutex> itsLock(subscriptionHandler.myQueueMutex_);
-            if (subscriptionHandler.myQueue_.size()
+            if (subscriptionHandler.getMyQueueSize()
                     == std::deque<uint8_t>::size_type(testNumber + 1)) {
                 break;
             }
         }
     }
     // + 1 due to the reason, that by subscription the current value is returned
-    ASSERT_EQ(std::deque<uint8_t>::size_type(testNumber + 1), subscriptionHandler.myQueue_.size());
+    ASSERT_EQ(std::deque<uint8_t>::size_type(testNumber + 1), subscriptionHandler.getMyQueueSize());
 
 
     uint8_t t = 0;
-    for(std::deque<uint8_t>::iterator it = subscriptionHandler.myQueue_.begin(); it != subscriptionHandler.myQueue_.end(); ++it) {
+    auto myQueue = subscriptionHandler.getMyQueue();
+    for(std::deque<uint8_t>::iterator it = myQueue.begin(); it != myQueue.end(); ++it) {
         if (t == 0) {
             EXPECT_EQ(defaultValue, *it);
             t++;
@@ -478,8 +545,18 @@ TEST_F(CMAttributeSubscription, SubscriptionOnAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subscriptionHandler.getSubscriptionStatus() == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subscriptionHandler.getSubscriptionStatus());
 
     testStub_->setTestAttributeAttribute(2);
     subscriptionHandler.wait_Attribute(2);
@@ -494,6 +571,9 @@ TEST_F(CMAttributeSubscription, SubscriptionOnAvailable) {
     testStub_->setTestAttributeAttribute(3);
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     ASSERT_EQ(subscriptionHandler.getSubscriptedTestAttribute(), 2);
+
+    // We only excpect subscription status listener to be called once!
+    EXPECT_EQ(1u, subscriptionHandler.getSubscriptionCallCount());
 }
 
 /**
@@ -508,32 +588,43 @@ TEST_F(CMAttributeSubscription, SubscriptionOnAvailable) {
  */
 TEST_F(CMAttributeSubscription, SubscriptionMultithreading) {
 
-    std::promise<bool> subscribedToProxyStatusPromise;
-    std::promise<bool> subscribedToAttributePromise;
+    const std::uint16_t numberProxies(10);
 
-    std::thread t0(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t1(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t2(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t3(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t4(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t5(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t6(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t7(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t8(testSubscription, testProxy_, nullptr, nullptr);
-    std::thread t9(testSubscription, testProxy_, &subscribedToProxyStatusPromise, &subscribedToAttributePromise);
+    // create proxy threads which subscribe
+    std::vector<std::shared_ptr<std::thread>> threads;
+    std::deque<std::future<bool>> futures;
+    for (std::uint16_t i = 0; i < numberProxies; i++) {
+        std::shared_ptr<std::promise<bool>> subscribedToProxyStatusPromise =
+                std::make_shared<std::promise<bool>>();
+        std::shared_ptr<std::promise<bool>> subscribedToAttributePromise =
+                std::make_shared<std::promise<bool>>();
 
-    // wait that last thread subscribed to proxy status event (and therefore presumably all threads)
-    std::future<bool> futureProxyStatus = subscribedToProxyStatusPromise.get_future();
-    auto futureStatus = futureProxyStatus.wait_for(std::chrono::milliseconds(wt));
-    EXPECT_EQ(std::future_status::ready, futureStatus);
+        futures.push_back(std::move(subscribedToProxyStatusPromise->get_future()));
+        futures.push_back(std::move(subscribedToAttributePromise->get_future()));
+
+        threads.push_back(
+                std::make_shared<std::thread>(testSubscription, testProxy_,
+                        std::move(subscribedToProxyStatusPromise),
+                        std::move(subscribedToAttributePromise)));
+    }
 
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    // wait that last thread subscribed to attribute (and therefore presumably all threads)
-    std::future<bool> futureAttribute = subscribedToAttributePromise.get_future();
-    futureStatus = futureAttribute.wait_for(std::chrono::milliseconds(wt*wf));
-    EXPECT_EQ(std::future_status::ready, futureStatus);
+    // wait that all proxies subscribed to proxy status event and attribute
+    for (std::uint16_t i = 0; i < numberProxies; i++) {
+        // wait for subscription to ProxyStatusEvent
+        auto subscribedToProxyStatusEventfuture = std::move(futures.front());
+        auto futureStatus = subscribedToProxyStatusEventfuture.wait_for(std::chrono::milliseconds(wt * wf));
+        ASSERT_EQ(std::future_status::ready, futureStatus);
+        futures.pop_front();
+        // wait for subscription to attribute
+        auto subscribedToAttributeFuture = std::move(futures.front());
+        auto futureAttribute = subscribedToAttributeFuture.wait_for(std::chrono::milliseconds(wt * wf));
+        ASSERT_EQ(std::future_status::ready, futureAttribute);
+        futures.pop_front();
+    }
+
 
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     testStub_->setTestAttributeAttribute(1);
@@ -560,16 +651,9 @@ TEST_F(CMAttributeSubscription, SubscriptionMultithreading) {
         cnt++;
     }
 
-    t0.join();
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    t5.join();
-    t6.join();
-    t7.join();
-    t8.join();
-    t9.join();
+    for (const auto &t : threads) {
+        t->join();
+    }
 }
 
 /**
@@ -588,7 +672,10 @@ TEST_F(CMAttributeSubscription, SubscriptionUnsubscribeFromCallback) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     SubscriptionHandler subscriptionHandler(testProxy_);
@@ -596,6 +683,13 @@ TEST_F(CMAttributeSubscription, SubscriptionUnsubscribeFromCallback) {
     std::function<void (const uint8_t&)> myCallback = std::bind(&SubscriptionHandler::myCallback,
             &subscriptionHandler, std::placeholders::_1);
     subscriptionHandler.startSubscribe();
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subscriptionHandler.getSubscriptionStatus() == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subscriptionHandler.getSubscriptionStatus());
 
     testStub_->setTestAttributeAttribute(42);
     subscriptionHandler.wait_Attribute(42);
@@ -638,8 +732,22 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
     std::function<void (const uint8_t&)> callbackNotOk =
             std::bind(&SubscribeUnsubscribeHandler::notOkCallback, &subUnsubHandler, std::placeholders::_1);
 
-    subscribedListenerCallOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackOk);
-    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
+    std::atomic<CommonAPI::CallStatus> subStatus1, subStatus2;
+    subscribedListenerCallOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackOk,
+            [&](
+                const CommonAPI::CallStatus &status
+            ) {
+                subStatus1 = status;
+
+            });
+
+    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk,
+            [&](
+                const CommonAPI::CallStatus &status
+            ) {
+                subStatus2 = status;
+
+            });
 
     testStub_->setTestAttributeAttribute(1);
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
@@ -649,8 +757,25 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
+
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus1 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus1);
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
 
     testStub_->setTestAttributeAttribute(2);
     subUnsubHandler.wait_OkAttribute(2);
@@ -706,7 +831,10 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeTwoCallbacksCoexistent) {
 //    bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
 //    ASSERT_TRUE(serviceRegistered);
 //
-//    testProxy_->isAvailableBlocking();
+//    int counter = 0;
+//    while (!testProxy_->isAvailable() && 100 > counter++) {
+//        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+//    }
 //    ASSERT_TRUE(testProxy_->isAvailable());
 //
 //    // subscribe ok callback
@@ -763,7 +891,10 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeSequentially) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     // subscribe ok and notOk callback
@@ -826,11 +957,28 @@ TEST_F(CMAttributeSubscription, DISABLED_SubscribeAndUnsubscribeImplicitWithCrea
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
+    std::atomic<CommonAPI::CallStatus> subStatus1, subStatus2;
     // subscribe ok and notOk callback
-    subscribedListenerCallOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackOk);
+    subscribedListenerCallOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackOk,
+            [&](
+                const CommonAPI::CallStatus &status
+            ) {
+                subStatus1 = status;
+
+            });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus1 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus1);
     subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
 
     testStub_->setTestAttributeAttribute(12);
@@ -843,11 +991,27 @@ TEST_F(CMAttributeSubscription, DISABLED_SubscribeAndUnsubscribeImplicitWithCrea
     testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
     ASSERT_TRUE((bool)testProxy_);
 
-    testProxy_->isAvailableBlocking();
+    counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     //subscribe notOk callback
-    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk);
+    subscribedListenerCallNotOk = testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(callbackNotOk,
+            [&](
+                const CommonAPI::CallStatus &status
+            ) {
+                subStatus2 = status;
+
+            });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
 
     testStub_->setTestAttributeAttribute(14);
     subUnsubHandler.wait_NotOkAttribute(14);
@@ -889,15 +1053,31 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeUnsubscribe) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     subscriptionHandler.wait_Attribute(42);
 
@@ -955,8 +1135,15 @@ TEST_F(CMAttributeSubscription, SubscribeServiceNotAvailable) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus = status;
+
+                });
 
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
@@ -965,8 +1152,18 @@ TEST_F(CMAttributeSubscription, SubscribeServiceNotAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     subscriptionHandler.wait_Attribute(defaultValue);
 
@@ -1016,7 +1213,10 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     // subscribe for attribute change by the proxy
@@ -1024,8 +1224,22 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     // initialize test stub with default value
     testStub_->setTestAttributeAttribute(firstValue);
@@ -1056,6 +1270,45 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     subscriptionHandler.wait_Attribute(thirdValue);
 
     EXPECT_EQ(thirdValue, subscriptionHandler.getSubscriptedTestAttribute());
+
+    // Ensure service connection stay during for loop
+    auto tempProxy = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, serviceId);
+
+    for (uint8_t i = 0; i < 16; ++i) {
+        subscriptionHandler.resetSubcriptedTestAttribute();
+
+        isUnregistered = runtime_->unregisterService(domain,
+                TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
+        ASSERT_TRUE(isUnregistered);
+
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+        testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+
+        // register service
+        serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
+        ASSERT_TRUE(serviceRegistered);
+
+        std::atomic<CommonAPI::CallStatus> subStatus;
+        CommonAPI::Event<uint8_t>::Subscription subscribedListener =
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+            // check that subscription has succeeded
+            for (int i = 0; i < 100; i++) {
+                if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+                std::this_thread::sleep_for(std::chrono::microseconds(wt));
+            }
+            EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
+        subscriptionHandler.wait_Attribute(thirdValue);
+        EXPECT_EQ(thirdValue, subscriptionHandler.getSubscriptedTestAttribute());
+    }
 
     testProxy_->getTestAttributeAttribute().getChangedEvent().unsubscribe(subscribedListener);
 
@@ -1091,7 +1344,10 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     // subscribe for attribute change by the proxy
@@ -1099,8 +1355,22 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     // initialize test stub with default value
     testStub_->setTestAttributeAttribute(firstValue);
@@ -1166,15 +1436,32 @@ TEST_F(CMAttributeSubscription, SubscribeSecondProxyLater) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus = status;
+
+                });
 
     // register service
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     subscriptionHandler.wait_Attribute(defaultValue);
 
@@ -1190,8 +1477,22 @@ TEST_F(CMAttributeSubscription, SubscribeSecondProxyLater) {
     std::function<void (const uint8_t&)> secondMyCallback =
             std::bind(&SubscriptionHandler::myCallback, &secondSubscriptionHandler, std::placeholders::_1);
 
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
     CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
-        secondTestProxy->getTestAttributeAttribute().getChangedEvent().subscribe(secondMyCallback);
+        secondTestProxy->getTestAttributeAttribute().getChangedEvent().subscribe(secondMyCallback,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     secondSubscriptionHandler.wait_Attribute(defaultValue);
 
@@ -1241,21 +1542,64 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceNotAvailable) {
     std::function<void (const uint8_t&)> myCallback3 =
             std::bind(&ThreeCallbackHandler::callback_3, &threeCallbackHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus1, subStatus2, subStatus3;
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus1 = status;
+
+                });
+
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus2 = status;
+
+                });
+
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus3 = status;
+
+                });
 
     // register service
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus1 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus1);
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus3 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus3);
 
     threeCallbackHandler.waitCallbacks();
 
@@ -1298,7 +1642,10 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     std::function<void (const uint8_t&)> myCallback1 =
@@ -1308,14 +1655,56 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     std::function<void (const uint8_t&)> myCallback3 =
             std::bind(&ThreeCallbackHandler::callback_3, &threeCallbackHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus1, subStatus2, subStatus3;
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus1 = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus1 == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus1);
+
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     CommonAPI::Event<uint8_t>::Subscription secondSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback2,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus2 = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
+
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
     CommonAPI::Event<uint8_t>::Subscription thirdSubscribedListener =
-        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3);
+        testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback3,
+                [&](
+                    const CommonAPI::CallStatus &status
+                ) {
+                    subStatus3 = status;
+
+                });
+
+        // check that subscription has succeeded
+        for (int i = 0; i < 100; i++) {
+            if (subStatus3 == CommonAPI::CallStatus::SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(wt));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus3);
 
     threeCallbackHandler.waitCallbacks();
 
@@ -1361,15 +1750,32 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeAndReSubscribe) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+            // check that subscription has succeeded
+            for (int i = 0; i < 100; i++) {
+                if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+                std::this_thread::sleep_for(std::chrono::microseconds(wt));
+            }
+            EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     subscriptionHandler.wait_Attribute(42);
 
@@ -1389,9 +1795,23 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeAndReSubscribe) {
     subscriptionHandler.resetSubcriptedTestAttribute();
     EXPECT_EQ(0, subscriptionHandler.getSubscriptedTestAttribute());
 
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
     // resubscribe without changing the value on stub side
     subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+            // check that subscription has succeeded
+            for (int i = 0; i < 100; i++) {
+                if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+                std::this_thread::sleep_for(std::chrono::microseconds(wt));
+            }
+            EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     // expect same value for initial value as before unsubscribing
     subscriptionHandler.wait_Attribute(12);
@@ -1428,7 +1848,10 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
 
@@ -1440,16 +1863,44 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
     subscriptionHandler.wait_Attribute(42);
 
+    std::atomic<CommonAPI::CallStatus> subStatus2;
     //subscribe proxy B
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
     CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
-            testProxyB_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallbackB);
+            testProxyB_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallbackB,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus2 = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
     subscriptionHandlerB.wait_Attribute(42);
 
     // check for initial value proxy A
@@ -1530,7 +1981,10 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
 
@@ -1542,16 +1996,44 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
     subscriptionHandler.wait_Attribute(42);
 
     //subscribe proxy B
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
+    std::atomic<CommonAPI::CallStatus> subStatus2;
     CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
-            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus2 = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
     subscriptionHandlerB.wait_Attribute(42);
 
     // check for initial value proxy A
@@ -1583,9 +2065,24 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     subscriptionHandlerB.resetSubcriptedTestAttribute();
     EXPECT_EQ(0, subscriptionHandlerB.getSubscriptedTestAttribute());
 
+    subStatus = CommonAPI::CallStatus::UNKNOWN;
+    subStatus2 = CommonAPI::CallStatus::UNKNOWN;
     // resubscribe proxyA without changing the value on stub side
     subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     // expect same value for initial event as before unsubscribing on proxyA
     subscriptionHandler.wait_Attribute(12);
@@ -1593,7 +2090,20 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
 
     // resubscribe proxyB without changing the value on stub side
     subscribedListener =
-            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus2 = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
 
     // expect same value for initial event as before unsubscribing on proxyA
     subscriptionHandlerB.wait_Attribute(12);
@@ -1632,7 +2142,10 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribe
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
 
@@ -1644,16 +2157,45 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
-            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+            testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
     subscriptionHandler.wait_Attribute(42);
 
     //subscribe proxy B
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
+    std::atomic<CommonAPI::CallStatus> subStatus2;
     CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
-            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB);
+            testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB,
+                    [&](
+                        const CommonAPI::CallStatus &status
+                    ) {
+                        subStatus2 = status;
+
+                    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus2 == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(wt));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus2);
     subscriptionHandlerB.wait_Attribute(42);
 
     // check for initial value proxy A
@@ -1694,9 +2236,6 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribe
     bool serviceUnregistered = runtime_->unregisterService(domain, TestInterfaceStubDefault::StubInterface::getInterface(), testAddress);
     ASSERT_TRUE(serviceUnregistered);
 }
-
-
-
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

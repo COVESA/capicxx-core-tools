@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.console.feature"
       label="Command Line Feature"
-      version="3.1.11.qualifier"
+      version="3.1.12.qualifier"
       provider-name="BMW AG">
 
    <description url="http://www.example.com/description">
@@ -18,7 +18,7 @@
    </license>
 
    <requires>
-      <import feature="org.genivi.commonapi.console.franca.feature" version="3.1.11" match="compatible"/>
+      <import feature="org.genivi.commonapi.console.franca.feature" version="3.1.12" match="compatible"/>
    </requires>
 
    <plugin

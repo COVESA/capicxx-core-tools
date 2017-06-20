@@ -120,7 +120,10 @@ protected:
         testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
         ASSERT_TRUE((bool)testProxy_);
 
-        testProxy_->isAvailableBlocking();
+        int counter = 0;
+        while (!testProxy_->isAvailable() && 100 > counter++) {
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+        }
         ASSERT_TRUE(testProxy_->isAvailable());
     }
 
@@ -190,6 +193,52 @@ TEST_F(CMMethodCalls, SynchronousMethodCall) {
 }
 
 /**
+* @test Call fire and forget method and check via broadcast that value was received.
+*     - Subscribe to broadcast
+*     - Check that broadcast subscription succeeded
+*     - Make fire and forget method call
+*     - Check via broadcast that value was correctly reveived (Stub fires broadcast when
+*       value was received.
+*/
+TEST_F(CMMethodCalls, FireAndForget) {
+    
+    std::atomic<uint8_t> result;
+    std::atomic<CommonAPI::CallStatus> subStatus;
+    testProxy_->getBTestEvent().subscribe([&](
+        const uint8_t &y
+    ) {
+        result = y;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
+
+    uint8_t x = 5;
+    CommonAPI::CallStatus callStatus;
+    result = 0;
+    callStatus = CommonAPI::CallStatus::REMOTE_ERROR;
+    testProxy_->testDontCare(x, callStatus);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+
+    // check via broadcast that value was correctly received
+    for (int i = 0; i < 100; i++) {
+        if (result == 1) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(result, 1);
+}
+
+/**
 * @test Call test method asynchronous and check call status.
 *   - Test stub sets in-value of test method.
 *   - Make asynchronous call of test method.
@@ -208,7 +257,11 @@ TEST_F(CMMethodCalls, AsynchronousMethodCall) {
     {
         std::lock_guard<std::mutex> itsLock(values_mutex_);
         EXPECT_EQ(1u, values_.size());
-        EXPECT_EQ(x, values_[0]);
+        if (values_.size()) {
+            EXPECT_EQ(x, values_[0]);
+        } else {
+            ADD_FAILURE() << "Async callback was not called";
+        }
     }
 }
 
@@ -316,7 +369,10 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallsTimedOut) {
     testProxy2_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress2, clientId);
     ASSERT_TRUE((bool)testProxy2_);
 
-    testProxy2_->isAvailableBlocking();
+    int counter = 0;
+    while (!testProxy2_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+    }
     ASSERT_TRUE(testProxy2_->isAvailable());
 
 
@@ -478,7 +534,10 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallProxyBecomesAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {
@@ -541,7 +600,10 @@ TEST_F(CMMethodCalls, NestedAsynchronousMethodCallProxyBecomesAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {
@@ -609,7 +671,10 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
     bool serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
     ASSERT_TRUE(serviceRegistered);
 
-    testProxy_->isAvailableBlocking();
+    counter = 0;
+    while (!testProxy_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+    }
     ASSERT_TRUE(testProxy_->isAvailable());
 
     for (int i = 0; i < 100; ++i) {

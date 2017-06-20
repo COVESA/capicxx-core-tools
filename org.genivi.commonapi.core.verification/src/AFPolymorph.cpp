@@ -51,6 +51,7 @@ protected:
         ASSERT_TRUE(serviceRegistered_);
 
         testProxy_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, connectionId_client);
+        ASSERT_TRUE((bool)testProxy_);
         int i = 0;
         while(!testProxy_->isAvailable() && i++ < 100) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));

@@ -46,25 +46,38 @@ protected:
         proxy_ = runtime_->buildProxy<v1_0::commonapi::threading::TestInterfaceProxy>(domain, instance, context_);
         ASSERT_TRUE((bool)proxy_);
 
-        eventQueueThread_ = new std::thread([&]() { eventQueue_->run(); });
-        mainLoopThread_ = new std::thread([&]() { mainLoop_->run(); });
+        eventQueueThread_ = std::thread([&]() { eventQueue_->run(); });
+        mainLoopThread_ = std::thread([&]() { mainLoop_->run(); });
     }
 
     void TearDown() {
-        runtime_->unregisterService(domain, stub_->getStubAdapter()->getInterface(), instance);
-        mainLoop_->stop().get();
+        runtime_->unregisterService(domain, PingPongTestStub::StubInterface::getInterface(), instance);
+
+        if(mainLoop_->isRunning()) {
+            mainLoop_->stop();
+        }
+
+        if(eventQueue_->isRunning()) {
+            eventQueue_->stop();
+        }
+
+        while(mainLoop_->isRunning() || eventQueue_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+
+        if(mainLoopThread_.joinable()) {
+            mainLoopThread_.join();
+        }
+
+        if(eventQueueThread_.joinable()) {
+            eventQueueThread_.join();
+        }
 
         proxy_.reset();
 
         std::this_thread::sleep_for(std::chrono::microseconds(10000));
 
         delete mainLoop_;
-
-        mainLoopThread_->join();
-        delete mainLoopThread_;
-
-        eventQueueThread_->join();
-        delete eventQueueThread_;
     }
 
     std::shared_ptr<CommonAPI::Runtime> runtime_;
@@ -76,30 +89,28 @@ protected:
 
     CommonAPI::VerificationMainLoop* mainLoop_;
 
-    std::thread* eventQueueThread_;
-    std::thread* mainLoopThread_;
+    std::thread eventQueueThread_;
+    std::thread mainLoopThread_;
 };
 
 /**
 * @test Proxy Receives Available when MainLoop Dispatched sourced out to other thread.
 */
 TEST_F(THMainLoopTwoThreads, ProxyGetsAvailableStatus) {
-    std::shared_ptr<std::condition_variable> sptrAvailable(new std::condition_variable());
-    std::mutex m;
-    std::shared_ptr<bool> sptrIsAvailable(new bool(false));
+    std::atomic<bool> isAvailable(false);
     
-    proxy_->getProxyStatusEvent().subscribe([=](const CommonAPI::AvailabilityStatus& val) {
+    proxy_->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& val) {
         if (val == CommonAPI::AvailabilityStatus::AVAILABLE) {
-            *sptrIsAvailable = true;
-            sptrAvailable->notify_one();
+            isAvailable = true;
         }
     });
 
-    if (!*sptrIsAvailable) {
-        std::unique_lock<std::mutex> uniqueLock(m);
-        sptrAvailable->wait_for(uniqueLock, std::chrono::seconds(10));
+    int counter = 0;
+    while (!isAvailable && counter < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        counter++;
     }
-    
+
     ASSERT_TRUE(proxy_->isAvailable());
 }
 
@@ -107,20 +118,19 @@ TEST_F(THMainLoopTwoThreads, ProxyGetsAvailableStatus) {
 * @test Proxy gets function response when MainLoop Dispatched sourced out to other thread.
 */
 TEST_F(THMainLoopTwoThreads, ProxyGetsFunctionResponse) {
-    std::shared_ptr<std::condition_variable> sptrAvailable(new std::condition_variable());
-    std::mutex m;
-    std::shared_ptr<bool> sptrIsAvailable(new bool(false));
+    std::atomic<bool> isAvailable(false);
 
-    proxy_->getProxyStatusEvent().subscribe([=](const CommonAPI::AvailabilityStatus& val) {
+    proxy_->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& val) {
         if (val == CommonAPI::AvailabilityStatus::AVAILABLE) {
-            *sptrIsAvailable = true;
-            sptrAvailable->notify_one();
+            isAvailable = true;
         }
     });
 
-    if (!*sptrIsAvailable) {
-        std::unique_lock<std::mutex> uniqueLock(m);
-        sptrAvailable->wait_for(uniqueLock, std::chrono::seconds(10));
+    
+    int counter = 0;
+    while (!isAvailable && counter < 100) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        counter++;
     }
 
     ASSERT_TRUE(proxy_->isAvailable());

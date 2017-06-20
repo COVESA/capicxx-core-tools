@@ -27,6 +27,12 @@ interface TestInterface {
 	    UInt8 result
 	}
     }
+
+    method testDontCare fireAndForget {
+        in {
+            UInt8 x
+        }
+    }
     
     broadcast bTestSelective selective {
         out {

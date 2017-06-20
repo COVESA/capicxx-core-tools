@@ -1,0 +1,12 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<?compositeMetadataRepository version='1.0.0'?>
+<repository name='&quot;GENIVI CommonAPI 3.1 releases&quot;'
+    type='org.eclipse.equinox.internal.p2.metadata.repository.CompositeMetadataRepository' version='1.0.0'>
+  <properties size='1'>
+    <property name='p2.timestamp' value='1426002734609'/>
+  </properties>
+  <children size='2'>
+    <child location='content'/>
+    <child location='http://franca.github.io/franca/update_site/releases/0.9.1'/>
+  </children>
+</repository>

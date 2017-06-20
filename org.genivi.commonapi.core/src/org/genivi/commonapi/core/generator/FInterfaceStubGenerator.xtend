@@ -362,6 +362,7 @@ class FInterfaceStubGenerator {
         #include <«fInterface.stubHeaderPath»>
         #include <sstream>
 
+        # if defined(_MSC_VER)
         #  if _MSC_VER >= 1300
         /*
          * Diamond inheritance is used for the CommonAPI::Proxy base class.
@@ -371,6 +372,7 @@ class FInterfaceStubGenerator {
          */
         #    pragma warning( disable : 4250 )
         #  endif
+        # endif
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»

@@ -20,6 +20,8 @@ const std::string instance = "my.test.commonapi.address";
 const std::string connection_client = "client-sample";
 const std::string connection_service = "service-sample";
 
+const int tasync = 10000;
+
 class THMainLoopIntegration: public ::testing::Test {
 
 protected:
@@ -54,14 +56,22 @@ protected:
         runtime_->unregisterService(domain, v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(), instance);
 
         if (mainLoopForProxy_->isRunning()) {
-            std::future<bool> proxyStopped = mainLoopForProxy_->stop();
-            // synchronisation with stopped mainloop
-            proxyStopped.get();
+            mainLoopForProxy_->stop();
         }
         if (mainLoopForStub_->isRunning()) {
-            std::future<bool> stubStopped = mainLoopForStub_->stop();
-            // synchronisation with stopped mainloop
-            stubStopped.get();
+            mainLoopForStub_->stop();
+        }
+
+        while (mainLoopForProxy_->isRunning() || mainLoopForStub_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+
+        if(proxyThread_.joinable()) {
+            proxyThread_.join();
+        }
+
+        if(stubThread_.joinable()) {
+            stubThread_.join();
         }
 
         testProxy_.reset();
@@ -91,6 +101,8 @@ protected:
     uint8_t lastBroadcastNumber_;
     int outInt_;
 
+    std::thread proxyThread_, stubThread_;
+
 public:
     void broadcastCallback(uint8_t value) {
 
@@ -108,12 +120,8 @@ public:
 */
 TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 
-    std::thread proxyThread;
-    std::thread stubThread;
-    proxyThread = std::thread([&](){ mainLoopForProxy_->run(); });
-    stubThread = std::thread([&](){ mainLoopForStub_->run(); });
-    proxyThread.detach();
-    stubThread.detach();
+    proxyThread_ = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(); });
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
@@ -145,9 +153,8 @@ TEST_F(THMainLoopIntegration, VerifyCommunicationWithMainLoop) {
 */
 TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 
-    std::thread proxyThread = std::thread([&](){ mainLoopForProxy_->run(); });
-    std::thread stubThread = std::thread([&](){ mainLoopForStub_->run(); });
-    proxyThread.detach();
+    proxyThread_ = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(); });
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
@@ -160,12 +167,13 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
     ASSERT_TRUE(testProxy_->isAvailable());
 
     if (mainLoopForStub_->isRunning()) {
-        std::future<bool> stubStopped = mainLoopForStub_->stop();
-        // synchronisation with stopped mainloop
-        stubStopped.get();
+        mainLoopForStub_->stop();
+        while (mainLoopForStub_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
     }
-    if (stubThread.joinable()) {
-        stubThread.join();
+    if (stubThread_.joinable()) {
+        stubThread_.join();
     }
 
     uint8_t x = 5;
@@ -198,7 +206,7 @@ TEST_F(THMainLoopIntegration, VerifyTransportReading) {
 */
 TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 
-    std::thread stubThread = std::thread([&](){ mainLoopForStub_->run(3000); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(3000); });
     // wait until thread is running
     while (!mainLoopForStub_->isRunning()) {
         std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -210,8 +218,25 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
+    CommonAPI::CallStatus subStatus;
     auto& broadcastEvent = testProxy_->getTestBroadcastEvent();
-    broadcastEvent.subscribe(std::bind(&THMainLoopIntegration::broadcastCallback, this, std::placeholders::_1));
+    broadcastEvent.subscribe(std::bind(&THMainLoopIntegration::broadcastCallback, this, std::placeholders::_1),
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    for(unsigned int i = 0; subStatus != CommonAPI::CallStatus::SUCCESS && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        mainLoopForProxy_->doSingleIteration(30);
+    }
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     uint8_t x = 5;
 
@@ -227,12 +252,13 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
     }
 
     if (mainLoopForStub_->isRunning()) {
-        std::future<bool> stubStopped = mainLoopForStub_->stop();
-        // synchronisation with stopped mainloop
-        stubStopped.get();
+        mainLoopForStub_->stop();
+        while(mainLoopForStub_->isRunning()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
     }
-    if (stubThread.joinable()) {
-        stubThread.join();
+    if (stubThread_.joinable()) {
+        stubThread_.join();
     }
 
     // in total 5 broadcasts should have been arrived
@@ -252,12 +278,8 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
 */
 TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
 
-    std::thread proxyThread;
-    std::thread stubThread;
-    proxyThread = std::thread([&](){ mainLoopForProxy_->run(); });
-    stubThread = std::thread([&](){ mainLoopForStub_->run(); });
-    proxyThread.detach();
-    stubThread.detach();
+    proxyThread_ = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(); });
 
     // wait until threads are running
     while (!mainLoopForProxy_->isRunning() || !mainLoopForStub_->isRunning()) {
@@ -278,11 +300,11 @@ TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
     testProxy_->getSecondTestBroadcastSelectiveEvent().subscribe(
         [&](const uint32_t _value) {
             EXPECT_EQ(broadcastTestValue, _value);
-            ++selectiveHandlerCalled;
+            selectiveHandlerCalled = selectiveHandlerCalled + 1;
         },
         [&](const CommonAPI::CallStatus _callStatus) {
             EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, _callStatus);
-            ++selectiveErrorHandlerCalled;
+            selectiveErrorHandlerCalled = selectiveErrorHandlerCalled + 1;
         }
     );
     // Stub will fire SecondTestBroadcast once the subscription happened

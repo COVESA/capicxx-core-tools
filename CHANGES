@@ -1,5 +1,13 @@
 Changes
 =======
+v3.1.12
+- Fix compiler warnings in generated code
+- Test adaptions
+
+v3.1.11
+- Fix compiler warnings in generated code
+- Test adaptions
+- Validate array deployment parameters
 
 v3.1.10
 - Upgrade to JDK-1.8.

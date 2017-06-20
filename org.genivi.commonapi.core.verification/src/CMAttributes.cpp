@@ -255,6 +255,7 @@ TEST_F(CMAttributes, AttributeSetAsynchronous) {
 */
 TEST_F(CMAttributes, AttributeSubscription) {
 
+    std::atomic<CommonAPI::CallStatus> subStatus;
     CommonAPI::CallStatus callStatus;
     std::function<void (uint8_t)> myCallback =
             std::bind(&CMAttributes::recvSubscribedValue, this, std::placeholders::_1);
@@ -266,7 +267,20 @@ TEST_F(CMAttributes, AttributeSubscription) {
 
     value_ = 0;
 
-    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback);
+    testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
     testStub_->setTestValues(x);
     for (int i = 0; i < 100; i++) {
         if (value_ == x) break;

@@ -59,6 +59,7 @@ TEST_F(RTBuildProxiesAndStubs, LoadedRuntimeCanBuildProxiesAndStubs) {
     std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxy;
     std::thread t1([&runtime, &testProxy](){
         testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+        ASSERT_TRUE((bool)testProxy);
         testProxy->isAvailableBlocking();
         ASSERT_TRUE((bool)testProxy);
     });
@@ -74,6 +75,7 @@ TEST_F(RTBuildProxiesAndStubs, LoadedRuntimeCanBuildProxiesAndStubs) {
     ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
 
     int counter = 0;
+    ASSERT_TRUE((bool)testProxy);
     while (testProxy->isAvailable() && counter < 100 ) {
         std::this_thread::sleep_for(std::chrono::microseconds(10000));
         counter++;
@@ -106,6 +108,7 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
 
         auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
         ASSERT_TRUE((bool)testProxy);
+
         int i = 0;
         while(!testProxy->isAvailable() && i++ < 100) {
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -138,7 +141,6 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
 
         auto testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
         ASSERT_TRUE((bool)testProxy);
-
         int i = 0;
         while( (i < 100)  && (!testProxy->isAvailable()) ) {
             std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
@@ -155,6 +157,7 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxiesAndStubsTwoTimes) {
         }
         ASSERT_FALSE(testProxy->isAvailable());
     }
+
 }
 
 /**
@@ -202,6 +205,133 @@ TEST_F(RTBuildProxiesAndStubs, BuildProxyTwoTimesWithReassigningAndStub) {
         counter++;
     }
     ASSERT_FALSE(testProxy->isAvailable());
+}
+
+/**
+* @test Loads Runtime, creates proxy and stub/service, await proxy destruction
+*   - Calls CommonAPI::Runtime::get() and checks if return value is true.
+*   - Checks if test proxy with domain and test instance can be created
+*   - Checks if test stub can be created.
+*   - Register the test service.
+*   - Wait for service availability
+*   - Unregister the test service.
+*   - Wait for on future till proxy was destroyed after std::shared_ptr<> ref from thread was released
+*/
+TEST_F(RTBuildProxiesAndStubs, WaitForProxyDestruction) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    ASSERT_TRUE((bool)testProxy);
+
+    auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+    ASSERT_TRUE((bool)testStub);
+
+    ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+
+    for (int i = 0; i < 100; i++) {
+        if (testProxy->isAvailable()) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    EXPECT_TRUE(testProxy->isAvailable());
+
+    ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+    std::shared_future<void> proxy_destroyed = testProxy->getCompletionFuture();
+    // have to release own (one and only) ref
+    testProxy.reset();
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
+}
+
+/**
+* @test Loads Runtime, creates proxy and stub/service, await proxy destruction
+*   - Calls CommonAPI::Runtime::get() and checks if return value is true.
+*   - Checks if test proxy with domain and test instance can be created (in an own thread).
+*   - Checks if test stub can be created.
+*   - Register the test service.
+*   - Wait for service availability on the test proxy in it's thread.
+*   - Unregister the test service.
+*   - Wait till proxy was destroyed when std::shared_ptr<> in thread has been released.
+*/
+TEST_F(RTBuildProxiesAndStubs, WaitForProxyDestructionCreatedInThread) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE((bool)runtime);
+
+    std::future<void> proxy_destroyed;
+
+    std::thread t1([&runtime, &proxy_destroyed](){
+        std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxyInner = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+        ASSERT_TRUE((bool)testProxyInner);
+        proxy_destroyed = testProxyInner->getCompletionFuture();
+        for (int i = 0; i < 100; i++) {
+            if (testProxyInner->isAvailable()) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        EXPECT_TRUE(testProxyInner->isAvailable());
+    });
+
+    auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+    ASSERT_TRUE((bool)testStub);
+
+    ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+    if (t1.joinable()) {
+       t1.join();
+    }
+    ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
+}
+
+/**
+* @test Loads Runtime, creates proxy and stub/service, await proxy destruction in two threads
+*   - Calls CommonAPI::Runtime::get() and checks if return value is true.
+*   - Checks if test proxy with domain and test instance can be created (in an own thread).
+*   - Wait till proxy was destroyed when std::shared_ptr<> in threads
+*   - Join the threads that have been waiting for proxy destruction
+*/
+TEST_F(RTBuildProxiesAndStubs, WaitForProxyDestructionInTwoThreads) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    ASSERT_TRUE((bool)testProxy);
+
+    auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+    ASSERT_TRUE((bool)testStub);
+
+    ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+
+    for (int i = 0; i < 100; i++) {
+        if (testProxy->isAvailable()) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    EXPECT_TRUE(testProxy->isAvailable());
+
+    ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+
+
+    // convert "normal" std::future to std::shared_future to be able to share it between
+    // threads to avoid exception "std::future_error: Future already retrieved" when
+    // calling proxy's getCompletionFuture() two or more times
+    std::shared_future<void> proxy_destroyed = testProxy->getCompletionFuture();
+
+    std::thread t1([&runtime, &proxy_destroyed](){
+        ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
+    });
+
+    std::thread t2([&runtime, &proxy_destroyed](){
+        ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
+    });
+
+    testProxy.reset();
+
+    if (t1.joinable()) {
+       t1.join();
+    }
+
+    if (t2.joinable()) {
+       t2.join();
+    }
 }
 
 int main(int argc, char** argv) {

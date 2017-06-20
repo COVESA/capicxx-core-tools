@@ -92,6 +92,15 @@ protected:
 
     std::shared_ptr<v1_0::commonapi::datatypes::advanced::TestInterfaceProxy<>> testProxy_;
     std::shared_ptr<v1_0::commonapi::datatypes::advanced::DTAdvancedStub> testStub_;
+
+    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
+    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
+
+    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
 };
 
 /*
@@ -104,13 +113,6 @@ protected:
 TEST_F(DTAdvanced, SendAndReceive) {
 
     CommonAPI::CallStatus callStatus;
-
-    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
 
     arrayTestValue.push_back("Test1");
     arrayTestValue.push_back("Test2");
@@ -177,13 +179,6 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
 
     CommonAPI::CallStatus callStatus;
 
-    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
-
     arrayTestValue.push_back("Test1");
     arrayTestValue.push_back("Test2");
     arrayTestValue.push_back("Test3");
@@ -243,13 +238,6 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
 TEST_F(DTAdvanced, DISABLED_SendAndReceiveMapInvalid) {
 
     CommonAPI::CallStatus callStatus;
-
-    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
 
     arrayTestValue.push_back("Test1");
     arrayTestValue.push_back("Test2");
@@ -401,13 +389,6 @@ TEST_F(DTAdvanced, AttributeSet) {
 
     CommonAPI::CallStatus callStatus;
 
-    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
-
     arrayTestValue.push_back("Test1");
     arrayTestValue.push_back("Test2");
     arrayTestValue.push_back("Test3");
@@ -476,15 +457,7 @@ TEST_F(DTAdvanced, BroadcastReceive) {
 
     std::mutex m;
     CommonAPI::CallStatus callStatus;
-
-    v1_0::commonapi::datatypes::advanced::TestInterface::tArray arrayTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tStruct structTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tUnion unionTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tMap mapTestValue;
-    v1_0::commonapi::datatypes::advanced::TestInterface::tTypedef typedefTestValue;
-
-    std::vector<v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration> enumArrayIn;
+    std::atomic<CommonAPI::CallStatus> subStatus;
 
     {
         std::lock_guard<std::mutex> itsLock(m);
@@ -535,7 +508,19 @@ TEST_F(DTAdvanced, BroadcastReceive) {
         EXPECT_EQ(mapTestValue, mapResultValue);
         EXPECT_EQ(typedefTestValue, typedefResultValue);
         received_ = true;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
     });
+
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
 
     testProxy_->fTest(
             arrayTestValue,

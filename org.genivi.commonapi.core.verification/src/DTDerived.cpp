@@ -78,6 +78,16 @@ protected:
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterfaceProxy<>> testProxy_;
     std::shared_ptr<v1_0::commonapi::datatypes::derived::DTDerivedStub> testStub_;
 
+    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtTestValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtTestValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtTestValue_;
+    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructTestValue_;
+
+    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtResultValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtResultValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtResultValue_;
+    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructResultValue_;
+
 };
 
 /*
@@ -91,47 +101,37 @@ TEST_F(DTDerived, SendAndReceive) {
 
     CommonAPI::CallStatus callStatus;
 
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtTestValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructTestValue;
+    structExtTestValue_.setBaseMember(42);
+    structExtTestValue_.setExtendedMember("Hello World");
 
-    structExtTestValue.setBaseMember(42);
-    structExtTestValue.setExtendedMember("Hello World");
-
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2;
+    enumExtTestValue_ = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2;
 
     std::string u = "Hello World";
-    unionExtTestValue = u;
+    unionExtTestValue_ = u;
 
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_two = std::make_shared<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>();
     l_two->setName("ABC");
-    baseStructTestValue = l_two;
-
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtResultValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructResultValue;
+    baseStructTestValue_ = l_two;
 
     testProxy_->fTest(
-            structExtTestValue,
-            enumExtTestValue,
-            unionExtTestValue,
-            baseStructTestValue,
+            structExtTestValue_,
+            enumExtTestValue_,
+            unionExtTestValue_,
+            baseStructTestValue_,
             callStatus,
-            structExtResultValue,
-            enumExtResultValue,
-            unionExtResultValue,
-            baseStructResultValue
+            structExtResultValue_,
+            enumExtResultValue_,
+            unionExtResultValue_,
+            baseStructResultValue_
     );
 
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-    EXPECT_EQ(structExtTestValue, structExtResultValue);
-    EXPECT_EQ(enumExtTestValue, enumExtResultValue);
-    EXPECT_EQ(unionExtTestValue, unionExtResultValue);
+    EXPECT_EQ(structExtTestValue_, structExtResultValue_);
+    EXPECT_EQ(enumExtTestValue_, enumExtResultValue_);
+    EXPECT_EQ(unionExtTestValue_, unionExtResultValue_);
 
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_twoResult =
-            std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue);
+            std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue_);
     EXPECT_EQ(l_twoResult->getName(), "ABC");
 }
 
@@ -144,52 +144,42 @@ TEST_F(DTDerived, AttributeSet) {
 
     CommonAPI::CallStatus callStatus;
 
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtTestValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructTestValue;
-
-    structExtTestValue.setBaseMember(42);
-    structExtTestValue.setExtendedMember("Hello World");
+    structExtTestValue_.setBaseMember(42);
+    structExtTestValue_.setExtendedMember("Hello World");
 
     std::string u = "Hello World";
-    unionExtTestValue = u;
+    unionExtTestValue_ = u;
 
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_two = std::make_shared<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>();
     l_two->setName("ABC");
-    baseStructTestValue = l_two;
+    baseStructTestValue_ = l_two;
 
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtResultValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructResultValue;
-
-    testProxy_->getAStructExtAttribute().setValue(structExtTestValue, callStatus, structExtResultValue);
+    testProxy_->getAStructExtAttribute().setValue(structExtTestValue_, callStatus, structExtResultValue_);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-    EXPECT_EQ(structExtTestValue, structExtResultValue);
+    EXPECT_EQ(structExtTestValue_, structExtResultValue_);
 
     // check initial value of enumeration attribute
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE1; // this is the expected default value
-    EXPECT_EQ(enumExtTestValue, enumExtResultValue); // the uninitialized enumExtResultValue should have the default value
-    enumExtResultValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3; // set to some other value
-    testProxy_->getAEnumExtAttribute().getValue(callStatus, enumExtResultValue); // get value of attribute
+    enumExtTestValue_ = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE1; // this is the expected default value
+    EXPECT_EQ(enumExtTestValue_, enumExtResultValue_); // the uninitialized enumExtResultValue should have the default value
+    enumExtResultValue_ = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3; // set to some other value
+    testProxy_->getAEnumExtAttribute().getValue(callStatus, enumExtResultValue_); // get value of attribute
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-    EXPECT_EQ(enumExtTestValue, enumExtResultValue); // attribute value should default to the initial default value
+    EXPECT_EQ(enumExtTestValue_, enumExtResultValue_); // attribute value should default to the initial default value
 
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3;
-    testProxy_->getAEnumExtAttribute().setValue(enumExtTestValue, callStatus, enumExtResultValue);
+    enumExtTestValue_ = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE3;
+    testProxy_->getAEnumExtAttribute().setValue(enumExtTestValue_, callStatus, enumExtResultValue_);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-    EXPECT_EQ(enumExtTestValue, enumExtResultValue);
+    EXPECT_EQ(enumExtTestValue_, enumExtResultValue_);
 
-    testProxy_->getAUnionExtAttribute().setValue(unionExtTestValue, callStatus, unionExtResultValue);
+    testProxy_->getAUnionExtAttribute().setValue(unionExtTestValue_, callStatus, unionExtResultValue_);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
-    EXPECT_EQ(unionExtTestValue, unionExtResultValue);
+    EXPECT_EQ(unionExtTestValue_, unionExtResultValue_);
 
-    testProxy_->getABaseStructAttribute().setValue(baseStructTestValue, callStatus, baseStructResultValue);
+    testProxy_->getABaseStructAttribute().setValue(baseStructTestValue_, callStatus, baseStructResultValue_);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_twoResult =
-            std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue);
+            std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue_);
     EXPECT_EQ(l_twoResult->getName(), "ABC");
 
 }
@@ -203,28 +193,19 @@ TEST_F(DTDerived, AttributeSet) {
 TEST_F(DTDerived, BroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus;
 
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtTestValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtTestValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructTestValue;
+    structExtTestValue_.setBaseMember(42);
+    structExtTestValue_.setExtendedMember("Hello World");
 
-    structExtTestValue.setBaseMember(42);
-    structExtTestValue.setExtendedMember("Hello World");
-
-    enumExtTestValue = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2;
+    enumExtTestValue_ = v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt::VALUE2;
 
     std::string u = "Hello World";
-    unionExtTestValue = u;
+    unionExtTestValue_ = u;
 
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_two = std::make_shared<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>();
     l_two->setName("ABC");
-    baseStructTestValue = l_two;
-
-    v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtResultValue;
-    v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtResultValue;
-    std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructResultValue;
+    baseStructTestValue_ = l_two;
 
     received_ = false;
     testProxy_->getBTestEvent().subscribe([&](
@@ -233,26 +214,38 @@ TEST_F(DTDerived, BroadcastReceive) {
             const v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt& unionExtResultValue,
             const std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct>& baseStructResultValue
             ) {
-        EXPECT_EQ(structExtTestValue, structExtResultValue);
-        EXPECT_EQ(enumExtTestValue, enumExtResultValue);
-        EXPECT_EQ(unionExtTestValue, unionExtResultValue);
+        EXPECT_EQ(structExtTestValue_, structExtResultValue);
+        EXPECT_EQ(enumExtTestValue_, enumExtResultValue);
+        EXPECT_EQ(unionExtTestValue_, unionExtResultValue);
 
         std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct> l_twoResult =
                 std::dynamic_pointer_cast<v1_0::commonapi::datatypes::derived::TestInterface::tBaseTwoStruct>(baseStructResultValue);
         EXPECT_EQ(l_twoResult->getName(), "ABC");
         received_ = true;
+    },
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
     });
 
+    // check that subscription has succeeded
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
     testProxy_->fTest(
-            structExtTestValue,
-            enumExtTestValue,
-            unionExtTestValue,
-            baseStructTestValue,
+            structExtTestValue_,
+            enumExtTestValue_,
+            unionExtTestValue_,
+            baseStructTestValue_,
             callStatus,
-            structExtResultValue,
-            enumExtResultValue,
-            unionExtResultValue,
-            baseStructResultValue
+            structExtResultValue_,
+            enumExtResultValue_,
+            unionExtResultValue_,
+            baseStructResultValue_
     );
 
     for (int i = 0; i < 100; ++i) {
