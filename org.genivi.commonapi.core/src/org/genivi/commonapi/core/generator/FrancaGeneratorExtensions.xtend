@@ -408,6 +408,14 @@ class FrancaGeneratorExtensions {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
     }
 
+    def getSerrializationFile(FInterface fInterface) {
+        fInterface.elementName + "Serrialization.hpp"
+    }
+
+    def getSerrializationHeaderPath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.serrializationFile
+    }
+
     def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders,
         Collection<String> libraryHeaders) {
         if (!fInterface.broadcasts.filter[!selective].empty) {

@@ -44,6 +44,8 @@ class FInterfaceStubGenerator {
 
         usedTypes = new HashSet<FStructType>
 
+        fileSystemAccess.generateFile(fInterface.serrializationHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateSerrialiation(deploymentAccessor, modelid))
+
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
             fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(deploymentAccessor, modelid))
             // should skeleton code be generated ?
@@ -111,6 +113,32 @@ def dispatch extGenerateSerrializationMain(FTypeRef fTypeRef, FInterface fInterf
     «ENDIF»
 '''
 
+    def private extGenerateSerrialiation(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
+        #ifndef «fInterface.defineName»_SERRIALIZATION_HPP_
+        #define «fInterface.defineName»_SERRIALIZATION_HPP_
+
+        «val generatedHeaders = new HashSet<String>»
+        «val libraryHeaders = new HashSet<String>»
+
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders, true)»
+
+        «FOR requiredHeaderFile : generatedHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+
+        «FOR attribute : fInterface.attributes»
+            «IF attribute.isObservable»
+                «extGenerateSerrializationMain(attribute.type, fInterface)»
+            «ENDIF»
+        «ENDFOR»
+
+        #endif // «fInterface.defineName»_SERRIALIZATION_HPP_
+    '''
+
     def private generateStubHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
@@ -119,12 +147,6 @@ def dispatch extGenerateSerrializationMain(FTypeRef fTypeRef, FInterface fInterf
 
         #include <functional>
         #include <sstream>
-
-        «FOR attribute : fInterface.attributes»
-            «IF attribute.isObservable»
-                «extGenerateSerrializationMain(attribute.type, fInterface)»
-            «ENDIF»
-        «ENDFOR»
 
         «val generatedHeaders = new HashSet<String>»
         «val libraryHeaders = new HashSet<String>»
