@@ -14,6 +14,18 @@ import javax.inject.Inject
 import org.eclipse.core.resources.IResource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
+
+import org.franca.core.franca.FTypeRef
+import org.franca.core.franca.FStructType
+import org.franca.core.franca.FTypeDef
+import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FMapType
+import org.franca.core.franca.FUnionType
+import org.franca.core.franca.FEnumerationType
+
+import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FField
+
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.PropertyAccessor
@@ -26,8 +38,11 @@ class FInterfaceStubGenerator {
 
     var HashMap<String, Integer> counterMap;
     var HashMap<FMethod, LinkedHashMap<String, Boolean>> methodrepliesMap;
+    var HashSet<FStructType> usedTypes;
 
     def generateStub(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
+
+        usedTypes = new HashSet<FStructType>
 
         if(FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true").equals("true")) {
             fileSystemAccess.generateFile(fInterface.stubHeaderPath, PreferenceConstants.P_OUTPUT_STUBS, fInterface.generateStubHeader(deploymentAccessor, modelid))
@@ -50,6 +65,52 @@ class FInterfaceStubGenerator {
         }
     }
 
+def dispatch extGenerateTypeSerrialization(FTypeDef fTypeDef, FInterface fInterface) '''
+    «extGenerateSerrializationMain(fTypeDef.actualType, fInterface)»
+'''
+
+def dispatch extGenerateTypeSerrialization(FArrayType fArrayType, FInterface fInterface) '''
+'''
+
+def dispatch extGenerateTypeSerrialization(FMapType fMap, FInterface fInterface) '''
+    «extGenerateSerrializationMain(fMap.keyType, fInterface)»
+    «extGenerateSerrializationMain(fMap.valueType, fInterface)»
+'''
+
+def dispatch extGenerateTypeSerrialization(FEnumerationType fEnumerationType, FInterface fInterface) '''
+'''
+
+def dispatch extGenerateTypeSerrialization(FUnionType fUnionType, FInterface fInterface) '''
+'''
+
+def dispatch extGenerateTypeSerrialization(FStructType fStructType, FInterface fInterface) '''
+    «IF usedTypes.add(fStructType)»
+        «FOR fField : fStructType.elements»
+            «extGenerateSerrializationMain(fField.type, fInterface)»
+        «ENDFOR»
+
+        // «fStructType.name»
+        ADAPT_NAMED_ATTRS_ADT(
+        «(fStructType as FModelElement).getElementName(fInterface, true)»,
+        «extGenerateFieldsSerrialization(fStructType, fInterface)»,)
+    «ENDIF»
+'''
+
+def dispatch extGenerateFieldsSerrialization(FStructType fStructType, FInterface fInterface) '''
+    «IF (fStructType.base != null)»
+        «extGenerateFieldsSerrialization(fStructType.base, fInterface)»
+    «ENDIF»
+    «FOR fField : fStructType.elements»
+        ("«fField.name»", «fField.name»)
+    «ENDFOR»
+'''
+
+def dispatch extGenerateSerrializationMain(FTypeRef fTypeRef, FInterface fInterface) '''
+    «IF fTypeRef.derived != null»
+        «extGenerateTypeSerrialization(fTypeRef.derived, fInterface)»
+    «ENDIF»
+'''
+
     def private generateStubHeader(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         «generateCommonApiLicenseHeader()»
         «FTypeGenerator::generateComments(fInterface, false)»
@@ -58,6 +119,12 @@ class FInterfaceStubGenerator {
 
         #include <functional>
         #include <sstream>
+
+        «FOR attribute : fInterface.attributes»
+            «IF attribute.isObservable»
+                «extGenerateSerrializationMain(attribute.type, fInterface)»
+            «ENDIF»
+        «ENDFOR»
 
         «val generatedHeaders = new HashSet<String>»
         «val libraryHeaders = new HashSet<String>»
