@@ -268,6 +268,10 @@ class FrancaGeneratorExtensions {
         fModel.name.toUpperCase.replace('.', '_')
     }
 
+    def getDefineName(FStructType fStructType, FInterface fInterface) {
+        (fStructType as FModelElement).getElementName(fInterface, true).toUpperCase.replace('::', '_')
+    }
+
     def getElementName(FModelElement fModelElement) {
         if ((fModelElement.name == null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
             return "__Anonymous__"

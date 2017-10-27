@@ -533,9 +533,12 @@ class FInterfaceProxyGenerator {
             «ENDFOR»
 
             // «fStructType.name»
+            #ifndef «fStructType.getDefineName(fInterface)»
+            #define «fStructType.getDefineName(fInterface)»
             ADAPT_NAMED_ATTRS_ADT(
             «(fStructType as FModelElement).getElementName(fInterface, true)»,
             «extGenerateFieldsSerrialization(fStructType, fInterface)» ,)
+            #endif // «fStructType.getDefineName(fInterface)»
         «ENDIF»
     '''
 
