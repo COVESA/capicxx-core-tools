@@ -512,6 +512,7 @@ class FInterfaceProxyGenerator {
     '''
 
     def dispatch extGenerateTypeSerrialization(FArrayType fArrayType, FInterface fInterface) '''
+        «extGenerateSerrializationMain(fArrayType.elementType, fInterface)»
     '''
 
     def dispatch extGenerateTypeSerrialization(FMapType fMap, FInterface fInterface) '''
@@ -590,6 +591,9 @@ class FInterfaceProxyGenerator {
             «fInterface.proxyDumpWrapperClassName»(std::shared_ptr<CommonAPI::Proxy> delegate)
                 : «fInterface.proxyClassName»<_AttributeExtensions...>(delegate)
             {
+                std::cout << "Version : " << «fInterface.version.major» << "."
+                                          << «fInterface.version.minor» << std::endl;
+
                 «FOR fAttribute : fInterface.attributes»
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
                         getChangedEvent().subscribe([](const «fAttribute.getTypeName(fInterface, true)»& data)
