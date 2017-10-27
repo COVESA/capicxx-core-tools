@@ -566,10 +566,6 @@ class FInterfaceProxyGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        «FOR requiredHeaderFile : libraryHeaders.sort»
-            #include <«requiredHeaderFile»>
-        «ENDFOR»
-
         «FOR attribute : fInterface.attributes»
             «IF attribute.isObservable»
                 «extGenerateSerrializationMain(attribute.type, fInterface)»
@@ -582,6 +578,7 @@ class FInterfaceProxyGenerator {
     def private extGenerateDumpClientWrapper(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         #pragma once
         #include <«fInterface.proxyHeaderPath»>
+        #include <«fInterface.serrializationHeaderPath»>
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -593,6 +590,16 @@ class FInterfaceProxyGenerator {
             «fInterface.proxyDumpWrapperClassName»(std::shared_ptr<CommonAPI::Proxy> delegate)
                 : «fInterface.proxyClassName»<_AttributeExtensions...>(delegate)
             {
+                «FOR fAttribute : fInterface.attributes»
+                    «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
+                        getChangedEvent().subscribe([](const «fAttribute.getTypeName(fInterface, true)»& data)
+                        {
+                            boost::property_tree::ptree ptree;
+                            JsonSerializer::Private::TPtreeSerializer<«fAttribute.getTypeName(fInterface, true)»>::write(data, ptree);
+                            boost::property_tree::write_json(std::cout, ptree);
+                        });
+
+                «ENDFOR»
             }
         };
 
