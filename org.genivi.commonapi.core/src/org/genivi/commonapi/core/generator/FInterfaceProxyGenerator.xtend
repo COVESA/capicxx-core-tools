@@ -18,13 +18,31 @@ import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.genivi.commonapi.core.preferences.FPreferences
 
+import org.franca.core.franca.FTypeRef
+import org.franca.core.franca.FStructType
+import org.franca.core.franca.FTypeDef
+import org.franca.core.franca.FArrayType
+import org.franca.core.franca.FMapType
+import org.franca.core.franca.FUnionType
+import org.franca.core.franca.FEnumerationType
+
+import org.franca.core.franca.FModelElement
+import org.franca.core.franca.FField
+
 class FInterfaceProxyGenerator {
     @Inject private extension FTypeGenerator
     @Inject private extension FrancaGeneratorExtensions
 
     var boolean generateSyncCalls = true
+    var HashSet<FStructType> usedTypes;
+
 
     def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
+
+        usedTypes = new HashSet<FStructType>
+        fileSystemAccess.generateFile(fInterface.serrializationHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateSerrialiation(deploymentAccessor, modelid))
+        fileSystemAccess.generateFile(fInterface.proxyDumpWrapperHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateDumpClientWrapper(deploymentAccessor, modelid))
+
         val String generateCode = FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true")
         if(generateCode.equals("true")) {
             generateSyncCalls = FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_SYNC_CALLS, "true").equals("true")
@@ -455,6 +473,10 @@ class FInterfaceProxyGenerator {
         fInterface.proxyClassName + 'Default'
     }
 
+    def private getProxyDumpWrapperClassName(FInterface fInterface) {
+        fInterface.proxyClassName + 'DumpWrapper'
+    }
+
     def private getExtensionClassName(FAttribute fAttribute) {
         return fAttribute.className + 'Extension'
     }
@@ -484,4 +506,98 @@ class FInterfaceProxyGenerator {
             return asyncVariableList.join(', ') + ", _info"
         }
     }
+
+    def dispatch extGenerateTypeSerrialization(FTypeDef fTypeDef, FInterface fInterface) '''
+        «extGenerateSerrializationMain(fTypeDef.actualType, fInterface)»
+    '''
+
+    def dispatch extGenerateTypeSerrialization(FArrayType fArrayType, FInterface fInterface) '''
+    '''
+
+    def dispatch extGenerateTypeSerrialization(FMapType fMap, FInterface fInterface) '''
+        «extGenerateSerrializationMain(fMap.keyType, fInterface)»
+        «extGenerateSerrializationMain(fMap.valueType, fInterface)»
+    '''
+
+    def dispatch extGenerateTypeSerrialization(FEnumerationType fEnumerationType, FInterface fInterface) '''
+    '''
+
+    def dispatch extGenerateTypeSerrialization(FUnionType fUnionType, FInterface fInterface) '''
+    '''
+
+    def dispatch extGenerateTypeSerrialization(FStructType fStructType, FInterface fInterface) '''
+        «IF usedTypes.add(fStructType)»
+            «FOR fField : fStructType.elements»
+                «extGenerateSerrializationMain(fField.type, fInterface)»
+            «ENDFOR»
+
+            // «fStructType.name»
+            ADAPT_NAMED_ATTRS_ADT(
+            «(fStructType as FModelElement).getElementName(fInterface, true)»,
+            «extGenerateFieldsSerrialization(fStructType, fInterface)» ,)
+        «ENDIF»
+    '''
+
+    def dispatch extGenerateFieldsSerrialization(FStructType fStructType, FInterface fInterface) '''
+        «IF (fStructType.base != null)»
+            «extGenerateFieldsSerrialization(fStructType.base, fInterface)»
+        «ENDIF»
+        «FOR fField : fStructType.elements»
+            ("«fField.name»", «fField.name»)
+        «ENDFOR»
+    '''
+
+    def dispatch extGenerateSerrializationMain(FTypeRef fTypeRef, FInterface fInterface) '''
+        «IF fTypeRef.derived != null»
+            «extGenerateTypeSerrialization(fTypeRef.derived, fInterface)»
+        «ENDIF»
+    '''
+
+    def private extGenerateSerrialiation(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
+        #ifndef «fInterface.defineName»_SERRIALIZATION_HPP_
+        #define «fInterface.defineName»_SERRIALIZATION_HPP_
+
+        «val generatedHeaders = new HashSet<String>»
+        «val libraryHeaders = new HashSet<String>»
+
+        «fInterface.generateRequiredTypeIncludes(generatedHeaders, libraryHeaders, true)»
+
+        «FOR requiredHeaderFile : generatedHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+
+        «FOR requiredHeaderFile : libraryHeaders.sort»
+            #include <«requiredHeaderFile»>
+        «ENDFOR»
+
+        «FOR attribute : fInterface.attributes»
+            «IF attribute.isObservable»
+                «extGenerateSerrializationMain(attribute.type, fInterface)»
+            «ENDIF»
+        «ENDFOR»
+
+        #endif // «fInterface.defineName»_SERRIALIZATION_HPP_
+    '''
+
+    def private extGenerateDumpClientWrapper(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
+        #pragma once
+        #include <«fInterface.proxyHeaderPath»>
+
+        «fInterface.generateVersionNamespaceBegin»
+        «fInterface.model.generateNamespaceBeginDeclaration»
+
+        template <typename ..._AttributeExtensions>
+        class «fInterface.proxyDumpWrapperClassName» : public «fInterface.proxyClassName»<_AttributeExtensions...>
+        {
+        public:
+            «fInterface.proxyDumpWrapperClassName»(std::shared_ptr<CommonAPI::Proxy> delegate)
+                : «fInterface.proxyClassName»<_AttributeExtensions...>(delegate)
+            {
+            }
+        };
+
+        «fInterface.model.generateNamespaceEndDeclaration»
+        «fInterface.generateVersionNamespaceEnd»
+    '''
+
 }
