@@ -36,12 +36,12 @@ class FInterfaceProxyGenerator {
     var boolean generateSyncCalls = true
     var HashSet<FStructType> usedTypes;
 
-
     def generateProxy(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
 
         usedTypes = new HashSet<FStructType>
         fileSystemAccess.generateFile(fInterface.serrializationHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateSerrialiation(deploymentAccessor, modelid))
         fileSystemAccess.generateFile(fInterface.proxyDumpWrapperHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateDumpClientWrapper(deploymentAccessor, modelid))
+        fileSystemAccess.generateFile(fInterface.proxyDumpWriterHeaderPath, PreferenceConstants.P_OUTPUT_SKELETON, fInterface.extGenerateDumpClientWriter(deploymentAccessor, modelid))
 
         val String generateCode = FPreferences::getInstance.getPreference(PreferenceConstants::P_GENERATE_CODE, "true")
         if(generateCode.equals("true")) {
@@ -477,6 +477,10 @@ class FInterfaceProxyGenerator {
         fInterface.proxyClassName + 'DumpWrapper'
     }
 
+    def private getProxyDumpWriterClassName(FInterface fInterface) {
+        fInterface.proxyClassName + 'DumpWriter'
+    }
+
     def private getExtensionClassName(FAttribute fAttribute) {
         return fAttribute.className + 'Extension'
     }
@@ -579,10 +583,117 @@ class FInterfaceProxyGenerator {
         #endif // «fInterface.defineName»_SERRIALIZATION_HPP_
     '''
 
+
+    def private extGenerateDumpClientWriter(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
+        #pragma once
+
+        #include <fstream>
+
+        #include <«fInterface.proxyDumpWrapperHeaderPath»>
+        #include <«fInterface.serrializationHeaderPath»>
+
+        namespace
+        {
+            struct SCommand
+            {
+                int64_t time;
+                std::string name;
+            };
+
+            struct SVersion
+            {
+                uint32_t major;
+                uint32_t minor;
+            };
+        }
+
+        ADAPT_NAMED_ATTRS_ADT(
+        SCommand,
+        ("time", time)
+        ("name", name),
+        SIMPLE_ACCESS)
+
+        ADAPT_NAMED_ATTRS_ADT(
+        SVersion,
+        ("major", major)
+        ("minor", minor),
+        SIMPLE_ACCESS)
+
+        class «fInterface.proxyDumpWriterClassName»
+        {
+        public:
+            «fInterface.proxyDumpWriterClassName»(const std::string& file_name)
+            {
+                m_stream.open(file_name.c_str());
+                if (!m_stream.is_open())
+                {
+                    throw std::runtime_error("Failed to open file '" + file_name + "'");
+                }
+
+                boost::property_tree::ptree child_ptree;
+
+                SVersion version{«fInterface.version.major», «fInterface.version.minor»};
+                JsonSerializer::Private::TPtreeSerializer<SVersion>::write(version, child_ptree);
+
+                m_stream << "{\n\"" << "version" << "\": ";
+                boost::property_tree::write_json(m_stream, child_ptree);
+                m_stream << "queries\": [\n";
+            }
+
+            ~«fInterface.proxyDumpWriterClassName»()
+            {
+                finishQuery(true);
+                m_stream << "]\n}";
+            }
+
+            void beginQuery(const std::string& name)
+            {
+                if (!m_current_ptree.empty())
+                {
+                    finishQuery();
+                }
+
+                int64_t us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count();
+
+                boost::property_tree::ptree child_ptree;
+                JsonSerializer::Private::TPtreeSerializer<SCommand>::write({us, name}, child_ptree);
+
+                m_current_ptree.add_child("declaration", child_ptree);
+                child_ptree.clear();
+
+                m_current_ptree.add_child("params", child_ptree);
+            }
+
+            template<class T>
+            void adjustQuery(const T& var, const std::string& name)
+            {
+                boost::property_tree::ptree& data_ptree = m_current_ptree.get_child("params");
+                boost::property_tree::ptree child_ptree;
+                JsonSerializer::Private::TPtreeSerializer<T>::write(var, child_ptree);
+                data_ptree.add_child(name, child_ptree);
+            }
+
+            void finishQuery(bool last = false)
+            {
+                boost::property_tree::write_json(m_stream, m_current_ptree);
+                if (!last)
+                {
+                    m_stream << ",";
+                }
+                m_current_ptree.clear();
+            }
+
+        private:
+            std::ofstream m_stream;
+            boost::property_tree::ptree m_current_ptree;
+        };
+    '''
+
     def private extGenerateDumpClientWrapper(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         #pragma once
         #include <«fInterface.proxyHeaderPath»>
-        #include <«fInterface.serrializationHeaderPath»>
+        #include <«fInterface.proxyDumpWriterHeaderPath»>
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -593,21 +704,22 @@ class FInterfaceProxyGenerator {
         public:
             «fInterface.proxyDumpWrapperClassName»(std::shared_ptr<CommonAPI::Proxy> delegate)
                 : «fInterface.proxyClassName»<_AttributeExtensions...>(delegate)
+                , m_writer("«fInterface.proxyDumpWrapperClassName».json")
             {
-                std::cout << "Version : " << «fInterface.version.major» << "."
-                                          << «fInterface.version.minor» << std::endl;
+                std::cout << "Version : «fInterface.version.major».«fInterface.version.minor»" << std::endl;
 
                 «FOR fAttribute : fInterface.attributes»
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
-                        getChangedEvent().subscribe([](const «fAttribute.getTypeName(fInterface, true)»& data)
+                        getChangedEvent().subscribe([this](const «fAttribute.getTypeName(fInterface, true)»& data)
                         {
-                            boost::property_tree::ptree ptree;
-                            JsonSerializer::Private::TPtreeSerializer<«fAttribute.getTypeName(fInterface, true)»>::write(data, ptree);
-                            boost::property_tree::write_json(std::cout, ptree);
+                            m_writer.beginQuery("get«fAttribute.className»");
+                            m_writer.adjustQuery(data, "«fAttribute.className»");
                         });
 
                 «ENDFOR»
             }
+        private:
+            «fInterface.proxyDumpWriterClassName» m_writer;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»

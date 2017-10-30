@@ -364,12 +364,20 @@ class FrancaGeneratorExtensions {
         fInterface.elementName + "ProxyDumpWrapper.hpp"
     }
 
+    def getProxyDumpWriterHeaderFile(FInterface fInterface) {
+        fInterface.elementName + "ProxyDumpWriter.hpp"
+    }
+
     def getProxyHeaderPath(FInterface fInterface) {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyHeaderFile
     }
 
     def getProxyDumpWrapperHeaderPath(FInterface fInterface) {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyDumpWrapperHeaderFile
+    }
+
+    def getProxyDumpWriterHeaderPath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyDumpWriterHeaderFile
     }
 
     def getStubDefaultHeaderFile(FInterface fInterface) {
