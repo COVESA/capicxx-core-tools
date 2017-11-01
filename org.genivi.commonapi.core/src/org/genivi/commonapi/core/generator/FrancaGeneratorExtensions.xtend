@@ -268,6 +268,10 @@ class FrancaGeneratorExtensions {
         fModel.name.toUpperCase.replace('.', '_')
     }
 
+    def getDefineName(FStructType fStructType, FInterface fInterface) {
+        (fStructType as FModelElement).getElementName(fInterface, true).toUpperCase.replace('::', '_')
+    }
+
     def getElementName(FModelElement fModelElement) {
         if ((fModelElement.name == null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
             return "__Anonymous__"
@@ -356,8 +360,24 @@ class FrancaGeneratorExtensions {
         fInterface.elementName + "Proxy.hpp"
     }
 
+    def getProxyDumpWrapperHeaderFile(FInterface fInterface) {
+        fInterface.elementName + "ProxyDumpWrapper.hpp"
+    }
+
+    def getProxyDumpWriterHeaderFile(FInterface fInterface) {
+        fInterface.elementName + "ProxyDumpWriter.hpp"
+    }
+
     def getProxyHeaderPath(FInterface fInterface) {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyHeaderFile
+    }
+
+    def getProxyDumpWrapperHeaderPath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyDumpWrapperHeaderFile
+    }
+
+    def getProxyDumpWriterHeaderPath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.proxyDumpWriterHeaderFile
     }
 
     def getStubDefaultHeaderFile(FInterface fInterface) {
@@ -406,6 +426,14 @@ class FrancaGeneratorExtensions {
 
     def getStubHeaderPath(FInterface fInterface) {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.stubHeaderFile
+    }
+
+    def getSerrializationFile(FInterface fInterface) {
+        fInterface.elementName + "Serrialization.hpp"
+    }
+
+    def getSerrializationHeaderPath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.serrializationFile
     }
 
     def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders,
