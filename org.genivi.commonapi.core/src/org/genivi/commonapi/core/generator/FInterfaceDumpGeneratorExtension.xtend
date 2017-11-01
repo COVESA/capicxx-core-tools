@@ -164,7 +164,7 @@ class FInterfaceDumpGeneratorExtension {
 
                 m_stream << "{\n\"" << "version" << "\": ";
                 boost::property_tree::write_json(m_stream, child_ptree);
-                m_stream << "queries\": [\n";
+                m_stream << ",\"queries\": [\n";
             }
 
             ~«fInterface.proxyDumpWriterClassName»()
