@@ -24,6 +24,10 @@ class FInterfacePlaybackGeneratorExtension {
         #include "preprocessor/AdaptNamedAttrsAdt.hpp"
         #include "json_serializer/JsonSerializer.hpp"
         #include <«fInterface.serrializationHeaderPath»>
+        #include <«fInterface.getStubHeaderPath»>
+
+        «fInterface.generateVersionNamespaceBegin»
+        «fInterface.model.generateNamespaceBeginDeclaration»
 
         «FOR attribute : fInterface.attributes»
             «IF attribute.isObservable»
@@ -32,14 +36,20 @@ class FInterfacePlaybackGeneratorExtension {
         «ENDFOR»
 
 
-        class CVisitor // TODO: add base class *StubDefault
+        class CVisitor
         {
         public:
+            CVisitor(std::shared_ptr<«fInterface.getStubClassName»> transport)
+                : m_transport(transport) {}
+
             «FOR attribute : fInterface.attributes»
                 «IF attribute.isObservable»
                     void visit«attribute.name»(const «attribute.name»Element&);
                 «ENDIF»
             «ENDFOR»
+
+        private:
+            std::shared_ptr<«fInterface.getStubClassName»> m_transport;
         };
 
         class IElement
@@ -72,8 +82,8 @@ class FInterfacePlaybackGeneratorExtension {
 
         «FOR attribute : fInterface.attributes»
             «IF attribute.isObservable»
-            void CVisitor::visit«attribute.name»(const «attribute.name»Element& data)
-            {
+            void CVisitor::visit«attribute.name»(const «attribute.name»Element& data) {
+                m_transport->fire«attribute.className»Changed(data.getData());
                 std::cout << "«attribute.name»" << std::endl;
             }
             «ENDIF»
@@ -203,6 +213,7 @@ class FInterfacePlaybackGeneratorExtension {
             {
                 func->second(visitor, pt);
             }
+            // TODO: else throw
         }
 
         bool JsonDumpReader::readKey(const std::string& src, const std::string& key, std::string& val)
@@ -227,19 +238,31 @@ class FInterfacePlaybackGeneratorExtension {
             return src.find(to_find) != std::string::npos;
         }
 
+        «fInterface.model.generateNamespaceEndDeclaration»
+        «fInterface.generateVersionNamespaceEnd»
+
+        #include <CommonAPI/CommonAPI.hpp>
         #include <timeService/CTimeClient.hpp>
+        #include <«fInterface.stubDefaultHeaderPath»>
 
         int main(int argc, char** argv)
         {
+            «fInterface.generateNamespaceUsage»
+
             // TODO: catch SIGINT
 
-            if (argc < 2)
+            if (argc < 3)
             {
-                std::cout << "Input filename\n";
+                std::cout << "Format: filename serviceName\n";
                 return 0;
             }
 
-            CVisitor visitor;
+            std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+            std::shared_ptr<SensorsSourceStubDefault> service = std::make_shared<«fInterface.stubDefaultClassName»>();
+            runtime->registerService("local", argv[2], service);
+            std::cout << "Successfully Registered Service!" << std::endl;
+
+            CVisitor visitor(service);
             JsonDumpReader reader(argv[1]);
 
             std::vector<int64_t> timestamps;

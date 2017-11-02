@@ -246,6 +246,7 @@ class FInterfaceDumpGeneratorExtension {
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
                         getChangedEvent().subscribe([this](const «fAttribute.getTypeName(fInterface, true)»& data)
                         {
+                            // TODO: add mutex?
                             m_writer.beginQuery("«fAttribute.className»");
                             m_writer.adjustQuery(data, "«fAttribute.name»");
                         });

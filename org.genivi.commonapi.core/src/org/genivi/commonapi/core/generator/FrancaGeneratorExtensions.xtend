@@ -1651,6 +1651,13 @@ class FrancaGeneratorExtensions {
         return prefix
     }
 
+    def generateNamespaceUsage(FInterface fInterface)'''
+        «var FVersion itsVersion = fInterface.version»
+        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+            using namespace v«itsVersion.major.toString»::«fInterface.model.namespaceAsList.map[toString].join("::")»;
+        «ENDIF»
+    '''
+
     def getVersionPathPrefix(FTypeCollection _tc) {
         var String prefix = ""
         var FVersion itsVersion = _tc.version
