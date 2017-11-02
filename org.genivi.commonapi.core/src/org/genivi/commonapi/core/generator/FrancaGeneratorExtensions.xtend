@@ -272,6 +272,10 @@ class FrancaGeneratorExtensions {
         (fStructType as FModelElement).getElementName(fInterface, true).toUpperCase.replace('::', '_')
     }
 
+    def getDefineName(FEnumerationType fEnumerationType, FInterface fInterface) {
+        (fEnumerationType as FModelElement).getElementName(fInterface, true).toUpperCase.replace('::', '_')
+    }
+
     def getElementName(FModelElement fModelElement) {
         if ((fModelElement.name == null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
             return "__Anonymous__"
@@ -432,8 +436,16 @@ class FrancaGeneratorExtensions {
         fInterface.elementName + "Serrialization.hpp"
     }
 
+    def getPlaybackSourceFile(FInterface fInterface) {
+        fInterface.elementName + "Playback.cpp"
+    }
+
     def getSerrializationHeaderPath(FInterface fInterface) {
         fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.serrializationFile
+    }
+
+    def getPlaybackSourcePath(FInterface fInterface) {
+        fInterface.versionPathPrefix + fInterface.model.directoryPath + '/' + fInterface.playbackSourceFile
     }
 
     def generateSelectiveBroadcastStubIncludes(FInterface fInterface, Collection<String> generatedHeaders,
