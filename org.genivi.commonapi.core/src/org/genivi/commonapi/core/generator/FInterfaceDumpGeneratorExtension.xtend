@@ -55,6 +55,13 @@ class FInterfaceDumpGeneratorExtension {
     '''
 
     def dispatch extGenerateTypeSerrialization(FEnumerationType fEnumerationType, FInterface fInterface) '''
+        #ifndef «fEnumerationType.getDefineName(fInterface)»
+        #define «fEnumerationType.getDefineName(fInterface)»
+        ADAPT_NAMED_ATTRS_ADT(
+        «(fEnumerationType as FModelElement).getElementName(fInterface, true)»,
+        ("value_", value_)
+        ,SIMPLE_ACCESS)
+        #endif // «fEnumerationType.getDefineName(fInterface)»
     '''
 
     def dispatch extGenerateTypeSerrialization(FUnionType fUnionType, FInterface fInterface) '''
@@ -239,8 +246,8 @@ class FInterfaceDumpGeneratorExtension {
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
                         getChangedEvent().subscribe([this](const «fAttribute.getTypeName(fInterface, true)»& data)
                         {
-                            m_writer.beginQuery("get«fAttribute.className»");
-                            m_writer.adjustQuery(data, "«fAttribute.className»");
+                            m_writer.beginQuery("«fAttribute.className»");
+                            m_writer.adjustQuery(data, "«fAttribute.name»");
                         });
 
                 «ENDFOR»
