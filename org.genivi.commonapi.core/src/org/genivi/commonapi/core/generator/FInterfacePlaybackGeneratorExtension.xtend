@@ -258,7 +258,7 @@ class FInterfacePlaybackGeneratorExtension {
             }
 
             std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
-            std::shared_ptr<SensorsSourceStubDefault> service = std::make_shared<«fInterface.stubDefaultClassName»>();
+            std::shared_ptr<«fInterface.stubDefaultClassName»> service = std::make_shared<«fInterface.stubDefaultClassName»>();
             runtime->registerService("local", argv[2], service);
             std::cout << "Successfully Registered Service!" << std::endl;
 
