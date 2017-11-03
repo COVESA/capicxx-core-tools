@@ -55,6 +55,13 @@ class FInterfaceDumpGeneratorExtension {
     '''
 
     def dispatch extGenerateTypeSerrialization(FEnumerationType fEnumerationType, FInterface fInterface) '''
+        #ifndef «fEnumerationType.getDefineName(fInterface)»
+        #define «fEnumerationType.getDefineName(fInterface)»
+        ADAPT_NAMED_ATTRS_ADT(
+        «(fEnumerationType as FModelElement).getElementName(fInterface, true)»,
+        ("value_", value_)
+        ,SIMPLE_ACCESS)
+        #endif // «fEnumerationType.getDefineName(fInterface)»
     '''
 
     def dispatch extGenerateTypeSerrialization(FUnionType fUnionType, FInterface fInterface) '''
@@ -113,6 +120,11 @@ class FInterfaceDumpGeneratorExtension {
         #endif // «fInterface.defineName»_SERRIALIZATION_HPP_
     '''
 
+    def private extCommandTypeName(FInterface fInterface) '''
+        SCommand«fInterface.name»'''
+
+    def private extVersionTypeName(FInterface fInterface) '''
+        SVersion«fInterface.name»'''
 
     def private extGenerateDumpClientWriter(FInterface fInterface, PropertyAccessor deploymentAccessor, IResource modelid) '''
         #pragma once
@@ -122,26 +134,24 @@ class FInterfaceDumpGeneratorExtension {
         #include <«fInterface.proxyDumpWrapperHeaderPath»>
         #include <«fInterface.serrializationHeaderPath»>
 
-        namespace {
-            struct SCommand {
-                int64_t time;
-                std::string name;
-            };
+        struct «fInterface.extCommandTypeName()» {
+            int64_t time;
+            std::string name;
+        };
 
-            struct SVersion {
-                uint32_t major;
-                uint32_t minor;
-            };
-        }
+        struct «fInterface.extVersionTypeName()» {
+            uint32_t major;
+            uint32_t minor;
+        };
 
         ADAPT_NAMED_ATTRS_ADT(
-        SCommand,
+        «fInterface.extCommandTypeName()»,
         ("time", time)
         ("name", name),
         SIMPLE_ACCESS)
 
         ADAPT_NAMED_ATTRS_ADT(
-        SVersion,
+        «fInterface.extVersionTypeName()»,
         ("major", major)
         ("minor", minor),
         SIMPLE_ACCESS)
@@ -159,8 +169,8 @@ class FInterfaceDumpGeneratorExtension {
 
                 boost::property_tree::ptree child_ptree;
 
-                SVersion version{«fInterface.version.major», «fInterface.version.minor»};
-                JsonSerializer::Private::TPtreeSerializer<SVersion>::write(version, child_ptree);
+                «fInterface.extVersionTypeName()» version{«fInterface.version.major», «fInterface.version.minor»};
+                JsonSerializer::Private::TPtreeSerializer<«fInterface.extVersionTypeName()»>::write(version, child_ptree);
 
                 m_stream << "{\n\"" << "version" << "\": ";
                 boost::property_tree::write_json(m_stream, child_ptree);
@@ -184,7 +194,7 @@ class FInterfaceDumpGeneratorExtension {
                     std::chrono::system_clock::now().time_since_epoch()).count();
 
                 boost::property_tree::ptree child_ptree;
-                JsonSerializer::Private::TPtreeSerializer<SCommand>::write({us, name}, child_ptree);
+                JsonSerializer::Private::TPtreeSerializer<«fInterface.extCommandTypeName()»>::write({us, name}, child_ptree);
 
                 m_current_ptree.add_child("declaration", child_ptree);
                 child_ptree.clear();
@@ -239,8 +249,9 @@ class FInterfaceDumpGeneratorExtension {
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«fAttribute.className»().
                         getChangedEvent().subscribe([this](const «fAttribute.getTypeName(fInterface, true)»& data)
                         {
-                            m_writer.beginQuery("get«fAttribute.className»");
-                            m_writer.adjustQuery(data, "«fAttribute.className»");
+                            // TODO: add mutex?
+                            m_writer.beginQuery("«fAttribute.className»");
+                            m_writer.adjustQuery(data, "«fAttribute.name»");
                         });
 
                 «ENDFOR»
