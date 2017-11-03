@@ -35,6 +35,9 @@ class FInterfacePlaybackGeneratorExtension {
             «ENDIF»
         «ENDFOR»
 
+        «FOR broadcast : fInterface.broadcasts»
+            class «broadcast.name»Element;
+        «ENDFOR»
 
         class CVisitor
         {
@@ -46,6 +49,10 @@ class FInterfacePlaybackGeneratorExtension {
                 «IF attribute.isObservable»
                     void visit«attribute.name»(const «attribute.name»Element&);
                 «ENDIF»
+            «ENDFOR»
+
+            «FOR broadcast : fInterface.broadcasts»
+                void visit«broadcast.name»(const «broadcast.name»Element& data);
             «ENDFOR»
 
         private:
@@ -75,9 +82,33 @@ class FInterfacePlaybackGeneratorExtension {
 
             private:
                 «attribute.getTypeName(fInterface, true)» m_data;
-            };
+            }; // class «attribute.name»Element
 
             «ENDIF»
+        «ENDFOR»
+
+        «FOR broadcast : fInterface.broadcasts»
+            class «broadcast.name»Element : public IElement
+            {
+            public:
+                void visit(CVisitor& visitor) override {
+                    visitor.visit«broadcast.name»(*this);
+                }
+
+                «FOR argument : broadcast.outArgs»
+                    void set_«argument.name»(const «argument.getTypeName(fInterface, true)»& data) {
+                        m_«argument.name» = data;
+                    }
+
+                    const «argument.getTypeName(fInterface, true)»& get_«argument.name»() const {
+                        return m_«argument.name»;
+                    }
+                «ENDFOR»
+            private:
+            «FOR argument : broadcast.outArgs»
+                «argument.getTypeName(fInterface, true)» m_«argument.name»;
+            «ENDFOR»
+            }; // class «broadcast.name»Element
         «ENDFOR»
 
         «FOR attribute : fInterface.attributes»
@@ -87,6 +118,18 @@ class FInterfacePlaybackGeneratorExtension {
                 std::cout << "«attribute.name»" << std::endl;
             }
             «ENDIF»
+        «ENDFOR»
+
+        «FOR broadcast : fInterface.broadcasts»
+            void CVisitor::visit«broadcast.name»(const «broadcast.name»Element& data) {
+                m_transport->fire«broadcast.name»Event(
+                «var boolean first = true»
+                «FOR argument : broadcast.outArgs»
+                    «IF !first»,«ENDIF»«first = false» data.get_«argument.name»()
+                «ENDFOR»
+                );
+                std::cout << "«broadcast.name»" << std::endl;
+            }
         «ENDFOR»
 
         struct SCall
@@ -184,6 +227,20 @@ class FInterfacePlaybackGeneratorExtension {
                         }
                     },
                 «ENDIF»
+            «ENDFOR»
+            «FOR broadcast : fInterface.broadcasts»
+                {"«broadcast.className»", [](CVisitor& visitor, boost::property_tree::ptree pt)
+                    {
+                        «broadcast.name»Element data_elem;
+                        «FOR argument : broadcast.outArgs»
+                            boost::property_tree::ptree «argument.name»_pt = pt.get_child("«argument.name»");
+                            «argument.getTypeName(fInterface, true)» «argument.name»_data;
+                            JsonSerializer::readFromPtree(«argument.name»_pt, «argument.name»_data);
+                            data_elem.set_«argument.name»(«argument.name»_data);
+                        «ENDFOR»
+                        visitor.visit«broadcast.name»(data_elem);
+                    }
+                },
             «ENDFOR»
             };
         }

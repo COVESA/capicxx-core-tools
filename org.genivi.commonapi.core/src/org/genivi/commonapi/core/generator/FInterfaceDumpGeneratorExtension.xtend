@@ -264,7 +264,7 @@ class FInterfaceDumpGeneratorExtension {
                     «fInterface.proxyClassName»<_AttributeExtensions...>::get«broadcast.className»().subscribe([this](
                         «var boolean first = true»
                         «FOR argument : broadcast.outArgs»
-                            «IF !first»,«ENDIF» const «argument.getTypeName(argument, true)»& «argument.name»
+                            «IF !first»,«ENDIF»«first = false» const «argument.getTypeName(argument, true)»& «argument.name»
                         «ENDFOR»
                         ) {
                             // TODO: add mutex?
