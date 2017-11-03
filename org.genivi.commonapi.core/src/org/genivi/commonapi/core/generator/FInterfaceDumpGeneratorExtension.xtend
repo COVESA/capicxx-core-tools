@@ -117,6 +117,12 @@ class FInterfaceDumpGeneratorExtension {
             «ENDIF»
         «ENDFOR»
 
+        «FOR broadcast : fInterface.broadcasts»
+            «FOR argument : broadcast.outArgs»
+                «extGenerateSerrializationMain(argument.type, fInterface)»
+            «ENDFOR»
+        «ENDFOR»
+
         #endif // «fInterface.defineName»_SERRIALIZATION_HPP_
     '''
 
@@ -253,7 +259,20 @@ class FInterfaceDumpGeneratorExtension {
                             m_writer.beginQuery("«fAttribute.className»");
                             m_writer.adjustQuery(data, "«fAttribute.name»");
                         });
-
+                «ENDFOR»
+                «FOR broadcast : fInterface.broadcasts»
+                    «fInterface.proxyClassName»<_AttributeExtensions...>::get«broadcast.className»().subscribe([this](
+                        «var boolean first = true»
+                        «FOR argument : broadcast.outArgs»
+                            «IF !first»,«ENDIF» const «argument.getTypeName(argument, true)»& «argument.name»
+                        «ENDFOR»
+                        ) {
+                            // TODO: add mutex?
+                            m_writer.beginQuery("«broadcast.className»");
+                            «FOR argument : broadcast.outArgs»
+                                m_writer.adjustQuery(«argument.name», "«argument.name»");
+                            «ENDFOR»
+                        });
                 «ENDFOR»
             }
         private:
