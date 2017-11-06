@@ -247,7 +247,7 @@ class FInterfaceDumpGeneratorExtension {
         public:
             «fInterface.proxyDumpWrapperClassName»(std::shared_ptr<CommonAPI::Proxy> delegate)
                 : «fInterface.proxyClassName»<_AttributeExtensions...>(delegate)
-                , m_writer("«fInterface.proxyDumpWrapperClassName».json")
+                , m_writer("«fInterface.name»_dump.json")
             {
                 std::cout << "Version : «fInterface.version.major».«fInterface.version.minor»" << std::endl;
 

@@ -128,20 +128,20 @@ class FrancaGeneratorExtensions {
 
         return ""
     }
-    
+
     def boolean isSignedBackingType(String _backingType) {
         return (_backingType == "int8_t" ||
                 _backingType == "int16_t" ||
                 _backingType == "int32_t" ||
                 _backingType == "int64_t")
     }
-    
+
     def String doCast(String _value, String _backingType) {
         if (_backingType.isSignedBackingType) {
             var BigInteger itsValue = new BigInteger(_value)
             var BigInteger itsSignedMax
             var BigInteger itsUnsignedMax
-            
+
             if (_backingType == "int8_t") {
                 itsSignedMax = new BigInteger("127");
                 itsUnsignedMax = new BigInteger("255");
@@ -154,15 +154,15 @@ class FrancaGeneratorExtensions {
             } else {
                 itsSignedMax = new BigInteger("9223372036854775807");
                 itsUnsignedMax = new BigInteger("18446744073709551615");
-            }                
-            
+            }
+
             if (itsValue.compareTo(itsSignedMax) == 1 &&
                 itsValue.compareTo(itsUnsignedMax) != 1) {
                 itsValue = itsValue.subtract(itsUnsignedMax).subtract(BigInteger.ONE);
                 return itsValue.toString
             }
         }
-        
+
         return _value
     }
 
@@ -197,7 +197,7 @@ class FrancaGeneratorExtensions {
 
     def String getFullyQualifiedNameWithVersion(FInterface _interface) {
         return _interface.getFullyQualifiedName + ":" + getInterfaceVersion(_interface)
-    }   
+    }
 
     def String getFullyQualifiedCppName(FModelElement fModelElement) {
         if (fModelElement.eContainer instanceof FModel) {
@@ -437,7 +437,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getPlaybackSourceFile(FInterface fInterface) {
-        fInterface.elementName + "Playback.cpp"
+        fInterface.elementName + "Playback.hpp"
     }
 
     def getSerrializationHeaderPath(FInterface fInterface) {
@@ -567,7 +567,7 @@ class FrancaGeneratorExtensions {
 
     def generateOverloadedStubSignature(FMethod fMethod, LinkedHashMap<String, Boolean> replies) {
         var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
-        
+
         if(!fMethod.isFireAndForget && replies.containsValue(true)) {
             //replies containing error replies
             signature = signature + ', const CommonAPI::CallId_t _callId'
@@ -606,10 +606,10 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
     def generateStubErrorReplySignature(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no error type: ' + fBroadcast)
-        
+
         var signature = 'const CommonAPI::CallId_t _callId'
 
         if (!fBroadcast.errorArgs(deploymentAccessor).empty)
@@ -617,7 +617,7 @@ class FrancaGeneratorExtensions {
 
         return signature
     }
-    
+
     def errorReplyTypes(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
 
@@ -629,28 +629,28 @@ class FrancaGeneratorExtensions {
         types = types + errorTypes
         return types
     }
-    
+
     def errorReplyCallbackName(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
-        
+
         return fBroadcast.elementName + "Callback"
     }
-    
+
     def errorReplyCallbackBindArgs(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
 
         var bindArgs = "std::placeholders::_1, " + "\"" + deploymentAccessor.getErrorName(fBroadcast) + "\""
         if(fBroadcast.errorArgs(deploymentAccessor).size > 1) {
             for(var i=0; i < fBroadcast.errorArgs(deploymentAccessor).size; i++) {
-                bindArgs = bindArgs + ', std::placeholders::_' + (i+2) 
+                bindArgs = bindArgs + ', std::placeholders::_' + (i+2)
             }
         }
         return bindArgs
     }
-    
+
     def generateErrorReplyCallbackSignature(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
-        
+
         var signature = 'const CommonAPI::CallId_t _callId'
         var signatureOut = fBroadcast.outArgs.map[getTypeName(fBroadcast, true) + ' _' + it.elementName].join(', ')
         if(signatureOut != "") {
@@ -659,30 +659,30 @@ class FrancaGeneratorExtensions {
         signature = signature + signatureOut
         return signature
     }
-    
-    def isErrorType(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {        
+
+    def isErrorType(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         return (deploymentAccessor.getBroadcastType(fBroadcast) == PropertyAccessor.BroadcastType.error)
     }
-    
+
     def isErrorType(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         return (fBroadcast.isErrorType(deploymentAccessor) &&
             deploymentAccessor.getErrors(fMethod) != null &&
             deploymentAccessor.getErrors(fMethod).contains(fBroadcast.elementName))
     }
-    
+
     def errorName(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
         checkArgument(!fBroadcast.outArgs.empty, 'FBroadcast of type error has no required error name: ' + fBroadcast)
         checkArgument(fBroadcast.outArgs.get(0).getTypeName(fBroadcast, true) == 'std::string',
         'FBroadcast of type error does not contain a string as first argument (error name): ' + fBroadcast)
-        
+
         return fBroadcast.outArgs.get(0).elementName
     }
-    
+
     def errorArgs(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no error type: ' + fBroadcast)
         checkArgument(!fBroadcast.outArgs.empty, 'FBroadcast of type error has no required error name: ' + fBroadcast)
-        
+
         return fBroadcast.outArgs.subList(1, fBroadcast.outArgs.size)
     }
 
@@ -1138,7 +1138,7 @@ class FrancaGeneratorExtensions {
             definition = parentClassName + '::' + definition + parentClassName + '::'
 
         definition = definition + 'get' + fBroadcast.className + '()'
-    
+
         if (FTypeGenerator::isdeprecated(fBroadcast.comment))
             definition = "COMMONAPI_DEPRECATED " + definition
 
@@ -2146,7 +2146,7 @@ class FrancaGeneratorExtensions {
         }
         return fdProviders;
     }
-    
+
     /**
      * Copy deployment attributes into the destination deployment
      */
@@ -2154,7 +2154,7 @@ class FrancaGeneratorExtensions {
         if (_source != null && _source.target != null &&
             _target != null && _source.target.equals(_target.target)) {
 
-            var List<FDAttribute> itsNewAttributes = new ArrayList<FDAttribute>()                
+            var List<FDAttribute> itsNewAttributes = new ArrayList<FDAttribute>()
             var List<FDBroadcast> itsNewBroadcasts = new ArrayList<FDBroadcast>()
             var List<FDMethod> itsNewMethods = new ArrayList<FDMethod>()
 
@@ -2209,7 +2209,7 @@ class FrancaGeneratorExtensions {
             mergeDeployments(_source.types, _target.types)
         }
     }
-    
+
     def mergeDeployments(FDTypes _source, FDInterface _target) {
         mergeDeployments(_source.types, _target.types)
     }
@@ -2268,8 +2268,8 @@ class FrancaGeneratorExtensions {
                             itsTargetUnion.properties.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
-                } 
-            } 
+                }
+            }
             if (!hasBeenMerged)
                 itsNewTypeDefs.add(EcoreUtil.copy(s))
         }
