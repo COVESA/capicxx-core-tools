@@ -105,9 +105,9 @@ class FInterfacePlaybackGeneratorExtension {
                     }
                 «ENDFOR»
             private:
-            «FOR argument : broadcast.outArgs»
-                «argument.getTypeName(fInterface, true)» m_«argument.name»;
-            «ENDFOR»
+                «FOR argument : broadcast.outArgs»
+                    «argument.getTypeName(fInterface, true)» m_«argument.name»;
+                «ENDFOR»
             }; // class «broadcast.name»Element
         «ENDFOR»
 
@@ -125,7 +125,7 @@ class FInterfacePlaybackGeneratorExtension {
                 m_transport->fire«broadcast.name»Event(
                 «var boolean first = true»
                 «FOR argument : broadcast.outArgs»
-                    «IF !first»,«ENDIF»«first = false» data.get_«argument.name»()
+                    «IF !first»,«ENDIF»«IF first = false»«ENDIF» data.get_«argument.name»()
                 «ENDFOR»
                 );
                 std::cout << "«broadcast.name»" << std::endl;
