@@ -152,7 +152,7 @@ public class PropertyAccessor {
 		}
 		catch (java.lang.NullPointerException e) {}
 		// Access the model directly, without accessor
-		for(FDProperty property : obj.getProperties()) {
+		for(FDProperty property : obj.getProperties().getItems()) {
 			if(property.eContainer() instanceof FDInterfaceInstance) {
 				FDValue fdVal = property.getValue().getSingle();
 				if(fdVal instanceof FDString) {
