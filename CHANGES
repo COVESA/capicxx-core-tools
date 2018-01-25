@@ -1,5 +1,8 @@
 Changes
 =======
+v3.1.12.2
+- Reworked attribute locking in StubAdapter to prevent deadlock
+
 v3.1.12.1
 - Fixed data race in generated StubDefault when using attributes
 - Fix extended unions with custom data types

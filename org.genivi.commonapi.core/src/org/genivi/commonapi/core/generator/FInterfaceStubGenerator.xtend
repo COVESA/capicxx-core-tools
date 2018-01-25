@@ -139,17 +139,16 @@ class FInterfaceStubGenerator {
 
             virtual void deactivateManagedInstances() = 0;
 
-            void lockAttributes() {
-                «IF !fInterface.attributes.empty»
-                    attributesMutex_.lock();
-                «ENDIF»
-            }
+            «FOR attribute : fInterface.attributes»
+                void «attribute.stubClassLockMethodName»(bool _lockAccess) {
+                    if (_lockAccess) {
+                        «attribute.stubAdapterAttributeMutexName».lock();
+                    } else {
+                        «attribute.stubAdapterAttributeMutexName».unlock();
+                    }
+                }
+            «ENDFOR»
 
-            void unlockAttributes() {
-                «IF !fInterface.attributes.empty»
-                    attributesMutex_.unlock();
-                «ENDIF»
-            }
         protected:
             /**
              * Defines properties for storing the ClientIds of clients / proxies that have
@@ -161,9 +160,9 @@ class FInterfaceStubGenerator {
                 «ENDIF»
             «ENDFOR»
 
-            «IF !fInterface.attributes.empty»
-                std::mutex attributesMutex_;
-            «ENDIF»
+            «FOR attribute : fInterface.attributes»
+                std::recursive_mutex «attribute.stubAdapterAttributeMutexName»;
+            «ENDFOR»
         };
 
         /**
@@ -217,6 +216,7 @@ class FInterfaceStubGenerator {
 
             virtual ~«fInterface.stubClassName»() {}
             virtual const CommonAPI::Version& getInterfaceVersion(std::shared_ptr<CommonAPI::ClientId> clientId) = 0;
+            void lockInterfaceVersionAttribute(bool _lockAccess) { static_cast<void>(_lockAccess); }
 
             «FOR attribute : fInterface.attributes»
                 «FTypeGenerator::generateComments(attribute, false)»
@@ -234,6 +234,11 @@ class FInterfaceStubGenerator {
                         stubAdapter->«attribute.stubAdapterClassFireChangedMethodName»(_value);
                     }
                 «ENDIF»
+                void «attribute.stubClassLockMethodName»(bool _lockAccess) {
+                    auto stubAdapter = «fInterface.stubCommonAPIClassName»::stubAdapter_.lock();
+                    if (stubAdapter)
+                        stubAdapter->«attribute.stubClassLockMethodName»(_lockAccess);
+                }
             «ENDFOR»
 
             «FOR method: fInterface.methods»
@@ -560,10 +565,10 @@ class FInterfaceStubGenerator {
                 bool valueChanged;
                 std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter = CommonAPI::Stub<«fInterface.stubAdapterClassName», «fInterface.stubRemoteEventClassName»>::stubAdapter_.lock();
                 if(stubAdapter) {
-                    stubAdapter->lockAttributes();
+                    stubAdapter->«attribute.stubClassLockMethodName»(true);
                     valueChanged = («attribute.stubDefaultClassVariableName» != _value);
                     «attribute.stubDefaultClassVariableName» = std::move(_value);
-                    stubAdapter->unlockAttributes();
+                    stubAdapter->«attribute.stubClassLockMethodName»(false);
                 } else {
                     valueChanged = («attribute.stubDefaultClassVariableName» != _value);
                     «attribute.stubDefaultClassVariableName» = std::move(_value);
@@ -720,5 +725,9 @@ class FInterfaceStubGenerator {
 
     def private getStubDefaultClassVariableName(FAttribute fAttribute) {
         fAttribute.elementName.toFirstLower + 'AttributeValue_'
+    }
+
+    def private getStubAdapterAttributeMutexName(FAttribute fAttribute) {
+        fAttribute.elementName.toFirstLower + 'Mutex_'
     }
 }

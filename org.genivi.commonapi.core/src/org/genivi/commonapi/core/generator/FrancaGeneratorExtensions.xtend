@@ -1068,6 +1068,10 @@ class FrancaGeneratorExtensions {
         'onRemote' + fAttribute.elementName.toFirstUpper + 'AttributeChanged'
     }
 
+    def getStubClassLockMethodName(FAttribute fAttribute) {
+        'lock' + fAttribute.elementName.toFirstUpper + 'Attribute'
+    }
+
     def getStubClassGetMethodName(FAttribute fAttribute) {
         'get' + fAttribute.elementName.toFirstUpper + 'Attribute'
     }
