@@ -1,5 +1,9 @@
 Changes
 =======
+v3.1.12.1
+- Fixed data race in generated StubDefault when using attributes
+- Fix extended unions with custom data types
+
 v3.1.12
 - Fix compiler warnings in generated code
 - Test adaptions

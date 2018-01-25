@@ -80,6 +80,10 @@ class FInterfaceStubGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
+        «IF !fInterface.attributes.empty»
+            #include <mutex>
+        «ENDIF»
+
         #include <CommonAPI/Stub.hpp>
 
         #undef COMMONAPI_INTERNAL_COMPILATION
@@ -134,6 +138,18 @@ class FInterfaceStubGenerator {
             «ENDFOR»
 
             virtual void deactivateManagedInstances() = 0;
+
+            void lockAttributes() {
+                «IF !fInterface.attributes.empty»
+                    attributesMutex_.lock();
+                «ENDIF»
+            }
+
+            void unlockAttributes() {
+                «IF !fInterface.attributes.empty»
+                    attributesMutex_.unlock();
+                «ENDIF»
+            }
         protected:
             /**
              * Defines properties for storing the ClientIds of clients / proxies that have
@@ -144,6 +160,10 @@ class FInterfaceStubGenerator {
                     std::shared_ptr<CommonAPI::ClientIdList> «broadcast.stubAdapterClassSubscriberListPropertyName»;
                 «ENDIF»
             «ENDFOR»
+
+            «IF !fInterface.attributes.empty»
+                std::mutex attributesMutex_;
+            «ENDIF»
         };
 
         /**
@@ -537,8 +557,18 @@ class FInterfaceStubGenerator {
                 if (!«attribute.stubDefaultClassValidateMethodName»(_value))
                     return false;
 
-                const bool valueChanged = («attribute.stubDefaultClassVariableName» != _value);
-                «attribute.stubDefaultClassVariableName» = std::move(_value);
+                bool valueChanged;
+                std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter = CommonAPI::Stub<«fInterface.stubAdapterClassName», «fInterface.stubRemoteEventClassName»>::stubAdapter_.lock();
+                if(stubAdapter) {
+                    stubAdapter->lockAttributes();
+                    valueChanged = («attribute.stubDefaultClassVariableName» != _value);
+                    «attribute.stubDefaultClassVariableName» = std::move(_value);
+                    stubAdapter->unlockAttributes();
+                } else {
+                    valueChanged = («attribute.stubDefaultClassVariableName» != _value);
+                    «attribute.stubDefaultClassVariableName» = std::move(_value);
+                }
+
                 return valueChanged;
             }
 

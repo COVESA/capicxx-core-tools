@@ -85,7 +85,7 @@ class FTypeCommonAreaGenerator {
             var item = iter.next
             var lName = "";
             if (item.type.derived != null) {
-                lName = parent.model.namespaceAsList.join("::") + "::" + item.getClassNamespaceWithName(item.elementName, parent, parent.name)
+                lName = parent.versionPrefix + parent.model.namespaceAsList.join("::") + "::" + item.getTypeName(fUnion, true)
             } else {
                lName = item.getTypeName(fUnion, false)
             }
