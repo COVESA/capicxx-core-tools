@@ -67,7 +67,7 @@ import org.franca.deploymodel.dsl.fDeploy.FDMethod
 import org.franca.deploymodel.dsl.fDeploy.FDModel
 import org.franca.deploymodel.dsl.fDeploy.FDProvider
 import org.franca.deploymodel.dsl.fDeploy.FDStruct
-import org.franca.deploymodel.dsl.fDeploy.FDTypeDef
+import org.franca.deploymodel.dsl.fDeploy.FDTypeDefinition
 import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.franca.deploymodel.dsl.fDeploy.FDUnion
 import org.genivi.commonapi.core.deployment.PropertyAccessor
@@ -2120,8 +2120,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDAttribute t : _target.attributes) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2134,8 +2134,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDBroadcast t : _target.broadcasts) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2149,8 +2149,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDMethod t : _target.methods) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2187,42 +2187,42 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def mergeDeployments(EList<FDTypeDef> _source, EList<FDTypeDef> _target) {
-        var List<FDTypeDef> itsNewTypeDefs = new ArrayList<FDTypeDef>()
+    def mergeDeployments(EList<FDTypeDefinition> _source, EList<FDTypeDefinition> _target) {
+        var List<FDTypeDefinition> itsNewTypeDefs = new ArrayList<FDTypeDefinition>()
 
-        for (FDTypeDef s : _source) {
+        for (FDTypeDefinition s : _source) {
             var boolean hasBeenMerged = false
-            for (FDTypeDef t : _target) {
+            for (FDTypeDefinition t : _target) {
                 if (s instanceof FDArray && t instanceof FDArray) {
                     val FDArray itsSourceArray = s as FDArray
                     val FDArray itsTargetArray = t as FDArray
                     if (itsSourceArray.target.equals(itsTargetArray.target)) {
-                        for (p : itsSourceArray.properties)
-                            itsTargetArray.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceArray.properties.items)
+                            itsTargetArray.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDEnumeration && t instanceof FDEnumeration) {
                     val FDEnumeration itsSourceEnumeration = s as FDEnumeration
                     val FDEnumeration itsTargetEnumeration = t as FDEnumeration
                     if (itsSourceEnumeration.target.equals(itsTargetEnumeration.target)) {
-                        for (p : itsSourceEnumeration.properties)
-                            itsTargetEnumeration.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceEnumeration.properties.items)
+                            itsTargetEnumeration.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDStruct && t instanceof FDStruct) {
                     val FDStruct itsSourceStruct = s as FDStruct
                     val FDStruct itsTargetStruct = t as FDStruct
                     if (itsSourceStruct.target.equals(itsTargetStruct.target)) {
-                        for (p : itsSourceStruct.properties)
-                            itsTargetStruct.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceStruct.properties.items)
+                            itsTargetStruct.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDUnion && t instanceof FDUnion) {
                     val FDUnion itsSourceUnion = s as FDUnion
                     val FDUnion itsTargetUnion = t as FDUnion
                     if (itsSourceUnion.target.equals(itsTargetUnion.target)) {
-                        for (p : itsSourceUnion.properties)
-                            itsTargetUnion.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceUnion.properties.items)
+                            itsTargetUnion.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } 
