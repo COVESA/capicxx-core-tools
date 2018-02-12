@@ -258,7 +258,7 @@ struct MyEnumExtended : MyEnum {
 [NOTE]
 In earlier versions of ComonAPI Franca enumerations were mapped to strongly typed C++11 enums. This was changed because CommonAPI needs for the new serialization/deserialization concept the possibility to cast CommonAPI enumerations implicitely to its base types.
 
-The neumeration base class looks like:
+The enumeration base class looks like:
 
 .CommonAPI C++
 [source,{cppstr}]
