@@ -550,13 +550,27 @@ class FInterfaceStubGenerator {
             }
 
             void «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassSetMethodName»(«typeName» _value) {
-                «IF attribute.isObservable»const bool valueChanged = «ENDIF»«attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 «IF attribute.isObservable»
-                if (valueChanged) {
-                    «attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                std::shared_ptr<«fInterface.stubAdapterClassName»> stubAdapter = CommonAPI::Stub<«fInterface.stubAdapterClassName»,
+                «fInterface.stubRemoteEventClassName»>::stubAdapter_.lock();
+                if(stubAdapter) {
+                    stubAdapter->«attribute.stubClassLockMethodName»(true);
+                    const bool valueChanged = («attribute.stubDefaultClassVariableName» != _value);
+                    if (valueChanged) {
+                        «attribute.stubDefaultClassVariableName» = std::move(_value);
+                        «attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                    }
+                    stubAdapter->«attribute.stubClassLockMethodName»(false);
+                } else {
+                    const bool valueChanged = «attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
+                    if (valueChanged) {
+                        «attribute.stubAdapterClassFireChangedMethodName»(«attribute.stubDefaultClassVariableName»);
+                    }
                 }
+                «ELSE»
+                «attribute.stubDefaultClassTrySetMethodName»(std::move(_value));
                 «ENDIF»
-            }
+           }
 
             bool «fInterface.stubDefaultClassName»::«attribute.stubDefaultClassTrySetMethodName»(«typeName» _value) {
                 if (!«attribute.stubDefaultClassValidateMethodName»(_value))

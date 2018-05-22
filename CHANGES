@@ -1,5 +1,10 @@
 Changes
 =======
+
+v3.1.12.3
+- Prevent crash due to concurrent attribute access from stub itself
+  and a remote client.
+
 v3.1.12.2
 - Reworked attribute locking in StubAdapter to prevent deadlock
 
