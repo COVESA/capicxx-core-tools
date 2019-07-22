@@ -1,6 +1,9 @@
 Changes
 =======
 
+v3.1.12.4
+- Fixed dependency to Eclipse Modeling Framework causing compilation error.
+
 v3.1.12.3
 - Prevent crash due to concurrent attribute access from stub itself
   and a remote client.
