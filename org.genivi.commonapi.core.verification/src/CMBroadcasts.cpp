@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -19,7 +18,7 @@
 
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
-#include "stub/CMBroadcastsStub.h"
+#include "stub/CMBroadcastsStub.hpp"
 
 const std::string serviceId = "service-sample";
 const std::string clientId = "client-sample";
@@ -109,7 +108,7 @@ TEST_F(CMBroadcasts, NormalBroadcast) {
 
     CommonAPI::CallStatus callStatus;
     std::atomic<uint8_t> result;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     result = 0;
 
     // subscribe to broadcast
@@ -499,7 +498,8 @@ TEST_F(CMBroadcasts, SelectiveBroadcastStubGoesOfflineOnlineAgain) {
 TEST_F(CMBroadcasts, NormalBroadcast_Two_proxies_subscribe_and_one_reset) {
     CommonAPI::CallStatus callStatus;
     std::atomic<uint8_t> result, result2;
-    std::atomic<CommonAPI::CallStatus> subStatus, subStatus2;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
     result = 0;
     result2 = 0;
 

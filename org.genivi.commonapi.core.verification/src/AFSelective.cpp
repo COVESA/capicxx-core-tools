@@ -16,7 +16,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/advanced/bselective/TestInterfaceProxy.hpp"
-#include "stub/AFSelectiveStub.h"
+#include "stub/AFSelectiveStub.hpp"
 
 const std::string serviceId = "service-sample";
 const std::string clientId = "client-sample";
@@ -815,9 +815,9 @@ TEST_F(AFSelective, Two_proxies_subscribe_delete_one_proxy) {
 
 TEST_F(AFSelective, Two_proxies_subscribe_delete_one_proxy_error_listener_test) {
     CommonAPI::CallStatus callStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus2;
-    std::atomic<CommonAPI::CallStatus> subStatus3;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> subStatus3(CommonAPI::CallStatus::UNKNOWN);
     uint8_t out, in = 0;
     std::atomic<uint8_t> result, result2;
     result = 0;

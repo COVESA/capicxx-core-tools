@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -18,7 +17,7 @@
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/datatypes/primitive/TestInterfaceProxy.hpp"
-#include "stub/DTPrimitiveStub.h"
+#include "stub/DTPrimitiveStub.hpp"
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.datatypes.primitive.TestInterface";
@@ -94,6 +93,7 @@ protected:
     double doubleTestValue = 12345.12345;
     const std::string stringTestValue = "∃y ∀x ¬(x ≺ y)";
     CommonAPI::ByteBuffer byteBufferTestValue;
+    CommonAPI::RangedInteger<5,15> integerTestValue = 10;
 };
 
 /**
@@ -120,6 +120,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     double doubleResultValue = 0;
     std::string stringResultValue = "";
     CommonAPI::ByteBuffer byteBufferResultValue;
+    CommonAPI::RangedInteger<5,15> integerResultValue;
 
     testProxy_->fTest(
             uint8TestValue,
@@ -135,6 +136,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
             doubleTestValue,
             stringTestValue,
             byteBufferTestValue,
+            integerTestValue,
             callStatus,
             uint8ResultValue,
             int8ResultValue,
@@ -148,7 +150,8 @@ TEST_F(DTPrimitive, SendAndReceive) {
             floatResultValue,
             doubleResultValue,
             stringResultValue,
-            byteBufferResultValue
+            byteBufferResultValue,
+            integerResultValue
     );
 
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -166,6 +169,7 @@ TEST_F(DTPrimitive, SendAndReceive) {
     EXPECT_EQ(doubleTestValue, doubleResultValue);
     EXPECT_EQ(stringTestValue, stringResultValue);
     EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
+    EXPECT_EQ(integerTestValue, integerResultValue);
 }
 
 /**
@@ -190,6 +194,7 @@ TEST_F(DTPrimitive, AttributeSet) {
     double doubleResultValue = 0;
     std::string stringResultValue = "";
     CommonAPI::ByteBuffer byteBufferResultValue;
+    CommonAPI::RangedInteger<5,15> integerResultValue = 10;
 
     testProxy_->getAUint8Attribute().setValue(uint8TestValue, callStatus, uint8ResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
@@ -242,6 +247,10 @@ TEST_F(DTPrimitive, AttributeSet) {
     testProxy_->getAByteBufferAttribute().setValue(byteBufferTestValue, callStatus, byteBufferResultValue);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
+
+    testProxy_->getAIntegerAttribute().setValue(integerTestValue, callStatus, integerResultValue);
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(integerTestValue, integerResultValue);
 }
 
 /**
@@ -253,7 +262,7 @@ TEST_F(DTPrimitive, AttributeSet) {
 TEST_F(DTPrimitive, BroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
 
     uint8_t uint8ResultValue = 0;
     int8_t int8ResultValue = 0;
@@ -268,6 +277,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
     double doubleResultValue = 0;
     std::string stringResultValue = "";
     CommonAPI::ByteBuffer byteBufferResultValue;
+    CommonAPI::RangedInteger<5,15> integerResultValue = 5;
 
     received_ = false;
     testProxy_->getBTestEvent().subscribe([&](
@@ -283,7 +293,8 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             const float& floatResultValue,
             const double& doubleResultValue,
             const std::string& stringResultValue,
-            const CommonAPI::ByteBuffer byteBufferResultValue
+            const CommonAPI::ByteBuffer byteBufferResultValue,
+            const CommonAPI::RangedInteger<5,15> integerResultValue
             ) {
         EXPECT_EQ(uint8TestValue, uint8ResultValue);
         EXPECT_EQ(int8TestValue, int8ResultValue);
@@ -299,6 +310,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
         EXPECT_EQ(stringTestValue, stringResultValue);
         EXPECT_EQ(stringTestValue, stringResultValue);
         EXPECT_EQ(byteBufferTestValue, byteBufferResultValue);
+        EXPECT_EQ(integerTestValue, integerResultValue);
         received_ = true;
     },
     [&](
@@ -328,6 +340,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             doubleTestValue,
             stringTestValue,
             byteBufferTestValue,
+            integerTestValue,
             callStatus,
             uint8ResultValue,
             int8ResultValue,
@@ -341,7 +354,8 @@ TEST_F(DTPrimitive, BroadcastReceive) {
             floatResultValue,
             doubleResultValue,
             stringResultValue,
-            byteBufferResultValue
+            byteBufferResultValue,
+            integerResultValue
     );
 
     for (int i = 0; i < 100; ++i) {
@@ -360,7 +374,7 @@ TEST_F(DTPrimitive, BroadcastReceive) {
 TEST_F(DTPrimitive, EmptyBroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     std::atomic<std::int32_t> callbackCalled(0);
     int numberFunctionCalls = 2;
 
@@ -393,6 +407,28 @@ TEST_F(DTPrimitive, EmptyBroadcastReceive) {
     }
     ASSERT_TRUE(received_);
     ASSERT_EQ(numberFunctionCalls, callbackCalled);
+}
+
+/**
+* @test Test ranged integer functionality
+*/
+TEST_F(DTPrimitive, RangedIntegers) {
+
+    CommonAPI::RangedInteger<5, 15> integerResultValue = 0;
+    CommonAPI::CallStatus callStatus;
+    CommonAPI::RangedInteger<5, 15> t1;
+    CommonAPI::RangedInteger<-1000, 1000> t2;
+
+    t1 = 5;
+    t2 = t1;
+    t2 = 1000;
+    t1 = t2;
+    ASSERT_EQ(t1, t2);
+
+    // should not be able to pass an out-of-range value
+    testProxy_->getAIntegerAttribute().setValue(t1, callStatus, integerResultValue);
+    ASSERT_NE(callStatus, CommonAPI::CallStatus::SUCCESS);
+
 }
 
 int main(int argc, char** argv) {

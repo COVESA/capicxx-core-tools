@@ -9,12 +9,12 @@
 #include <set>
 
 #include <CommonAPI/CommonAPI.hpp>
-#include "stub/AFManagedStub.h"
-#include "stub/DeviceStubImpl.h"
-#include "stub/SpecialDeviceStubImpl.h"
-#include "stub/HLevelTopStubImpl.h"
-#include "stub/HLevelMiddleStubImpl.h"
-#include "stub/HLevelBottomStubImpl.h"
+#include "stub/AFManagedStub.hpp"
+#include "stub/DeviceStubImpl.hpp"
+#include "stub/SpecialDeviceStubImpl.hpp"
+#include "stub/HLevelTopStubImpl.hpp"
+#include "stub/HLevelMiddleStubImpl.hpp"
+#include "stub/HLevelBottomStubImpl.hpp"
 
 #include <v1/commonapi/advanced/managed/ManagerProxy.hpp>
 #include <v1/commonapi/advanced/managed/DeviceProxy.hpp>
@@ -32,18 +32,22 @@ const static std::string connectionIdService = "service-sample";
 const static std::string connectionIdClient = "client-sample";
 const static std::string connectionIdClient2 = "other-client-sample";
 
-const static std::string interfaceDevice = "commonapi.advanced.managed.Device:v1_0";
-const static std::string addressDevice1 = "local:" + interfaceDevice + ":commonapi.advanced.managed.Manager.device01";
-const static std::string addressDevice2 = "local:" + interfaceDevice + ":commonapi.advanced.managed.Manager.device02";
-const static std::string interfaceSpecialDevice = "commonapi.advanced.managed.SpecialDevice:v1_0";
-const static std::string addressSpecialDevice1 = "local:" + interfaceSpecialDevice + ":commonapi.advanced.managed.Manager.specialDevice00";
+#define INTERFACE_DEVICE "commonapi.advanced.managed.Device:v1_0"
+const static std::string interfaceDevice = INTERFACE_DEVICE;
+const static std::string addressDevice1 = "local:"  INTERFACE_DEVICE ":commonapi.advanced.managed.Manager.device01";
+const static std::string addressDevice2 = "local:"  INTERFACE_DEVICE  ":commonapi.advanced.managed.Manager.device02";
+#define INTERFACE_SPECIAL_DEVICE "commonapi.advanced.managed.SpecialDevice:v1_0"
+const static std::string interfaceSpecialDevice = INTERFACE_SPECIAL_DEVICE;
+const static std::string addressSpecialDevice1 = "local:" INTERFACE_SPECIAL_DEVICE ":commonapi.advanced.managed.Manager.specialDevice00";
 
 const static std::string hLevelTopStubInstanceName = "commonapi.advanced.managed.HLevelTop";
-const static std::string hLevelMiddleInterface = "commonapi.advanced.managed.HLevelMiddle:v1_0";
-const static std::string hLevelMiddleAddress = "local:" + hLevelMiddleInterface + ":commonapi.advanced.managed.HLevelTop.middle01";
+#define MIDDLE_INTERFACE "commonapi.advanced.managed.HLevelMiddle:v1_0"
+const static std::string hLevelMiddleInterface = MIDDLE_INTERFACE;
+const static std::string hLevelMiddleAddress = "local:" MIDDLE_INTERFACE ":commonapi.advanced.managed.HLevelTop.middle01";
 const static std::string hLevelMiddleStubInstanceName = "commonapi.advanced.managed.HLevelTop.middle01";
-const static std::string hLevelBottomInterface = "commonapi.advanced.managed.HLevelBottom:v1_0";
-const static std::string hLevelBottomAddress = "local:" + hLevelBottomInterface + ":commonapi.advanced.managed.HLevelTop.middle01.bottom01";
+#define BOTTOM_INTERFACE "commonapi.advanced.managed.HLevelBottom:v1_0"
+const static std::string hLevelBottomInterface = BOTTOM_INTERFACE;
+const static std::string hLevelBottomAddress = "local:" BOTTOM_INTERFACE ":commonapi.advanced.managed.HLevelTop.middle01.bottom01";
 const static std::string hLevelBottomStubInstanceName = "commonapi.advanced.managed.HLevelTop.middle01.bottom01";
 
 const static int sleepMilli = 10;
@@ -191,22 +195,21 @@ protected:
     void newDeviceAvailableBuildProxyCallback(const std::string _address,
                                               const CommonAPI::AvailabilityStatus _status) {
         ASSERT_TRUE(_address == addressDevice1 || _address == addressDevice2);
-        std::shared_ptr<DeviceProxy<>> deviceProxy;
         if(_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
             const std::string deviceInstance(managerInstanceName + ".device01");
             if(testProxy_->isAvailable()) {
-                deviceProxy = testProxy_->getProxyManagerDevice().buildProxy<DeviceProxy>(
+                deviceProxy_ = testProxy_->getProxyManagerDevice().buildProxy<DeviceProxy>(
                         deviceInstance, connectionIdClient2);   /* when using dbus a further connection must
                                                                  * be used. Otherwise the proxy doesn't become available.
                                                                  * when using someip the number of dispatchers must be set to > 1
                                                                  * if no further connection should be used.
                                                                  */
-                ASSERT_TRUE(deviceProxy ? true : false);
-                while (!deviceProxy->isAvailable()) {
+                ASSERT_TRUE(deviceProxy_ ? true : false);
+                while (!deviceProxy_->isAvailable()) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
                 CommonAPI::CallStatus call(CommonAPI::CallStatus::UNKNOWN);
-                deviceProxy->doSomething(call);
+                deviceProxy_->doSomething(call);
                 ASSERT_EQ(call, CommonAPI::CallStatus::SUCCESS);
                 proxyAvailableAndMethodCallSucceeded_ = true;
             }
@@ -247,7 +250,6 @@ protected:
             }
         }
         if(_status == CommonAPI::AvailabilityStatus::NOT_AVAILABLE) {
-            deviceProxy_.reset();
             proxyAvailableAndMethodCallSucceeded_ = false;
         }
     }
@@ -586,7 +588,10 @@ TEST_F(AFManaged, AddRemoveMultipleManagedInterfacesMultiple) {
  *  -
  */
 TEST_F(AFManaged, AddRemoveMultipleManagedInterfacesMultipleProxyNotActive) {
+
+    std::shared_future<void> proxy_destroyed = testProxy_->getCompletionFuture();
     testProxy_.reset();
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
 
     testStub_->specialDeviceDetected(0);
     testStub_->deviceDetected(1);
@@ -1147,6 +1152,10 @@ TEST_F(AFManaged, BuildProxyThroughManagerInAvailabilityEventAndMethodCallSingle
         }
         ASSERT_LE(deviceAvailableCount_, 0);
     }
+
+    std::shared_future<void> proxy_destroyed = deviceProxy_->getCompletionFuture();
+    deviceProxy_.reset();
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
 }
 
 /**
@@ -1202,6 +1211,10 @@ TEST_F(AFManaged, BuildProxyThroughManagerInAvailabilityEventAndMethodCallInProx
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
         }
         ASSERT_LE(deviceAvailableCount_, 0);
+
+        std::shared_future<void> proxy_destroyed = deviceProxy_->getCompletionFuture();
+        deviceProxy_.reset();
+        ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
     }
 }
 
@@ -1224,10 +1237,10 @@ TEST_F(AFManaged, BuildProxyThroughManagerInAvailabilityEventAndMethodCallInProx
  */
 TEST_F(AFManaged, DeleteManagerProxyInsideProxyStatusEventCallbackAndMethodCall) {
 
+    std::shared_future<void> proxy_destroyed = testProxy_->getCompletionFuture();
     std::atomic<bool> managerProxyDeleted(false);
     testProxy_->getProxyStatusEvent().subscribe([&] (const CommonAPI::AvailabilityStatus _status) {
         if(_status == CommonAPI::AvailabilityStatus::NOT_AVAILABLE) {
-            // delete proxy
             testProxy_.reset();
             managerProxyDeleted = true;
         }
@@ -1262,7 +1275,9 @@ TEST_F(AFManaged, DeleteManagerProxyInsideProxyStatusEventCallbackAndMethodCall)
         if (managerProxyDeleted) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
     }
+
     ASSERT_TRUE(managerProxyDeleted);
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
 
     // do a setup
     SetUp();
@@ -2129,6 +2144,7 @@ TEST_F(AFManaged, GetAvailableInstancesWithoutSubscribe) {
             break;
         } else {
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+            instances.clear();
         }
     }
     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, status);
@@ -2146,6 +2162,7 @@ TEST_F(AFManaged, GetAvailableInstancesWithoutSubscribe) {
             break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(sleepMilli));
+        instances.clear();
     }
     ASSERT_EQ(CommonAPI::CallStatus::SUCCESS, status);
     ASSERT_EQ(1u, instances.size());
@@ -2172,6 +2189,46 @@ TEST_F(AFManaged, GetAvailableInstancesWithoutSubscribe) {
     }
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, status);
     EXPECT_EQ(1u, instancesAsync);
+}
+
+/**
+* @test Offer a interface manager and build two proxies to it.
+* One proxy uses the same connection as the manager while the other uses
+* a different connection. Check that both proxies get available and receive a
+* available event
+*/
+
+TEST_F(AFManaged, CreateProxyToManagerInSameProcess) {
+    // build proxy through same connection as manager
+    std::promise<bool> p1, p2;
+    std::shared_ptr<ManagerProxy<>> testProxy2 = runtime_->buildProxy<
+            ManagerProxy>(domain, managerInstanceName, connectionIdService);
+    ASSERT_TRUE((bool)testProxy2);
+
+    testProxy2->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& _status) {
+        if (_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+            p1.set_value(true);
+        }
+    });
+
+    testProxy_->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& _status) {
+        if (_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+            p2.set_value(true);
+        }
+    });
+
+    for (unsigned int i = 0; !testProxy2->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(testProxy2->isAvailable());
+
+    for (unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    EXPECT_EQ(std::future_status::ready, p1.get_future().wait_for(std::chrono::seconds(10)));
+    EXPECT_EQ(std::future_status::ready, p2.get_future().wait_for(std::chrono::seconds(10)));
 }
 
 int main(int argc, char** argv) {

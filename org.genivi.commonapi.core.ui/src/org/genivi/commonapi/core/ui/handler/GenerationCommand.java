@@ -1,11 +1,7 @@
-/*
- * Copyright (C) 2013 BMW Group Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de) This Source Code Form is
- * subject to the terms of the Mozilla Public License, v. 2.0. If a copy of the
- * MPL was not distributed with this file, You can obtain one at
- * http://mozilla.org/MPL/2.0/.
- */
-
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.ui.handler;
 
 import java.util.ArrayList;
@@ -28,7 +24,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.ISchedulingRule;
 import org.eclipse.core.runtime.jobs.Job;
@@ -38,7 +33,6 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.widgets.Display;
@@ -64,15 +58,12 @@ import org.franca.core.dsl.ui.util.SpecificConsole;
 import org.franca.core.utils.ModelPersistenceHandler;
 import org.franca.deploymodel.dsl.FDeployImportsProvider;
 import org.franca.deploymodel.dsl.fDeploy.FDModel;
-import org.genivi.commonapi.core.preferences.FPreferences;
-import org.genivi.commonapi.core.preferences.PreferenceConstants;
-import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 
-public class GenerationCommand extends AbstractHandler {
+public abstract class GenerationCommand extends AbstractHandler {
 
 	@Inject
 	protected Provider<EclipseResourceFileSystemAccess2> fileAccessProvider;
@@ -83,7 +74,18 @@ public class GenerationCommand extends AbstractHandler {
 
     private static String VALIDATION_MARKER = "org.genivi.commonapi.core.ui.VALIDATION_MARKER";
 
-	@Override
+    /**
+	 * Init core preferences
+	 * @param file
+	 * @param page
+	 * @param project
+	 */
+	protected abstract void setupPreferences(IFile file);
+
+	protected abstract void setupOutputDirectories(EclipseResourceFileSystemAccess2 fileSystemAccess);
+    protected abstract List<Diagnostic> validateDeployment(List<FDModel> fdeplModels);
+
+    @Override
 	public Object execute(final ExecutionEvent event) throws ExecutionException {
 		final ISelection selection = HandlerUtil.getCurrentSelection(event);
 		if (selection instanceof IStructuredSelection) {
@@ -228,10 +230,6 @@ public class GenerationCommand extends AbstractHandler {
         }
     }
 
-	protected void setupOutputDirectories(EclipseResourceFileSystemAccess2 fileSystemAccess) {
-		fileSystemAccess.setOutputConfigurations(FPreferences.getInstance().getOutputpathConfiguration());
-	}
-
 	protected boolean validate(URI resourcePathUri, SpecificConsole francaConsole)
 	{
         // Load the FIDL and all imported FIDL files, or the FDEPL and all imported FDEPL/FIDL files.
@@ -242,13 +240,11 @@ public class GenerationCommand extends AbstractHandler {
         ModelPersistenceHandler modelPersistenceHandler = new ModelPersistenceHandler(injector.getInstance(ResourceSet.class));
         URI rootPathUri = URI.createPlatformResourceURI("/", true);
         modelPersistenceHandler.loadModel(resourcePathUri, rootPathUri);
-
         if ("fdepl".equals(resourcePathUri.fileExtension()))
         {
             if (!validateDeployment(modelPersistenceHandler.getResourceSet(), francaConsole))
-                return false;
+            	return false;
         }
-
         // Validate all loaded FDEPL and FIDL files.
         return validate(modelPersistenceHandler.getResourceSet(), francaConsole);
 	}
@@ -316,98 +312,6 @@ public class GenerationCommand extends AbstractHandler {
         console.getOut().println("Code generation aborted.");
     }
 
-    protected boolean validateDeployment(ResourceSet resourceSet, SpecificConsole francaConsole)
-    {
-        boolean hasValidationError = false;
-
-        List<FDModel> fdeplModels = new ArrayList<FDModel>();
-        for (Resource resource : resourceSet.getResources())
-        {
-            for (EObject eObject : resource.getContents())
-            {
-                if (eObject instanceof FDModel)
-                {
-                    fdeplModels.add((FDModel)eObject);
-                }
-            }
-        }
-
-        //francaConsole.getOut().println("Validating deployment");
-
-        List<Diagnostic> diags = validateDeployment(fdeplModels);
-        if (diags != null)
-        {
-            int numErrors = 0, numWarnings = 0;
-            final List<Issue> issues = new ArrayList<Issue>();
-            IAcceptor<Issue> acceptor = new IAcceptor<Issue>()
-            {
-                @Override
-                public void accept(Issue issue)
-                {
-                    issues.add(issue);
-                }
-            };
-            DiagnosticConverterImpl converter = new DiagnosticConverterImpl();
-            for (Diagnostic diag : diags)
-            {
-                converter.convertValidatorDiagnostic(diag, acceptor);
-                if (diag.getSeverity() == Diagnostic.ERROR)
-                    numErrors++;
-                else if (diag.getSeverity() == Diagnostic.WARNING)
-                    numWarnings++;
-            }
-            if (!outputIssues(issues, francaConsole))
-                hasValidationError = true;
-
-            addValidationMarkers(issues);
-
-            if (diags.size() > 0)
-                francaConsole.getOut().println("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
-        }
-
-        return !hasValidationError;
-    }
-
-    void addValidationMarkers(List<Issue> issues)
-    {
-        IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
-        for (Issue issue : issues)
-        {
-            try
-            {
-                URI uri = issue.getUriToProblem();
-                if (uri.isPlatform())
-                {
-                    IResource resource = workspaceRoot.findMember(uri.toPlatformString(true));
-                    if (resource != null)
-                    {
-                        IMarker marker = resource.createMarker(IMarker.PROBLEM);
-                        if (marker != null)
-                        {
-                            // Tag our markers, so we can find them again.
-                            marker.setAttribute(VALIDATION_MARKER, true);
-
-                            if (issue.getSeverity() == Severity.ERROR)
-                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
-                            else if (issue.getSeverity() == Severity.WARNING)
-                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
-                            else
-                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
-
-                            marker.setAttribute(IMarker.MESSAGE, issue.getMessage());
-                            marker.setAttribute(IMarker.PRIORITY, IMarker.PRIORITY_HIGH);
-                            marker.setAttribute(IMarker.LINE_NUMBER, issue.getLineNumber());
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ex.printStackTrace();
-            }
-        }
-    }
-
     void deleteValidationMarkers(IResource resource)
     {
         try
@@ -433,22 +337,6 @@ public class GenerationCommand extends AbstractHandler {
             ex.printStackTrace();
         }
     }
-
-    protected List<Diagnostic> validateDeployment(List<FDModel> fdepls)
-    {
-        return null;
-    }
-
-    /**
-	 * Init core preferences
-	 * @param file
-	 * @param page
-	 * @param project
-	 */
-	protected void setupPreferences(IFile file) {
-
-		initPreferences(file, CommonApiUiPlugin.getDefault().getPreferenceStore());
-	}
 
 	private void executeGeneratorForXtextEditor(final XtextEditor xtextEditor) {
 		final Object fileObject = xtextEditor.getEditorInput().getAdapter(
@@ -630,110 +518,97 @@ public class GenerationCommand extends AbstractHandler {
 		return fsa;
 	}
 
-	/**
-	 * Set the properties for the code generation from the resource properties (set with the property page, via the context menu).
-	 * Take default values from the eclipse preference page.
-	 * @param file
-	 * @param store - the eclipse preference store
-	 */
-	private void initPreferences(IFile file, IPreferenceStore store) {
-		FPreferences instance = FPreferences.getInstance();
+    protected boolean validateDeployment(ResourceSet resourceSet, SpecificConsole francaConsole)
+    {
+        boolean hasValidationError = false;
 
-		String outputFolderCommon = null;
-		String outputFolderProxies = null;
-		String outputFolderStubs = null;
-		String outputFolderSkeleton = null;
-		String licenseHeader = null;
-		String generateCommon = null;
-		String generateProxy = null;
-		String generateStub = null;
-		String generateSkeleton = null;
-		String generateDependencies = null;
-		String skeletonPostfix = null;
-		String enumPrefix = null;
-		String generateSyncCalls = null;
+        List<FDModel> fdeplModels = new ArrayList<FDModel>();
+        for (Resource resource : resourceSet.getResources())
+        {
+            for (EObject eObject : resource.getContents())
+            {
+                if (eObject instanceof FDModel)
+                {
+                    fdeplModels.add((FDModel)eObject);
+                }
+            }
+        }
 
-		IProject project = file.getProject();
-		IResource resource = file;
+        //francaConsole.getOut().println("Validating deployment");
 
-		try {
-			// Should project or file specific properties be used ?
-			String useProject1 = project.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_USEPROJECTSETTINGS));
-			String useProject2 = file.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_USEPROJECTSETTINGS));
-			if("true".equals(useProject1) || "true".equals(useProject2)) {
-				resource = project;
-			}
-			outputFolderCommon = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_COMMON));
-			outputFolderSkeleton = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_SKELETON));
-			outputFolderProxies = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_PROXIES));
-			outputFolderStubs = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_OUTPUT_STUBS));
-			licenseHeader = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_LICENSE));
-			generateCommon = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_COMMON));
-			generateProxy = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_PROXY));
-			generateStub = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_STUB));
-			generateSkeleton = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_SKELETON));
-			generateDependencies = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_DEPENDENCIES));
-			generateSyncCalls = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_GENERATE_SYNC_CALLS));
-			skeletonPostfix = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_SKELETONPOSTFIX));
-			enumPrefix = resource.getPersistentProperty(new QualifiedName(PreferenceConstants.PROJECT_PAGEID, PreferenceConstants.P_ENUMPREFIX));
-		} catch (CoreException ce) {
-			System.err.println("Failed to get property for " + resource.getName());
-		}
+        List<Diagnostic> diags = validateDeployment(fdeplModels);
+        if (diags != null)
+        {
+            int numErrors = 0, numWarnings = 0;
+            final List<Issue> issues = new ArrayList<Issue>();
+            IAcceptor<Issue> acceptor = new IAcceptor<Issue>()
+            {
+                @Override
+                public void accept(Issue issue)
+                {
+                    issues.add(issue);
+                }
+            };
+            DiagnosticConverterImpl converter = new DiagnosticConverterImpl();
+            for (Diagnostic diag : diags)
+            {
+                converter.convertValidatorDiagnostic(diag, acceptor);
+                if (diag.getSeverity() == Diagnostic.ERROR)
+                    numErrors++;
+                else if (diag.getSeverity() == Diagnostic.WARNING)
+                    numWarnings++;
+            }
+            if (!outputIssues(issues, francaConsole))
+                hasValidationError = true;
 
-		// Set defaults from the preference store in the case, where the value was not specified in the properties.
-		if(outputFolderCommon == null) {
-			outputFolderCommon = store.getString(PreferenceConstants.P_OUTPUT_COMMON);
-		}
-		if(outputFolderProxies == null) {
-			outputFolderProxies = store.getString(PreferenceConstants.P_OUTPUT_PROXIES);
-		}
-		if(outputFolderStubs == null) {
-			outputFolderStubs = store.getString(PreferenceConstants.P_OUTPUT_STUBS);
-		}
-		if(outputFolderSkeleton == null) {
-			outputFolderSkeleton = store.getString(PreferenceConstants.P_OUTPUT_SKELETON);
-		}
-		if(skeletonPostfix == null) {
-			skeletonPostfix = store.getString(PreferenceConstants.P_SKELETONPOSTFIX);
-		}
-		if(enumPrefix == null) {
-			enumPrefix = store.getString(PreferenceConstants.P_ENUMPREFIX);
-		}
-		if(licenseHeader == null) {
-			licenseHeader = store.getString(PreferenceConstants.P_LICENSE);
-		}
-		if (generateCommon == null) {
-			generateCommon = store.getString(PreferenceConstants.P_GENERATE_COMMON);
-		}
-		if(generateProxy == null) {
-			generateProxy = store.getString(PreferenceConstants.P_GENERATE_PROXY);
-		}
-		if(generateStub == null) {
-			generateStub = store.getString(PreferenceConstants.P_GENERATE_STUB);
-		}
-		if(generateSkeleton == null) {
-			generateSkeleton = store.getString(PreferenceConstants.P_GENERATE_SKELETON);
-		}
-		if(generateDependencies == null) {
-			generateDependencies = store.getString(PreferenceConstants.P_GENERATE_DEPENDENCIES);
-		}
-		if(generateSyncCalls == null) {
-			generateSyncCalls = store.getString(PreferenceConstants.P_GENERATE_SYNC_CALLS);
-		}
-		// finally, store the properties for the code generator
-		instance.setPreference(PreferenceConstants.P_OUTPUT_COMMON, outputFolderCommon);
-		instance.setPreference(PreferenceConstants.P_OUTPUT_PROXIES, outputFolderProxies);
-		instance.setPreference(PreferenceConstants.P_OUTPUT_STUBS, outputFolderStubs);
-		instance.setPreference(PreferenceConstants.P_OUTPUT_SKELETON, outputFolderSkeleton);
-		instance.setPreference(PreferenceConstants.P_LICENSE, licenseHeader);
-		instance.setPreference(PreferenceConstants.P_GENERATE_COMMON, generateCommon);
-		instance.setPreference(PreferenceConstants.P_GENERATE_PROXY, generateProxy);
-		instance.setPreference(PreferenceConstants.P_GENERATE_STUB, generateStub);
-		instance.setPreference(PreferenceConstants.P_GENERATE_SKELETON, generateSkeleton);
-		instance.setPreference(PreferenceConstants.P_SKELETONPOSTFIX, skeletonPostfix);
-		instance.setPreference(PreferenceConstants.P_ENUMPREFIX, enumPrefix);
-		instance.setPreference(PreferenceConstants.P_GENERATE_DEPENDENCIES, generateDependencies);
-		instance.setPreference(PreferenceConstants.P_GENERATE_SYNC_CALLS, generateSyncCalls);
-	}
+            addValidationMarkers(issues);
+
+            if (diags.size() > 0)
+                francaConsole.getOut().println("Validation of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
+        }
+
+        return !hasValidationError;
+    }
+
+	void addValidationMarkers(List<Issue> issues)
+    {
+        IWorkspaceRoot workspaceRoot = ResourcesPlugin.getWorkspace().getRoot();
+        for (Issue issue : issues)
+        {
+            try
+            {
+                URI uri = issue.getUriToProblem();
+                if (uri.isPlatform())
+                {
+                    IResource resource = workspaceRoot.findMember(uri.toPlatformString(true));
+                    if (resource != null)
+                    {
+                        IMarker marker = resource.createMarker(IMarker.PROBLEM);
+                        if (marker != null)
+                        {
+                            // Tag our markers, so we can find them again.
+                            marker.setAttribute(VALIDATION_MARKER, true);
+
+                            if (issue.getSeverity() == Severity.ERROR)
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_ERROR);
+                            else if (issue.getSeverity() == Severity.WARNING)
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
+                            else
+                                marker.setAttribute(IMarker.SEVERITY, IMarker.SEVERITY_INFO);
+
+                            marker.setAttribute(IMarker.MESSAGE, issue.getMessage());
+                            marker.setAttribute(IMarker.PRIORITY, IMarker.PRIORITY_HIGH);
+                            marker.setAttribute(IMarker.LINE_NUMBER, issue.getLineNumber());
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ex.printStackTrace();
+            }
+        }
+    }
 
 }
+

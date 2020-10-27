@@ -1,11 +1,10 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include <iostream>
-#include "CMBroadcastsStub.h"
+#include "CMBroadcastsStub.hpp"
 
 namespace v1 {
 namespace commonapi {
@@ -25,7 +24,7 @@ bool CMBroadcastsStub::onBTestSelectiveSelectiveSubscriptionRequested(const std:
 
 
 void CMBroadcastsStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _client, uint8_t _x,
-                                   testMethodReply_t _reply) {
+                                  testMethodReply_t _reply) {
     (void)_client;
                                        
     uint8_t y;

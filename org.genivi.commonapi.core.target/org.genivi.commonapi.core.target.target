@@ -1,24 +1,28 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<?pde version="3.8"?><target name="CommonAPI Luna SR1" sequenceNumber="33">
+<?pde version="3.8"?><target name="CommonAPI - Eclipse 4.9" sequenceNumber="58">
 <locations>
-<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-<unit id="org.franca.ui.sdk.feature.group" version="0.9.1.201412191134"/>
-<unit id="org.franca.core.sdk.feature.group" version="0.9.1.201412191134"/>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.platform.sdk" version="4.9.0.I20180906-0745"/>
+<unit id="org.eclipse.equinox.sdk.feature.group" version="3.15.0.v20180904-1442"/>
+<repository location="http://download.eclipse.org/eclipse/updates/4.9/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.cdt.sdk.feature.group" version="9.5.3.201809121146"/>
+<repository location="http://download.eclipse.org/releases/2018-09"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.eclipse.xtext.sdk.feature.group" version="2.11.0.v20170201-0242"/>
+<repository location="http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="javax.xml" version="1.3.4.v201005080400"/>
+<repository location="http://download.eclipse.org/tools/orbit/downloads/drops/R20170919201930/repository"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="org.franca.core.sdk.feature.group" version="0.13.1.201807231814"/>
+<unit id="org.franca.providers.sdk.feature.group" version="0.13.1.201807231814"/>
+<unit id="org.franca.ui.sdk.feature.group" version="0.13.1.201807231814"/>
 <repository location="http://franca.github.io/franca/update_site/releases"/>
-</location>
-<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-<unit id="org.eclipse.platform.sdk" version="4.4.1.M20140925-0400"/>
-<unit id="org.eclipse.equinox.sdk.feature.group" version="3.10.0.v20140909-1633"/>
-<unit id="org.eclipse.e4.rcp.R441patch.feature.group" version="1.0.0"/>
-<unit id="org.eclipse.equinox.core.sdk.R441patch.feature.group" version="1.0.0"/>
-<unit id="org.eclipse.equinox.core.feature.R441patch.feature.group" version="1.0.0"/>
-<unit id="org.eclipse.equinox.server.core.R441patch.feature.group" version="1.0.0"/>
-<repository location="http://download.eclipse.org/eclipse/updates/4.4/"/>
-</location>
-<location includeAllPlatforms="false" includeConfigurePhase="true" includeMode="planner" includeSource="true" type="InstallableUnit">
-<unit id="org.eclipse.cdt.sdk.feature.group" version="8.5.0.201409172108"/>
-<unit id="org.eclipse.xtend.sdk.feature.group" version="2.7.2.v201409160908"/>
-<repository location="http://download.eclipse.org/releases/luna"/>
 </location>
 </locations>
 <targetJRE path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>

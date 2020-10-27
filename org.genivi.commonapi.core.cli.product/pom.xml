@@ -1,139 +1,150 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<groupId>commonapi</groupId>
-	<artifactId>org.genivi.commonapi.core.cli.product</artifactId>
-	<packaging>eclipse-repository</packaging>
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.eclipse.tycho</groupId>
-				<artifactId>tycho-p2-director-plugin</artifactId>
-				<version>${tycho-version}</version>
-				<executions>
-					<execution>
-						<!-- install the product using the p2 director -->
-						<id>materialize-products</id>
-						<goals>
-							<goal>materialize-products</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>commonapi</groupId>
+    <artifactId>org.genivi.commonapi.core.cli.product</artifactId>
+    <packaging>eclipse-repository</packaging>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.eclipse.tycho</groupId>
+                <artifactId>tycho-p2-director-plugin</artifactId>
+                <version>${tycho-version}</version>
+                <executions>
+                    <execution>
+                        <!-- install the product using the p2 director -->
+                        <id>materialize-products</id>
+                        <goals>
+                            <goal>materialize-products</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <id>run-ant-rename</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-core-generator.exe" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/eclipsec.exe"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-core-generator-windows-x86.exe" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-core-generator.ini"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-core-generator-windows-x86.ini" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/eclipsec.exe" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-core-generator.ini" />
+                                <copy
+                                    todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
+                                    <fileset
+                                        dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/" />
+                                </copy>
 
-			<plugin>
-				<artifactId>maven-antrun-plugin</artifactId>
-				<version>1.7</version>
-				<executions>
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-core-generator.exe" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/eclipsec.exe"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-core-generator-windows-x86_64.exe" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-core-generator.ini"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-core-generator-windows-x86_64.ini" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/eclipsec.exe" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-core-generator.ini" />
+                                <copy
+                                    todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
+                                    <fileset
+                                        dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/" />
+                                </copy>
 
-					<execution>
-						<id>run-ant-rename</id>
-						<phase>package</phase>
-						<goals>
-							<goal>run</goal>
-						</goals>
-						<configuration>
-							<target>
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-generator.exe" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/eclipsec.exe"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-generator-windows-x86.exe" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-generator.ini"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-generator-windows-x86.ini" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/eclipsec.exe" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/commonapi-generator.ini" />
-								<copy
-									todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
-									<fileset
-										dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86/" />
-								</copy>
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator-linux-x86" />
+                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator-linux-x86" perm="755" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator.ini"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator-linux-x86.ini" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-core-generator.ini" />
+                                <copy
+                                    todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
+                                    <fileset
+                                        dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/" />
+                                </copy>
 
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-generator.exe" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/eclipsec.exe"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-generator-windows-x86_64.exe" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-generator.ini"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-generator-windows-x86_64.ini" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/eclipsec.exe" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/commonapi-generator.ini" />
-								<copy
-									todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
-									<fileset
-										dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/win32/win32/x86_64/" />
-								</copy>
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator-linux-x86_64" />
+                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator-linux-x86_64" perm="755" />
+                                <copy
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator.ini"
+                                    tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator-linux-x86_64.ini" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator" />
+                                <delete
+                                    file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-core-generator.ini" />
+                                <copy
+                                    todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
+                                    <fileset
+                                        dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/" />
+                                </copy>
 
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86" />
-                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86" perm="755" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator.ini"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator-linux-x86.ini" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/commonapi-generator.ini" />
-								<copy
-									todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
-									<fileset
-										dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86/" />
-								</copy>
-
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64" />
-                                <chmod file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64" perm="755" />
-								<copy
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator.ini"
-									tofile="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator-linux-x86_64.ini" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator" />
-								<delete
-									file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/commonapi-generator.ini" />
-								<copy
-									todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/">
-									<fileset
-										dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/linux/gtk/x86_64/" />
-								</copy>
-							</target>
-						</configuration>
-					</execution>
-					<execution>
-						<id>create-zip-files</id>
-						<phase>package</phase>
-						<configuration>
-							<target>
-								<zip excludesfile="zip.excludes"
-									excludes="commonapi-generator-linux-x86,commonapi-generator-linux-x86_64,commonapi-generator-windows-x86.exe,commonapi-generator-windows-x86_64.exe"
-									destfile="${project.build.directory}/products/commonapi-generator.zip"
-									basedir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all">
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86" filemode="755"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-linux-x86_64" filemode="755"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86.exe" filemode="755"/>
-									<zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-generator-windows-x86_64.exe" filemode="755"/>
-								</zip>
-							</target>
-						</configuration>
-						<goals>
-							<goal>run</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
-	<parent>
-		<groupId>commonapi</groupId>
-		<artifactId>org.genivi.commonapi.core.releng</artifactId>
-		<version>3.1.12-SNAPSHOT</version>
-		<relativePath>../org.genivi.commonapi.core.releng</relativePath>
-	</parent>
+                                <!--
+                                MacOS X:
+                                The 'macosx/cocoa/x86_64/commonapi-core-generator.app' directory should get copied to 'all/commonapi-core-generator-macosx-x86_64.app'. This would
+                                follow the already existing naming style for Linux and Windows. But I cannot verify yet, if a MacOSX application directory can get renamed
+                                safely without also renaming the application name in some of the meta data files (e.g. Contents/Info.plist). Therefore the
+                                'commonapi-core-generator.app' directory is copied to 'all/commonapi-core-generator.app' directory.
+                                 -->
+                                <copy
+                                    todir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-core-generator.app/">
+                                    <fileset
+                                        dir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/macosx/cocoa/x86_64/commonapi-core-generator.app/" />
+                                </copy>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>create-zip-files</id>
+                        <phase>package</phase>
+                        <configuration>
+                            <target>
+                                <zip excludesfile="zip.excludes"
+                                    excludes="commonapi-core-generator-linux-x86,commonapi-core-generator-linux-x86_64,commonapi-core-generator-windows-x86.exe,commonapi-core-generator-windows-x86_64.exe"
+                                    destfile="${project.build.directory}/products/commonapi_core_generator.zip"
+                                    basedir="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all">
+                                    <zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-core-generator-linux-x86" filemode="755"/>
+                                    <zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-core-generator-linux-x86_64" filemode="755"/>
+                                    <zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-core-generator-windows-x86.exe" filemode="755"/>
+                                    <zipfileset file="${project.build.directory}/products/org.genivi.commonapi.core.cli.product/all/commonapi-core-generator-windows-x86_64.exe" filemode="755"/>
+                                </zip>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <parent>
+        <groupId>commonapi</groupId>
+        <artifactId>org.genivi.commonapi.core.releng</artifactId>
+        <version>3.2.0-SNAPSHOT</version>
+        <relativePath>../org.genivi.commonapi.core.releng</relativePath>
+    </parent>
 </project>

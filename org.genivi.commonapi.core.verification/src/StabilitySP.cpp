@@ -1,4 +1,4 @@
-/* Copyright (C) 2015 BMW Group
+/* Copyright (C) 2015-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -12,7 +12,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/stability/sp/TestInterfaceProxy.hpp"
-#include "stub/StabilitySPStub.h"
+#include "stub/StabilitySPStub.hpp"
 
 const std::string serviceId = "service-sample";
 const std::string clientId = "client-sample";

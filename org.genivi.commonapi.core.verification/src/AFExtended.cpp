@@ -12,7 +12,7 @@
 #include <fstream>
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "stub/AFExtendedStub.h"
+#include "stub/AFExtendedStub.hpp"
 #include "v1/commonapi/advanced/extended/AFExtendedBaseProxy.hpp"
 #include "v1/commonapi/advanced/extended/AFExtendedOnceProxy.hpp"
 #include "v1/commonapi/advanced/extended/AFExtendedTwiceProxy.hpp"

@@ -1,10 +1,9 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "DTDerivedStub.h"
+#include "DTDerivedStub.hpp"
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -23,18 +22,18 @@ DTDerivedStub::DTDerivedStub() {
 DTDerivedStub::~DTDerivedStub() {
 }
 
-void DTDerivedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> clientId,
-        TestInterface::tStructExt tStructExtIn,
-        TestInterface::tEnumExt tEnumExtIn,
-        TestInterface::tUnionExt tUnionExtIn,
-        std::shared_ptr<TestInterface::tBaseStruct> tBaseStructIn,
+void DTDerivedStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
+        TestInterface::tStructExt _tStructExtIn,
+        TestInterface::tEnumExt _tEnumExtIn,
+        TestInterface::tUnionExt _tUnionExtIn,
+        std::shared_ptr<TestInterface::tBaseStruct> _tBaseStructIn,
         fTestReply_t _reply) {
-    (void)clientId;
+    (void)_client;
 
-    TestInterface::tStructExt tStructExtOut = tStructExtIn;
-    TestInterface::tEnumExt tEnumExtOut = tEnumExtIn;
-    TestInterface::tUnionExt tUnionExtOut = tUnionExtIn;
-    std::shared_ptr<TestInterface::tBaseStruct> tBaseStructOut = tBaseStructIn;
+    TestInterface::tStructExt tStructExtOut = _tStructExtIn;
+    TestInterface::tEnumExt tEnumExtOut = _tEnumExtIn;
+    TestInterface::tUnionExt tUnionExtOut = _tUnionExtIn;
+    std::shared_ptr<TestInterface::tBaseStruct> tBaseStructOut = _tBaseStructIn;
 
     _reply(tStructExtOut, tEnumExtOut, tUnionExtOut, tBaseStructOut);
 

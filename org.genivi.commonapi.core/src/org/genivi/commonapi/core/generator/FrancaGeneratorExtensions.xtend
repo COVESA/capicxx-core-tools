@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import com.google.common.base.Charsets
@@ -21,6 +19,8 @@ import java.util.LinkedHashMap
 import java.util.LinkedList
 import java.util.List
 import java.util.Map
+import java.util.SortedMap
+import java.util.TreeMap
 import java.util.jar.Manifest
 import org.eclipse.core.resources.ResourcesPlugin
 import org.eclipse.core.runtime.Path
@@ -28,10 +28,12 @@ import org.eclipse.emf.common.util.EList
 import org.eclipse.emf.ecore.EObject
 import org.eclipse.emf.ecore.resource.Resource
 import org.eclipse.emf.ecore.util.EcoreUtil
+import org.eclipse.xtext.nodemodel.util.NodeModelUtils
 import org.franca.core.franca.FArgument
 import org.franca.core.franca.FArrayType
 import org.franca.core.franca.FAttribute
 import org.franca.core.franca.FBasicTypeId
+import org.franca.core.franca.FBinaryOperation
 import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FCompoundType
 import org.franca.core.franca.FConstantDef
@@ -55,6 +57,7 @@ import org.franca.core.franca.FTypeCollection
 import org.franca.core.franca.FTypeDef
 import org.franca.core.franca.FTypeRef
 import org.franca.core.franca.FTypedElement
+import org.franca.core.franca.FUnaryOperation
 import org.franca.core.franca.FUnionType
 import org.franca.core.franca.FVersion
 import org.franca.core.franca.FrancaFactory
@@ -62,16 +65,15 @@ import org.franca.deploymodel.dsl.fDeploy.FDArray
 import org.franca.deploymodel.dsl.fDeploy.FDAttribute
 import org.franca.deploymodel.dsl.fDeploy.FDBroadcast
 import org.franca.deploymodel.dsl.fDeploy.FDEnumeration
+import org.franca.deploymodel.dsl.fDeploy.FDExtensionRoot
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.franca.deploymodel.dsl.fDeploy.FDMethod
 import org.franca.deploymodel.dsl.fDeploy.FDModel
-import org.franca.deploymodel.dsl.fDeploy.FDProvider
 import org.franca.deploymodel.dsl.fDeploy.FDStruct
-import org.franca.deploymodel.dsl.fDeploy.FDTypeDef
+import org.franca.deploymodel.dsl.fDeploy.FDTypeDefinition
 import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.franca.deploymodel.dsl.fDeploy.FDUnion
 import org.genivi.commonapi.core.deployment.PropertyAccessor
-import org.genivi.commonapi.core.deployment.PropertyAccessor.DefaultEnumBackingType
 import org.genivi.commonapi.core.deployment.PropertyAccessor.EnumBackingType
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
@@ -82,6 +84,43 @@ import static com.google.common.base.Preconditions.*
 import static extension java.lang.Integer.*
 
 class FrancaGeneratorExtensions {
+
+    static Map<FTypeCollection, PropertyAccessor> accessors__ = new HashMap<FTypeCollection, PropertyAccessor>()
+
+    def startInternalCompilation() '''
+        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
+        #define COMMONAPI_INTERNAL_COMPILATION
+        #define HAS_DEFINED_COMMONAPI_INTERNAL_COMPILATION_HERE
+        #endif
+    '''
+
+    def endInternalCompilation() '''
+        #if defined (HAS_DEFINED_COMMONAPI_INTERNAL_COMPILATION_HERE)
+        #undef COMMONAPI_INTERNAL_COMPILATION
+        #undef HAS_DEFINED_COMMONAPI_INTERNAL_COMPILATION_HERE
+        #endif
+    '''
+
+    def insertAccessor(FTypeCollection _tc, PropertyAccessor _pa) {
+        accessors__.put(_tc, _pa)
+    }
+
+    def PropertyAccessor getAccessor(FTypeCollection _tc) {
+     // get the accessor that matches this interface (tc)
+        var access = accessors__.get(_tc)
+        if (access === null) {
+
+            // It may be the base interface for which we dont have an accessor,
+            // if it is defined in another fidl file.
+            // We should have at least one property accessor, use this one
+            var accessors = accessors__.values()
+            if (!accessors.isEmpty()) {
+                access = accessors.get(0)
+            }
+        }
+
+        return access
+    }
 
     def boolean isComplex(String _typeName) {
         if (_typeName == "bool" ||
@@ -205,7 +244,7 @@ class FrancaGeneratorExtensions {
             var prefix = "::"
             if (fModelElement instanceof FTypeCollection) {
                 val FVersion itsVersion = fModelElement.version
-                if (itsVersion != null) {
+                if (itsVersion !== null) {
                     prefix = fModelElement.versionPrefix
                 }
             }
@@ -225,7 +264,7 @@ class FrancaGeneratorExtensions {
     }
 
     def FInterface getContainingInterface(FModelElement fModelElement) {
-        if (fModelElement.eContainer == null || fModelElement.eContainer instanceof FModel) {
+        if (fModelElement.eContainer === null || fModelElement.eContainer instanceof FModel) {
             return null
         }
         if (fModelElement.eContainer instanceof FInterface) {
@@ -236,7 +275,7 @@ class FrancaGeneratorExtensions {
     }
 
     def FTypeCollection getContainingTypeCollection(FModelElement fModelElement) {
-        if (fModelElement.eContainer != null && fModelElement.eContainer instanceof FModel) {
+        if (fModelElement.eContainer !== null && fModelElement.eContainer instanceof FModel) {
             return null
         }
         if (fModelElement.eContainer instanceof FTypeCollection) {
@@ -253,7 +292,7 @@ class FrancaGeneratorExtensions {
     def String getDefineName(FModelElement fModelElement) {
         var definePrefix = ""
         if (fModelElement instanceof FTypeCollection)
-            if (fModelElement.version != null)
+            if (fModelElement.version !== null)
                 definePrefix = "V" + fModelElement.version.major.toString() + "_"
 
         val defineSuffix = '_' + fModelElement.elementName.splitCamelCase.join('_')
@@ -269,7 +308,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getElementName(FModelElement fModelElement) {
-        if ((fModelElement.name == null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
+        if ((fModelElement.name === null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
             return "__Anonymous__"
         }
         else {
@@ -307,7 +346,7 @@ class FrancaGeneratorExtensions {
     def getRelativeNameReference(FModelElement destination, EObject source) {
         var nameReference = destination.elementName
 
-        if (destination.eContainer != null && !destination.eContainer.equals(source)) {
+        if (destination.eContainer !== null && !destination.eContainer.equals(source)) {
             val subnamespaceList = destination.getSubnamespaceList(source)
             if (!subnamespaceList.empty)
                 nameReference = subnamespaceList.join('::') + '::' + nameReference
@@ -448,9 +487,9 @@ class FrancaGeneratorExtensions {
 
     def Collection<FMethod> getMethodsWithError(FInterface _interface) {
         val Map<String, FMethod> itsMethods = new HashMap<String, FMethod>()
-        for (method : _interface.methods.filter[errors != null]) {
+        for (method : _interface.methods.filter[errors !== null]) {
             var existing = itsMethods.get(method.name)
-            if (existing == null) {
+            if (existing === null) {
                 itsMethods.put(method.name, method)
             } else {
                 val List<FEnumerator> itsAdditionals = new ArrayList<FEnumerator>()
@@ -487,7 +526,7 @@ class FrancaGeneratorExtensions {
     }
 
     def generateDefinitionSignature(FMethod fMethod, boolean _isDefault) {
-        var signature = fMethod.inArgs.map['const ' + getTypeName(fMethod, true) + ' &_' + elementName].join(', ')
+        var signature = fMethod.inArgs.map[getTypeName(fMethod, true) + ' _' + elementName].join(', ')
 
         if (!fMethod.inArgs.empty)
             signature = signature + ', '
@@ -528,9 +567,9 @@ class FrancaGeneratorExtensions {
     def generateOverloadedStubSignature(FMethod fMethod, LinkedHashMap<String, Boolean> replies) {
         var signature = 'const std::shared_ptr<CommonAPI::ClientId> _client'
         
-        if(!fMethod.isFireAndForget && replies.containsValue(true)) {
+        if (!fMethod.isFireAndForget && replies.containsValue(true)) {
             //replies containing error replies
-            signature = signature + ', const CommonAPI::CallId_t _callId'
+            signature = signature + ', const CommonAPI::CallId_t _call'
         }
 
         if (!fMethod.inArgs.empty)
@@ -543,7 +582,7 @@ class FrancaGeneratorExtensions {
                 var methodName = entry.key
                 var isErrorReply = entry.value
                 signature = signature + ", " + methodName + 'Reply_t'
-                if(isErrorReply) {
+                if (isErrorReply) {
                     signature = signature + ' _' + methodName + 'Reply'
                 } else {
                     signature = signature + ' _reply'
@@ -570,7 +609,7 @@ class FrancaGeneratorExtensions {
     def generateStubErrorReplySignature(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no error type: ' + fBroadcast)
         
-        var signature = 'const CommonAPI::CallId_t _callId'
+        var signature = 'const CommonAPI::CallId_t _call'
 
         if (!fBroadcast.errorArgs(deploymentAccessor).empty)
             signature = signature + ', ' + fBroadcast.errorArgs(deploymentAccessor).map[getTypeName(fBroadcast, true) + ' _' + elementName].join(', ')
@@ -581,9 +620,9 @@ class FrancaGeneratorExtensions {
     def errorReplyTypes(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
 
-        var types = "const CommonAPI::CallId_t";
+        var types = "CommonAPI::CallId_t";
         var errorTypes = fBroadcast.errorArgs(deploymentAccessor).map[getTypeName(fBroadcast, true)].join(', ')
-        if(errorTypes != "") {
+        if (errorTypes != "") {
             types = types + ", "
         }
         types = types + errorTypes
@@ -611,7 +650,7 @@ class FrancaGeneratorExtensions {
     def generateErrorReplyCallbackSignature(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         checkArgument(fBroadcast.isErrorType(deploymentAccessor), 'FBroadcast is no valid error type: ' + fBroadcast)
         
-        var signature = 'const CommonAPI::CallId_t _callId'
+        var signature = 'const CommonAPI::CallId_t _call'
         var signatureOut = fBroadcast.outArgs.map[getTypeName(fBroadcast, true) + ' _' + it.elementName].join(', ')
         if(signatureOut != "") {
             signature = signature + ", "
@@ -626,7 +665,7 @@ class FrancaGeneratorExtensions {
     
     def isErrorType(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
         return (fBroadcast.isErrorType(deploymentAccessor) &&
-            deploymentAccessor.getErrors(fMethod) != null &&
+            deploymentAccessor.getErrors(fMethod) !== null &&
             deploymentAccessor.getErrors(fMethod).contains(fBroadcast.elementName))
     }
     
@@ -648,7 +687,10 @@ class FrancaGeneratorExtensions {
 
     def String generateDummyValue(FTypeRef typeRef) {
         var String retval = ""
-        if (typeRef.derived == null && typeRef.predefined != null) {
+        if (typeRef.derived === null && typeRef.interval !== null) {
+            retval += typeRef.interval.lowerBound
+        }
+        else if (typeRef.derived === null && typeRef.predefined !== null && typeRef.interval === null) {
             retval +=
                 switch typeRef.predefined {
                     case FBasicTypeId::BOOLEAN:     "false"
@@ -683,9 +725,11 @@ class FrancaGeneratorExtensions {
     private def String generateDummyArgumentInitialization(FTypeRef typeRef, FArgument list_element, FMethod fMethod) {
         if (list_element.array) {
             " = {}"
-        } else if (typeRef.derived != null) {
+        } else if (typeRef.derived !== null) {
             typeRef.derived.generateDummyArgumentInitialization(list_element, fMethod)
-        } else if (typeRef.predefined != null) {
+        } else if (typeRef.interval !== null) {
+            " = " + typeRef.interval.lowerBound
+        } else if (typeRef.predefined !== null) {
             typeRef.predefined.generateDummyArgumentInitialization
         } else {
             ""
@@ -889,6 +933,9 @@ class FrancaGeneratorExtensions {
 
         return errorAndOutTypes
     }
+    def private String getIntervalMangledName(FIntegerInterval interval) {
+        return "i32"
+    }
 
     def private String getBasicMangledName(FBasicTypeId basicType) {
         switch (basicType) {
@@ -949,9 +996,12 @@ class FrancaGeneratorExtensions {
     }
 
     def private String getMangledName(FTypeRef fTypeRef) {
-        if (fTypeRef.derived != null) {
+        if (fTypeRef.derived !== null) {
             return fTypeRef.derived.derivedMangledName
         } else {
+            if (fTypeRef.interval !== null) {
+                return fTypeRef.interval.intervalMangledName
+            }
             return fTypeRef.predefined.basicMangledName
         }
     }
@@ -989,7 +1039,7 @@ class FrancaGeneratorExtensions {
     }
 
     def hasError(FMethod fMethod) {
-        fMethod.errorEnum != null || fMethod.errors != null
+        fMethod.errorEnum !== null || fMethod.errors !== null
     }
 
     def generateASyncTypedefSignature(FMethod fMethod) {
@@ -1016,7 +1066,7 @@ class FrancaGeneratorExtensions {
 
     def getErrorNameReference(FMethod fMethod, EObject source) {
         checkArgument(fMethod.hasError, 'FMethod has no error: ' + fMethod)
-        if (fMethod.errorEnum != null) {
+        if (fMethod.errorEnum !== null) {
             return fMethod.errorEnum.getElementName(fMethod, true)
         }
 
@@ -1146,7 +1196,7 @@ class FrancaGeneratorExtensions {
     }
 
     def getStubSubscribeSignature(FBroadcast fBroadcast) {
-        'const std::shared_ptr<CommonAPI::ClientId> clientId, bool& success'
+        'const std::shared_ptr<CommonAPI::ClientId> _client, bool &_success'
     }
 
     def String getTypeName(FTypedElement _element, FModelElement _source, boolean _isOther) {
@@ -1164,21 +1214,25 @@ class FrancaGeneratorExtensions {
 
     def String getElementType(FTypeRef _typeRef, FModelElement _container, boolean _isOther) {
         var String typeName
-        if (_typeRef.derived != null) {
-               typeName = _typeRef.derived.getElementName(_container, _isOther)
-        } else if (_typeRef.predefined != null) {
+        if (_typeRef.derived !== null) {
+            typeName = _typeRef.derived.getElementName(_container, _isOther)
+        } else if (_typeRef.interval !== null) {
+            typeName = _typeRef.interval.primitiveTypeName
+        } else if (_typeRef.predefined !== null) {
             typeName = _typeRef.predefined.primitiveTypeName
         }
         return typeName
     }
 
     def boolean isPolymorphic(FTypeRef typeRef) {
-        return (typeRef.derived != null && typeRef.derived instanceof FStructType && (typeRef.derived as FStructType).polymorphic)
+        return (typeRef.derived !== null && typeRef.derived instanceof FStructType && (typeRef.derived as FStructType).polymorphic)
     }
 
     def getNameReference(FTypeRef destination, EObject source) {
-        if (destination.derived != null)
+        if (destination.derived !== null)
             return destination.derived.getRelativeNameReference(source)
+        if (destination.interval !== null)
+            return destination.interval.primitiveTypeName
         return destination.predefined.primitiveTypeName
     }
 
@@ -1187,30 +1241,48 @@ class FrancaGeneratorExtensions {
         (fMethodErrors.eContainer as FMethod).elementName + 'Error'
     }
 
-    def getBackingType(FEnumerationType fEnumerationType, PropertyAccessor deploymentAccessor) {
-        if (deploymentAccessor.getEnumBackingType(fEnumerationType) == EnumBackingType::UseDefault) {
-            if (fEnumerationType.containingInterface != null) {
-                switch (deploymentAccessor.getDefaultEnumBackingType(fEnumerationType.containingInterface)) {
-                    case DefaultEnumBackingType::UInt8:
-                        return FBasicTypeId::UINT8
-                    case DefaultEnumBackingType::UInt16:
-                        return FBasicTypeId::UINT16
-                    case DefaultEnumBackingType::UInt32:
-                        return FBasicTypeId::UINT32
-                    case DefaultEnumBackingType::UInt64:
-                        return FBasicTypeId::UINT64
-                    case DefaultEnumBackingType::Int8:
-                        return FBasicTypeId::INT8
-                    case DefaultEnumBackingType::Int16:
-                        return FBasicTypeId::INT16
-                    case DefaultEnumBackingType::Int32:
-                        return FBasicTypeId::INT32
-                    case DefaultEnumBackingType::Int64:
-                        return FBasicTypeId::INT64
-                }
-            }
+    def boolean isCompatibleBackingType(EnumBackingType _mine, EnumBackingType _base) {
+        
+        switch (_mine) {
+        case EnumBackingType::UseDefault:
+            return (_base == EnumBackingType::UInt8 || _base == EnumBackingType::UseDefault)
+        case EnumBackingType::UInt8:
+            return (_base == EnumBackingType::UInt8 || _base == EnumBackingType::UseDefault)
+        case EnumBackingType::Int8:
+            return (_base == EnumBackingType::Int8)
+        case EnumBackingType::UInt16:
+            return (_base == EnumBackingType::UInt8 || _base == EnumBackingType::UInt16)
+        case EnumBackingType::Int16:
+            return (_base == EnumBackingType::Int8 || _base == EnumBackingType::Int16)
+        case EnumBackingType::UInt32:
+            return (_base == EnumBackingType::UInt8 || _base == EnumBackingType::UInt16 || _base == EnumBackingType::UInt32)
+        case EnumBackingType::Int32:
+            return (_base == EnumBackingType::Int8 || _base == EnumBackingType::Int16 || _base == EnumBackingType::Int32)
+        default:
+            return true
         }
-        switch (deploymentAccessor.getEnumBackingType(fEnumerationType)) {
+    }
+
+    def EnumBackingType getBackingTypeHelper(FEnumerationType _enumeration, PropertyAccessor _accessor) {
+
+        var EnumBackingType itsBackingType = EnumBackingType::UseDefault
+        if (_accessor !== null)
+            itsBackingType = _accessor.getEnumBackingType(_enumeration)
+        if (_enumeration.base !== null) {
+            val itsBaseAccessor = getAccessor(_enumeration.base.containingTypeCollection)
+            val itsBaseBackingType = _enumeration.base.getBackingTypeHelper(itsBaseAccessor)
+            val isCompatible = isCompatibleBackingType(itsBackingType, itsBaseBackingType)
+            
+            if (!isCompatible)
+                itsBackingType = itsBaseBackingType
+        }
+
+        return itsBackingType
+    }
+
+    def FBasicTypeId getBackingType(FEnumerationType _enumeration, PropertyAccessor _accessor) {
+        val itsBackingType = _enumeration.getBackingTypeHelper(_accessor)
+        switch (itsBackingType) {
             case EnumBackingType::UInt8:
                 return FBasicTypeId::UINT8
             case EnumBackingType::UInt16:
@@ -1228,14 +1300,14 @@ class FrancaGeneratorExtensions {
             case EnumBackingType::Int64:
                 return FBasicTypeId::INT64
             default: {
-                return FBasicTypeId::INT32
+                return FBasicTypeId::UINT8
             }
         }
     }
 
     def String getBaseType(FEnumerationType _enumeration, FEnumerationType _other, String _backingType) {
         var String baseType
-        if (_enumeration.base != null) {
+        if (_enumeration.base !== null) {
             baseType = _enumeration.base.getElementName(_other, false)
         } else {
             baseType = "CommonAPI::Enumeration<" + _backingType + ">"
@@ -1246,7 +1318,7 @@ class FrancaGeneratorExtensions {
     def private getMaximumEnumerationValue(FEnumerationType _enumeration) {
         var BigInteger maximum = BigInteger.ZERO;
         for (literal : _enumeration.enumerators) {
-            if (literal.value != null && literal.value != "") {
+            if (literal.value !== null && literal.value != "") {
                 val BigInteger literalValue = new BigInteger(literal.value.enumeratorValue)
                 if (maximum < literalValue)
                     maximum = literalValue
@@ -1261,17 +1333,17 @@ class FrancaGeneratorExtensions {
 
         // collect all predefined enum values
         for (literal : _enumeration.enumerators) {
-            if (literal.value != null) {
+            if (literal.value !== null) {
                 predefineEnumValues.add(literal.value.enumeratorValue)
             }
         }
-        if (_enumeration.base != null) {
+        if (_enumeration.base !== null) {
             setEnumerationValues(_enumeration.base)
             currentValue = getMaximumEnumerationValue(_enumeration.base) + BigInteger.ONE
         }
 
         for (literal : _enumeration.enumerators) {
-            if (literal.value == null || literal.value == "") {
+            if (literal.value === null || literal.value == "") {
                 // not predefined
                 while (predefineEnumValues.contains(String.valueOf(currentValue))) {
                     // increment it, if this was found in the list of predefined values
@@ -1280,12 +1352,12 @@ class FrancaGeneratorExtensions {
                 literal.setValue(toExpression(currentValue.toString()))
             } else {
                 var enumValue = literal.value.enumeratorValue
-                if (enumValue != null) {
+                if (enumValue !== null) {
                     try {
                         val BigInteger literalValue = new BigInteger(enumValue)
                         literal.setValue(toExpression(literalValue.toString()))
                     } catch (NumberFormatException e) {
-                        literal.setValue(toExpression(currentValue.toString()))
+                        literal.setValue(toExpression(enumValue.toString()))
                     }
                 } else {
                     literal.setValue(toExpression(currentValue.toString()))
@@ -1294,7 +1366,9 @@ class FrancaGeneratorExtensions {
             currentValue += BigInteger.ONE
         }
     }
-
+   def getPrimitiveTypeName(FIntegerInterval interval) {
+       "CommonAPI::RangedInteger<" + interval.lowerBound + ", " + interval.upperBound + ">"
+   }
    def getPrimitiveTypeName(FBasicTypeId fBasicTypeId) {
         switch fBasicTypeId {
             case FBasicTypeId::BOOLEAN: "bool"
@@ -1326,10 +1400,12 @@ class FrancaGeneratorExtensions {
     }
 
     def String actualTypeStreamSignature(FTypeRef fTypeRef, PropertyAccessor deploymentAccessor) {
-        if (fTypeRef.derived != null) {
+        if (fTypeRef.derived !== null) {
             return fTypeRef.derived.typeStreamFTypeSignature(deploymentAccessor)
         }
-
+        if (fTypeRef.interval !== null) {
+            return getBasicTypeStreamSignature(FBasicTypeId::INT32)
+        }
         return fTypeRef.predefined.basicTypeStreamSignature
     }
 
@@ -1346,12 +1422,12 @@ class FrancaGeneratorExtensions {
     def String generateCases(FStructType fStructType, FModelElement parent, boolean qualified) {
         var String itsCases = "case ";
 
-        //if (parent != null)
+        //if (parent !== null)
         //    itsCases = itsCases + parent.elementName + "::"
 
         if (qualified) {
              itsCases = itsCases
-             if (fStructType.containingInterface != null)
+             if (fStructType.containingInterface !== null)
                  itsCases = itsCases + fStructType.containingInterface.elementName  + "::";
         }
 
@@ -1425,7 +1501,7 @@ class FrancaGeneratorExtensions {
         PropertyAccessor deploymentAccessor) {
         var signature = fStructType.elements.map[type.typeStreamSignature(deploymentAccessor, it)].join
 
-        if (fStructType.base != null)
+        if (fStructType.base !== null)
             signature = fStructType.base.getElementsTypeStreamSignature(deploymentAccessor) + signature
 
         return signature
@@ -1440,39 +1516,39 @@ class FrancaGeneratorExtensions {
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FStructType fType) {
-        list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+        list.addAll(fType.elements.filter[type.derived !== null].map[type.derived])
 
-        if (fType.base != null)
+        if (fType.base !== null)
             list.add(fType.base)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FEnumerationType fType) {
-        if (fType.base != null)
+        if (fType.base !== null)
             list.add(fType.base)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FArrayType fType) {
-        if (fType.elementType.derived != null)
+        if (fType.elementType.derived !== null)
             list.add(fType.elementType.derived)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FUnionType fType) {
-        list.addAll(fType.elements.filter[type.derived != null].map[type.derived])
+        list.addAll(fType.elements.filter[type.derived !== null].map[type.derived])
 
-        if (fType.base != null)
+        if (fType.base !== null)
             list.add(fType.base)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FMapType fType) {
-        if (fType.keyType.derived != null)
+        if (fType.keyType.derived !== null)
             list.add(fType.keyType.derived)
 
-        if (fType.valueType.derived != null)
+        if (fType.valueType.derived !== null)
             list.add(fType.valueType.derived)
     }
 
     def private dispatch addFTypeDirectlyReferencedTypes(List<FType> list, FTypeDef fType) {
-        if (fType.actualType.derived != null)
+        if (fType.actualType.derived !== null)
             list.add(fType.actualType.derived)
     }
 
@@ -1480,7 +1556,7 @@ class FrancaGeneratorExtensions {
         if (fStructType.isPolymorphic)
             return true;
 
-        return fStructType.base != null && fStructType.base.hasPolymorphicBase
+        return fStructType.base !== null && fStructType.base.hasPolymorphicBase
     }
 
     def boolean hasDerivedTypes(FStructType fStructType) {
@@ -1494,7 +1570,7 @@ class FrancaGeneratorExtensions {
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FStructType fStructType) {
-        if (fStructType.base != null)
+        if (fStructType.base !== null)
             hasher.putFTypeObject(fStructType.base)
 
         hasher.putString(fStructType.fullyQualifiedName, Charsets::UTF_8)
@@ -1507,7 +1583,7 @@ class FrancaGeneratorExtensions {
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FEnumerationType fEnumerationType) {
-        if (fEnumerationType.base != null)
+        if (fEnumerationType.base !== null)
             hasher.putFTypeObject(fEnumerationType.base)
 
         hasher.putString('FEnumerationType', Charsets::UTF_8)
@@ -1520,7 +1596,7 @@ class FrancaGeneratorExtensions {
     }
 
     def private dispatch void putFTypeObject(Hasher hasher, FUnionType fUnionType) {
-        if (fUnionType.base != null)
+        if (fUnionType.base !== null)
             hasher.putFTypeObject(fUnionType.base)
 
         hasher.putString('FUnionType', Charsets::UTF_8)
@@ -1538,8 +1614,10 @@ class FrancaGeneratorExtensions {
     }
 
     def private void putFTypeRef(Hasher hasher, FTypeRef fTypeRef) {
-        if (fTypeRef.derived != null)
+        if (fTypeRef.derived !== null)
             hasher.putFTypeObject(fTypeRef.derived)
+        else if (fTypeRef.interval !== null)
+            hasher.putString(fTypeRef.interval.getName, Charsets::UTF_8)
         else
             hasher.putString(fTypeRef.predefined.getName, Charsets::UTF_8);
     }
@@ -1554,7 +1632,7 @@ class FrancaGeneratorExtensions {
         if(!fStructType.elements.empty || fStructType.polymorphic) {
             return false
         }
-        if(fStructType.base != null) {
+        if(fStructType.base !== null) {
             return isStructEmpty(fStructType.base)
         }
         return true
@@ -1578,7 +1656,7 @@ class FrancaGeneratorExtensions {
     def generateMajorVersionNamespace(FTypeCollection _tc) '''
 
         «var FVersion itsVersion = _tc.version»
-        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+        «IF itsVersion !== null && (itsVersion.major != 0 || itsVersion.minor != 0)»
         // Compatibility
         namespace v«itsVersion.major.toString»_«itsVersion.minor.toString» = v«itsVersion.major.toString»;
         «ENDIF»
@@ -1586,14 +1664,14 @@ class FrancaGeneratorExtensions {
 
     def generateVersionNamespaceBegin(FTypeCollection _tc) '''
         «var FVersion itsVersion = _tc.version»
-        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+        «IF itsVersion !== null && (itsVersion.major != 0 || itsVersion.minor != 0)»
             namespace v«itsVersion.major.toString» {
         «ENDIF»
     '''
 
     def generateVersionNamespaceEnd(FTypeCollection _tc) '''
         «var FVersion itsVersion = _tc.version»
-        «IF itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)»
+        «IF itsVersion !== null && (itsVersion.major != 0 || itsVersion.minor != 0)»
             } // namespace v«itsVersion.major.toString»
         «ENDIF»
     '''
@@ -1609,7 +1687,7 @@ class FrancaGeneratorExtensions {
     def getVersionPrefix(FTypeCollection _tc) {
         var String prefix = "::"
         var FVersion itsVersion = _tc.version
-        if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
+        if (itsVersion !== null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
             prefix += "v" + itsVersion.major.toString + "::"
         }
         return prefix
@@ -1618,7 +1696,7 @@ class FrancaGeneratorExtensions {
     def getVersionPathPrefix(FTypeCollection _tc) {
         var String prefix = ""
         var FVersion itsVersion = _tc.version
-        if (itsVersion != null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
+        if (itsVersion !== null && (itsVersion.major != 0 || itsVersion.minor != 0)) {
             prefix = "v" + itsVersion.major.toString + "/"
         }
         return prefix
@@ -1650,7 +1728,7 @@ class FrancaGeneratorExtensions {
 
     static def getBundleVersion(String bundleName) {
         val bundle = FrameworkUtil::getBundle(FrancaGeneratorExtensions)
-        if (bundle != null) {
+        if (bundle !== null) {
 
             //OSGI framework running
             val bundleContext = bundle.getBundleContext();
@@ -1669,7 +1747,7 @@ class FrancaGeneratorExtensions {
                     val manifestURL = manifestsEnum.nextElement
                     val manifest = new Manifest(manifestURL.openStream)
                     val name = manifest.mainAttributes.getValue("Bundle-SymbolicName")
-                    if (name != null && name.matches(bundleRegex)) {
+                    if (name !== null && name.matches(bundleRegex)) {
                         val version = manifest.mainAttributes.getValue("Bundle-Version")
                         return version
                     }
@@ -1746,7 +1824,7 @@ class FrancaGeneratorExtensions {
 
     def List<FInterface> getBaseInterfaces(FInterface _interface) {
         val List<FInterface> baseInterfaces = new ArrayList<FInterface>()
-        if (_interface.base != null) {
+        if (_interface.base !== null) {
             baseInterfaces.addAll(getBaseInterfaces(_interface.base))
             if (!baseInterfaces.contains(_interface.base))
                 baseInterfaces.add(_interface.base)
@@ -1781,7 +1859,7 @@ class FrancaGeneratorExtensions {
     def List<FMethod> getInheritedMethods(FInterface fInterface) {
         val List<FMethod> result = new ArrayList<FMethod>()
 
-        if(fInterface.base == null) {
+        if(fInterface.base === null) {
             return result
         }
 
@@ -1793,7 +1871,7 @@ class FrancaGeneratorExtensions {
 
     def List<FAttribute> getInheritedAttributes(FInterface fInterface) {
         val List<FAttribute> result = new ArrayList<FAttribute>()
-        if(fInterface.base == null) {
+        if(fInterface.base === null) {
             return result
         }
 
@@ -1806,7 +1884,7 @@ class FrancaGeneratorExtensions {
     def List<FBroadcast> getInheritedBroadcasts(FInterface fInterface) {
         val List<FBroadcast> result = new ArrayList<FBroadcast>()
 
-        if(fInterface.base == null) {
+        if(fInterface.base === null) {
             return result
         }
 
@@ -1818,7 +1896,7 @@ class FrancaGeneratorExtensions {
 
     def static FExpression toExpression(String value)
     {
-        return switch trimmedValue : if(value != null) value.trim else ""
+        return switch trimmedValue : if(value !== null) value.trim else ""
         {
             case trimmedValue.length > 0:
             {
@@ -1849,6 +1927,10 @@ class FrancaGeneratorExtensions {
             FIntegerConstant: expression.^val.toString
             FStringConstant: expression.^val
             FQualifiedElementRef: expression.element.constantValue
+            FUnaryOperation:
+                expression.op.toString + getEnumeratorValue(expression.operand)
+            FBinaryOperation:
+                "(" + getEnumeratorValue(expression.left) + expression.op.toString + getEnumeratorValue(expression.right) + ")"
             default: null
         }
     }
@@ -1883,15 +1965,15 @@ class FrancaGeneratorExtensions {
     }
 
     def boolean isTheSameVersion(FVersion _mine, FVersion _other) {
-        return ((_mine == null && _other == null) ||
-                (_mine != null && _other != null &&
+        return ((_mine === null && _other === null) ||
+                (_mine !== null && _other !== null &&
                  _mine.major == _other.major &&
                  _mine.minor == _other.minor));
 
     }
 
     def EObject getCommonContainer(EObject _me, EObject _other) {
-        if (_other == null)
+        if (_other === null)
             return null
 
         if (_me == _other)
@@ -1902,8 +1984,8 @@ class FrancaGeneratorExtensions {
             val FTypeCollection other = _other as FTypeCollection
 
             if (me.eContainer == other.eContainer &&
-                ((me.version == null && other.version == null) ||
-                 (me.version != null && other.version != null &&
+                ((me.version === null && other.version === null) ||
+                 (me.version !== null && other.version !== null &&
                   me.version.major == other.version.major &&
                   me.version.minor == other.version.minor))) {
                 return _me;
@@ -1917,7 +1999,7 @@ class FrancaGeneratorExtensions {
         var String name = ""
         if (_container instanceof FTypeCollection) {
             name = _container.name
-            if (name == null) name = "__Anonymous__"
+            if (name === null) name = "__Anonymous__"
         } else if (_container instanceof FModelElement) {
             name = _container.name
         } else if (_container instanceof FModel) {
@@ -1929,7 +2011,7 @@ class FrancaGeneratorExtensions {
     def String getPartialName(FModelElement _me, EObject _until) {
         var String name = _me.containerName
         var EObject container = _me.eContainer
-        while (container != null && container != _until) {
+        while (container !== null && container != _until) {
             if (container instanceof FModel) {
                 name = container.containerName + "::" + name
             }
@@ -1946,12 +2028,12 @@ class FrancaGeneratorExtensions {
         if (_me instanceof FModelElement) {
             var String prefix = ""
             var EObject container = _me
-            while (container != null) {
+            while (container !== null) {
                 if (container instanceof FTypeCollection) {
                     prefix = container.versionPrefix
                 }
                 val containerName = getContainerName(container)
-                if (containerName != null && containerName != "") {
+                if (containerName !== null && containerName != "") {
                     if (name != "") {
                         name = containerName + "::" + name
                     } else {
@@ -1967,7 +2049,7 @@ class FrancaGeneratorExtensions {
     }
 
     def String getElementName(FModelElement _me, FModelElement _other, boolean _isOther) {
-        if (_other == null)
+        if (_other === null)
             return _me.containerName
 
         var FVersion myVersion = null
@@ -1990,11 +2072,11 @@ class FrancaGeneratorExtensions {
                 return name
             }
 
-            if (myContainer.getCommonContainer(otherContainer) != null) {
+            if (myContainer.getCommonContainer(otherContainer) !== null) {
                 return _me.getPartialName(myContainer.eContainer)
             }
 
-            if (otherContainer.getCommonContainer(myContainer) != null) {
+            if (otherContainer.getCommonContainer(myContainer) !== null) {
                 var String name = _me.containerName
                 if (_isOther) {
                     name = getContainerName(myContainer) + "::" + name
@@ -2007,7 +2089,7 @@ class FrancaGeneratorExtensions {
     }
 
     def String getTypeCollectionName(FTypeCollection _me, FTypeCollection _other) {
-        if (_other == null ||
+        if (_other === null ||
             _me.eContainer() != _other.eContainer() ||
              !isTheSameVersion(_me.version, _other.version)) {
             return _me.getFullName()
@@ -2020,7 +2102,7 @@ class FrancaGeneratorExtensions {
     }
 
     def List<FField> getAllElements(FStructType _struct) {
-        if (_struct.base == null)
+        if (_struct.base === null)
             return new LinkedList(_struct.elements)
 
         val elements = _struct.base.allElements
@@ -2029,7 +2111,7 @@ class FrancaGeneratorExtensions {
     }
 
     def List<FField> getAllElements(FUnionType _union) {
-        if (_union.base == null)
+        if (_union.base === null)
             return new LinkedList(_union.elements)
 
         val elements = _union.base.allElements
@@ -2048,7 +2130,7 @@ class FrancaGeneratorExtensions {
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDInterface) {
                 var specname = depl.spec?.name
-                if(specname != null && specname.contains(selector)) {
+                if(specname !== null && specname.contains(selector)) {
                     fdinterfaces.add(depl);
                 }
             }
@@ -2067,7 +2149,7 @@ class FrancaGeneratorExtensions {
         for(depl : fdmodel.getDeployments()) {
             if (depl instanceof FDTypes) {
                 var specname = depl.spec?.name
-                if(specname != null && specname.contains(selector)) {
+                if(specname !== null && specname.contains(selector)) {
                     fdTypes.add(depl);
                 }
             }
@@ -2080,24 +2162,24 @@ class FrancaGeneratorExtensions {
      * the given selector string (e.g.: "dbus" for commonapi.dbus specification)
      * @return the list of FDTypes
      */
-    def List<FDProvider> getFDProviders(FDModel fdmodel, String selector) {
-        var List<FDProvider> fdProviders = new ArrayList<FDProvider>()
+    def List<FDExtensionRoot> getFDProviders(FDModel fdmodel, String selector) {
+        var List<FDExtensionRoot> fdProviders = new ArrayList<FDExtensionRoot>()
 
         for(depl : fdmodel.getDeployments()) {
-            if (depl instanceof FDProvider) {
+            if (depl instanceof FDExtensionRoot) {
                 var specname = depl.spec?.name
-                if(specname != null && specname.contains(selector)) {
+                if(specname !== null && specname.contains(selector)) {
                     fdProviders.add(depl);
                 }
             }
         }
         return fdProviders;
     }
-    def List<FDProvider> getAllFDProviders(FDModel fdmodel) {
-        var List<FDProvider> fdProviders = new ArrayList<FDProvider>()
+    def List<FDExtensionRoot> getAllFDProviders(FDModel fdmodel) {
+        var List<FDExtensionRoot> fdProviders = new ArrayList<FDExtensionRoot>()
 
         for(depl : fdmodel.getDeployments()) {
-            if (depl instanceof FDProvider) {
+            if (depl instanceof FDExtensionRoot) {
                 fdProviders.add(depl);
             }
         }
@@ -2108,8 +2190,8 @@ class FrancaGeneratorExtensions {
      * Copy deployment attributes into the destination deployment
      */
     def mergeDeployments(FDInterface _source, FDInterface _target) {
-        if (_source != null && _source.target != null &&
-            _target != null && _source.target.equals(_target.target)) {
+        if (_source !== null && _source.target !== null &&
+            _target !== null && _source.target.equals(_target.target)) {
 
             var List<FDAttribute> itsNewAttributes = new ArrayList<FDAttribute>()                
             var List<FDBroadcast> itsNewBroadcasts = new ArrayList<FDBroadcast>()
@@ -2120,8 +2202,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDAttribute t : _target.attributes) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2134,8 +2216,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDBroadcast t : _target.broadcasts) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2149,8 +2231,8 @@ class FrancaGeneratorExtensions {
                 var boolean hasBeenMerged = false
                 for (FDMethod t : _target.methods) {
                     if (s.target.equals(t.target)) {
-                        for (p : s.properties)
-                            t.properties.add(EcoreUtil.copy(p))
+                        for (p : s.properties.items)
+                            t.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 }
@@ -2172,57 +2254,57 @@ class FrancaGeneratorExtensions {
     }
 
     def mergeDeployments(FDTypes _source, FDTypes _target) {
-        if (_source != null && _source.target != null &&
-            _target != null && _source.target.equals(_target.target)) {
+        if (_source !== null && _source.target !== null &&
+            _target !== null && _source.target.equals(_target.target)) {
             // Merge types
             mergeDeployments(_source.types, _target.types)
         }
     }
 
     def mergeDeploymentsExt(FDTypes _source, FDTypes _target) {
-        if (_source != null && _source.target != null &&
-            _target != null && _target.target != null) {
+        if (_source !== null && _source.target !== null &&
+            _target !== null && _target.target !== null) {
             // Merge types
             mergeDeployments(_source.types, _target.types)
         }
     }
 
-    def mergeDeployments(EList<FDTypeDef> _source, EList<FDTypeDef> _target) {
-        var List<FDTypeDef> itsNewTypeDefs = new ArrayList<FDTypeDef>()
+    def mergeDeployments(EList<FDTypeDefinition> _source, EList<FDTypeDefinition> _target) {
+        var List<FDTypeDefinition> itsNewTypeDefs = new ArrayList<FDTypeDefinition>()
 
-        for (FDTypeDef s : _source) {
+        for (FDTypeDefinition s : _source) {
             var boolean hasBeenMerged = false
-            for (FDTypeDef t : _target) {
+            for (FDTypeDefinition t : _target) {
                 if (s instanceof FDArray && t instanceof FDArray) {
                     val FDArray itsSourceArray = s as FDArray
                     val FDArray itsTargetArray = t as FDArray
                     if (itsSourceArray.target.equals(itsTargetArray.target)) {
-                        for (p : itsSourceArray.properties)
-                            itsTargetArray.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceArray.properties.items)
+                            itsTargetArray.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDEnumeration && t instanceof FDEnumeration) {
                     val FDEnumeration itsSourceEnumeration = s as FDEnumeration
                     val FDEnumeration itsTargetEnumeration = t as FDEnumeration
                     if (itsSourceEnumeration.target.equals(itsTargetEnumeration.target)) {
-                        for (p : itsSourceEnumeration.properties)
-                            itsTargetEnumeration.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceEnumeration.properties.items)
+                            itsTargetEnumeration.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDStruct && t instanceof FDStruct) {
                     val FDStruct itsSourceStruct = s as FDStruct
                     val FDStruct itsTargetStruct = t as FDStruct
                     if (itsSourceStruct.target.equals(itsTargetStruct.target)) {
-                        for (p : itsSourceStruct.properties)
-                            itsTargetStruct.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceStruct.properties.items)
+                            itsTargetStruct.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } else if (s instanceof FDUnion && t instanceof FDUnion) {
                     val FDUnion itsSourceUnion = s as FDUnion
                     val FDUnion itsTargetUnion = t as FDUnion
                     if (itsSourceUnion.target.equals(itsTargetUnion.target)) {
-                        for (p : itsSourceUnion.properties)
-                            itsTargetUnion.properties.add(EcoreUtil.copy(p))
+                        for (p : itsSourceUnion.properties.items)
+                            itsTargetUnion.properties.items.add(EcoreUtil.copy(p))
                         hasBeenMerged = true
                     }
                 } 
@@ -2234,7 +2316,7 @@ class FrancaGeneratorExtensions {
         _target.addAll(itsNewTypeDefs)
     }
 
-    def public getAllReferencedFInterfaces(FModel fModel)
+    def getAllReferencedFInterfaces(FModel fModel)
     {
         val referencedFInterfaces = fModel.interfaces.toSet
         fModel.interfaces.forEach[base?.addFInterfaceTree(referencedFInterfaces)]
@@ -2242,7 +2324,7 @@ class FrancaGeneratorExtensions {
         return referencedFInterfaces
     }
 
-    def public void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences)
+    def void addFInterfaceTree(FInterface fInterface, Collection<FInterface> fInterfaceReferences)
     {
         if(!fInterfaceReferences.contains(fInterface))
         {
@@ -2251,7 +2333,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public getAllReferencedFTypes(FModel fModel)
+    def getAllReferencedFTypes(FModel fModel)
     {
         val referencedFTypes = new HashSet<FType>
 
@@ -2272,12 +2354,12 @@ class FrancaGeneratorExtensions {
         return referencedFTypes
     }
 
-    def public void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences)
+    def void addDerivedFTypeTree(FTypeRef fTypeRef, Collection<FType> fTypeReferences)
     {
         fTypeRef.derived?.addFTypeDerivedTree(fTypeReferences)
     }
 
-    def public dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FTypeDef fTypeDef, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fTypeDef))
         {
@@ -2286,7 +2368,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FArrayType fArrayType, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fArrayType))
         {
@@ -2295,7 +2377,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FMapType fMapType, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fMapType))
         {
@@ -2305,7 +2387,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FStructType fStructType, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fStructType))
         {
@@ -2315,7 +2397,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FEnumerationType fEnumerationType, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fEnumerationType))
         {
@@ -2324,7 +2406,7 @@ class FrancaGeneratorExtensions {
         }
     }
 
-    def public dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences)
+    def dispatch void addFTypeDerivedTree(FUnionType fUnionType, Collection<FType> fTypeReferences)
     {
         if(!fTypeReferences.contains(fUnionType))
         {
@@ -2333,20 +2415,20 @@ class FrancaGeneratorExtensions {
             fUnionType.elements.forEach[type.addDerivedFTypeTree(fTypeReferences)]
         }
     }
-    def public supportsTypeValidation(FAttribute fAttribute) {
+    def supportsTypeValidation(FAttribute fAttribute) {
         fAttribute.type.derived instanceof FEnumerationType
     }
-    def public validateType(FAttribute fAttribute, FInterface fInterface) {
+    def validateType(FAttribute fAttribute, FInterface fInterface) {
         if (fAttribute.type.derived instanceof FEnumerationType && !fAttribute.array) {
             "_value.validate()"
         }
         else "true"
     }
-    def public supportsValidation(FTypeRef fTtypeRef) {
+    def supportsValidation(FTypeRef fTtypeRef) {
         fTtypeRef.derived instanceof FEnumerationType
     }
 
-    def public String getCanonical(String _basePath, String _uri) {
+    def String getCanonical(String _basePath, String _uri) {
         if (_uri.startsWith("platform:") || _uri.startsWith("file:"))
             return _uri
 
@@ -2413,4 +2495,48 @@ class FrancaGeneratorExtensions {
         return itsCanonicalName.reverse.join(separatorCharacter.toString)
     }
 
+   def Collection<FModelElement> getElements(FInterface _iface) {
+       var SortedMap<Integer, FModelElement> itsElements 
+           = new TreeMap<Integer, FModelElement>()
+
+       // Add attributes, method, broadcasts and (for completeness only) constants
+       for (FModelElement attribute : _iface.attributes) {
+           val node = NodeModelUtils.getNode(attribute);
+           itsElements.put(new Integer(node.startLine), attribute);
+       }
+
+       for (FModelElement broadcast : _iface.broadcasts) {
+           val node = NodeModelUtils.getNode(broadcast);
+           itsElements.put(new Integer(node.startLine), broadcast);
+       }
+
+       for (FModelElement constant : _iface.constants) {
+           val node = NodeModelUtils.getNode(constant);
+           itsElements.put(new Integer(node.startLine), constant);
+       }
+
+       for (FModelElement method : _iface.methods) {
+           val node = NodeModelUtils.getNode(method);
+           itsElements.put(new Integer(node.startLine), method);
+       }
+
+       // Return the values from the sorted(!) map
+       return itsElements.values()
+   }
+   
+   def getElementPosition(FInterface _iface, FModelElement _elem) {
+       var i = 0
+       for (FModelElement itsElement : _iface.elements) {
+           if (itsElement == _elem)
+               return i;
+           i = i + 1
+       }
+       return i
+   }
+
+    def int getRsize(FInterface _iface) {
+        if (_iface.base !== null)
+            return _iface.elements.size + _iface.base.getRsize()
+        return _iface.elements.size
+    }
 }

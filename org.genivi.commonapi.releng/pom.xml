@@ -3,14 +3,14 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>commonapi</groupId>
     <artifactId>org.genivi.commonapi.releng</artifactId>
-    <version>3.1.12-SNAPSHOT</version>
+    <version>3.2.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <properties>
         <tycho-version>0.22.0</tycho-version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <forceContextQualifier>v${maven.build.timestamp}</forceContextQualifier>
         <maven.build.timestamp.format>yyyyMMddHHmm</maven.build.timestamp.format>
-        <xtend-version>2.7.3</xtend-version>
+        <xtend-version>2.20.0</xtend-version>
     </properties>
 
     <pluginRepositories>
@@ -46,7 +46,7 @@
                         <artifact>
                             <groupId>commonapi</groupId>
                             <artifactId>${target.id}</artifactId>
-                            <version>3.1.12-SNAPSHOT</version>
+                            <version>3.2.0-SNAPSHOT</version>
                         </artifact>
                     </target>
                     <filters>
@@ -72,6 +72,11 @@
                             <ws>gtk</ws>
                             <arch>x86_64</arch>
                         </environment>
+                        <environment>
+                            <os>macosx</os>
+                            <ws>cocoa</ws>
+                            <arch>x86_64</arch>
+                        </environment>
                     </environments>
                 </configuration>
             </plugin>
@@ -89,13 +94,6 @@
                 <groupId>org.eclipse.xtend</groupId>
                 <artifactId>xtend-maven-plugin</artifactId>
                 <version>${xtend-version}</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.eclipse.platform</groupId>
-                        <artifactId>org.eclipse.equinox.common</artifactId>
-                        <version>3.10.0</version>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <goals>

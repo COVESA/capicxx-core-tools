@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.ArrayList
@@ -15,16 +13,15 @@ import org.franca.core.franca.FModel
 import org.franca.core.franca.FModelElement
 import org.franca.core.franca.FType
 import org.franca.core.franca.FTypeCollection
-import org.franca.core.franca.FTypedElement
 import org.franca.core.franca.FUnionType
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 
 class FTypeCommonAreaGenerator {
-    @Inject private extension FrancaGeneratorExtensions
+	@Inject extension FrancaGeneratorExtensions
 
     def private getClassNamespaceWithName(FModelElement child, String name, FModelElement parent, String parentName) {
         var reference = name
-        if (parent != null && parent != child)
+        if (parent !== null && parent != child)
             reference = parentName + '::' + reference
         return reference
     }
@@ -65,16 +62,6 @@ class FTypeCommonAreaGenerator {
         «ENDFOR»
     '''
 
-    def private getClassNamespaceWithName(FTypedElement type, String name, FModelElement parent, String parentName) {
-        var reference = type.getTypeName(parent, false)
-        if (parent != null && parent != type) {
-            reference = parentName + '::' + reference
-        }
-        return reference
-    }
-
-
-
     def private List<String> getElementTypeNames(FUnionType fUnion) {
         var names = new ArrayList<String>
         var rev = fUnion.elements
@@ -84,7 +71,7 @@ class FTypeCommonAreaGenerator {
         while (iter.hasNext) {
             var item = iter.next
             var lName = "";
-            if (item.type.derived != null) {
+            if (item.type.derived !== null) {
                 lName = parent.versionPrefix + parent.model.namespaceAsList.join("::") + "::" + item.getTypeName(fUnion, true)
             } else {
                lName = item.getTypeName(fUnion, false)
@@ -92,7 +79,7 @@ class FTypeCommonAreaGenerator {
             names.add(lName)
         }
 
-        if (fUnion.base != null) {
+        if (fUnion.base !== null) {
             for (base : fUnion.base.elementTypeNames) {
                 names.add(base);
             }
@@ -157,7 +144,7 @@ class FTypeCommonAreaGenerator {
         val baseList = new LinkedList<FUnionType>
         var currentBase = fUnionType.base
 
-        while (currentBase != null) {
+        while (currentBase !== null) {
             baseList.add(0, currentBase)
             currentBase = currentBase.base
         }

@@ -1,9 +1,7 @@
-/* Copyright (C) 2014, 2015 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+// Copyright (C) 2014-2019 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "E03MethodsStubImpl.hpp"
 
@@ -24,8 +22,7 @@ void E03MethodsStubImpl::incCounter() {
 ;
 
 void E03MethodsStubImpl::foo(const std::shared_ptr<CommonAPI::ClientId> _client,
-                int32_t _x1,
-                std::string _x2,
+                int32_t _x1, std::string _x2,
                 fooReply_t _reply) {
 
     std::cout << "foo called, setting new values." << std::endl;

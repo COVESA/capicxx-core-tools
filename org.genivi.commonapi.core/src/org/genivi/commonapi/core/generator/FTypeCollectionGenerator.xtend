@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.Collection
@@ -18,9 +16,9 @@ import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
 
 class FTypeCollectionGenerator {
-    @Inject private extension FTypeGenerator
-    @Inject private extension FTypeCommonAreaGenerator
-    @Inject private extension FrancaGeneratorExtensions
+	@Inject extension FTypeGenerator
+	@Inject extension FTypeCommonAreaGenerator
+	@Inject extension FrancaGeneratorExtensions
 
     def generate(FTypeCollection fTypeCollection,
                  IFileSystemAccess fileSystemAccess,
@@ -58,15 +56,13 @@ class FTypeCollectionGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
-        #define COMMONAPI_INTERNAL_COMPILATION
-        #endif
+        «startInternalCompilation»
 
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        #undef COMMONAPI_INTERNAL_COMPILATION
+        «endInternalCompilation»
 
         «fTypeCollection.generateVersionNamespaceBegin»
         «fTypeCollection.model.generateNamespaceBeginDeclaration»
@@ -77,14 +73,14 @@ class FTypeCollectionGenerator {
         «FOR type : fTypeCollection.types»
             «type.generateFTypeInlineImplementation(type, deploymentAccessor)»
         «ENDFOR»
-
+            «fTypeCollection.generateFConstDeclarations(deploymentAccessor)»
 
         static inline const char* getTypeCollectionName() {
             static const char* typeCollectionName = "«fTypeCollection.fullyQualifiedName»";
             return typeCollectionName;
         }
 
-        «IF fTypeCollection.version != null»
+        «IF fTypeCollection.version !== null»
             inline CommonAPI::Version getTypeCollectionVersion() {
                 return CommonAPI::Version(«fTypeCollection.version.major», «fTypeCollection.version.minor»);
             }

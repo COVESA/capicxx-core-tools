@@ -1,10 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
-
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.validator;
 
 import java.util.ArrayList;
@@ -146,22 +143,25 @@ public class ValidatorCoreUi extends ValidatorCore {
                             "file:/"
                                     + importedPath.substring(0,
                                             importedPath.lastIndexOf("/") + 1));
-                    for (EObject imp : resource.eContents()) {
-                        if (imp instanceof Import) {
-                            Path importImportedPath = new Path(
-                                    ((Import) imp).getImportURI());
-                            if (importImportedPath.isAbsolute()) {
-                                importedFIDL.add(importImportedPath.toString()
-                                        .replaceFirst(
-                                                importImportedPath.getDevice()
-                                                        + "/", ""));
-                            } else {
-                                importImportedPath = new Path(
-                                        importedPath.substring(0,
-                                                importedPath.lastIndexOf("/"))
-                                                + "/"
-                                                + ((Import) imp).getImportURI());
-                                importedFIDL.add(importImportedPath.toString());
+                    if (resource != null)
+                    {
+                        for (EObject imp : resource.eContents()) {
+                            if (imp instanceof Import) {
+                                Path importImportedPath = new Path(
+                                        ((Import) imp).getImportURI());
+                                if (importImportedPath.isAbsolute()) {
+                                    importedFIDL.add(importImportedPath.toString()
+                                            .replaceFirst(
+                                                    importImportedPath.getDevice()
+                                                            + "/", ""));
+                                } else {
+                                    importImportedPath = new Path(
+                                            importedPath.substring(0,
+                                                    importedPath.lastIndexOf("/"))
+                                                    + "/"
+                                                    + ((Import) imp).getImportURI());
+                                    importedFIDL.add(importImportedPath.toString());
+                                }
                             }
                         }
                     }

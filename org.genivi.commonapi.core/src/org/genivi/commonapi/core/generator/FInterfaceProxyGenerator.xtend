@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.ArrayList
@@ -12,6 +10,7 @@ import javax.inject.Inject
 import org.eclipse.core.resources.IResource
 import org.eclipse.xtext.generator.IFileSystemAccess
 import org.franca.core.franca.FAttribute
+import org.franca.core.franca.FBroadcast
 import org.franca.core.franca.FInterface
 import org.franca.core.franca.FMethod
 import org.genivi.commonapi.core.deployment.PropertyAccessor
@@ -19,8 +18,8 @@ import org.genivi.commonapi.core.preferences.PreferenceConstants
 import org.genivi.commonapi.core.preferences.FPreferences
 
 class FInterfaceProxyGenerator {
-    @Inject private extension FTypeGenerator
-    @Inject private extension FrancaGeneratorExtensions
+	@Inject extension FTypeGenerator
+	@Inject extension FrancaGeneratorExtensions
 
     var boolean generateSyncCalls = true
 
@@ -45,7 +44,7 @@ class FInterfaceProxyGenerator {
         #define «fInterface.defineName»_PROXY_BASE_HPP_
 
         #include <«fInterface.headerPath»>
-        «IF fInterface.base != null»
+        «IF fInterface.base !== null»
             #include <«fInterface.base.proxyBaseHeaderPath»>
         «ENDIF»
 
@@ -57,9 +56,7 @@ class FInterfaceProxyGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
-        #define COMMONAPI_INTERNAL_COMPILATION
-        #endif
+        «startInternalCompilation»
 
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
@@ -73,9 +70,6 @@ class FInterfaceProxyGenerator {
         «ENDIF»
         «IF fInterface.hasBroadcasts»
             #include <CommonAPI/Event.hpp>
-            «IF fInterface.hasSelectiveBroadcasts»
-                #include <CommonAPI/SelectiveEvent.hpp>
-            «ENDIF»
         «ENDIF»
         #include <CommonAPI/Proxy.hpp>
         «IF !fInterface.methods.empty»
@@ -83,56 +77,54 @@ class FInterfaceProxyGenerator {
             #include <future>
         «ENDIF»
 
-        #undef COMMONAPI_INTERNAL_COMPILATION
+        «endInternalCompilation»
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         class «fInterface.proxyBaseClassName»
-            : virtual public «IF fInterface.base != null»«fInterface.base.getTypeCollectionName(fInterface)»ProxyBase«ELSE»CommonAPI::Proxy«ENDIF» {
+            : virtual public «IF fInterface.base !== null»«fInterface.base.getTypeCollectionName(fInterface)»ProxyBase«ELSE»CommonAPI::Proxy«ENDIF» {
         public:
-            «FOR attribute : fInterface.attributes»
-                typedef CommonAPI::«attribute.commonApiBaseClassname»< «attribute.getTypeName(fInterface, true)»> «attribute.className»;
-            «ENDFOR»
-            «FOR broadcast : fInterface.broadcasts»
-                «IF broadcast.isSelective»
-                    typedef CommonAPI::SelectiveEvent< «broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»> «broadcast.className»;
-                «ELSE»
+            «FOR itsElement : fInterface.elements»
+                «IF itsElement instanceof FAttribute»
+                    «val itsAttribute = itsElement»
+                    typedef CommonAPI::«itsAttribute.commonApiBaseClassname»<«itsAttribute.getTypeName(fInterface, true)»> «itsAttribute.className»;
+                «ELSEIF itsElement instanceof FBroadcast»
                     typedef CommonAPI::Event<
-                        «broadcast.outArgs.map[getTypeName(fInterface, true)].join(', ')»
-                    > «broadcast.className»;
+                        «itsElement.outArgs.map[getTypeName(fInterface, true)].join(', ')»
+                    > «itsElement.className»;
                 «ENDIF»
             «ENDFOR»
 
             «fInterface.generateAsyncCallbackTypedefs»
 
-            «FOR attribute : fInterface.attributes»
-                «FTypeGenerator::generateComments(attribute, false)»
-                virtual «attribute.generateGetMethodDefinition» = 0;
-            «ENDFOR»
-
-            «FOR broadcast : fInterface.broadcasts»
-                «FTypeGenerator::generateComments(broadcast, false)»
-                virtual «broadcast.generateGetMethodDefinition» = 0;
-            «ENDFOR»
-
-            «FOR method : fInterface.methods»
-                «FTypeGenerator::generateComments(method, false)»
-                «IF generateSyncCalls || method.isFireAndForget»
-                «IF method.isFireAndForget»
-                    /**
-                     * @invariant Fire And Forget
-                     */
-                «ENDIF»
-                virtual «method.generateDefinition(true)» = 0;
-                «ENDIF»
-                «IF !method.isFireAndForget»
-                    virtual «method.generateAsyncDefinition(true)» = 0;
+            «FOR itsElement : fInterface.elements»
+                «IF itsElement instanceof FAttribute»
+                    «FTypeGenerator::generateComments(itsElement, false)»
+                    virtual «itsElement.generateGetMethodDefinition» = 0;
+                «ELSEIF itsElement instanceof FBroadcast»
+                    «FTypeGenerator::generateComments(itsElement, false)»
+                    virtual «itsElement.generateGetMethodDefinition» = 0;
+                «ELSEIF itsElement instanceof FMethod»
+                    «FTypeGenerator::generateComments(itsElement, false)»
+                    «IF generateSyncCalls || itsElement.isFireAndForget»
+                        «IF itsElement.isFireAndForget»
+                            /**
+                             * @invariant Fire And Forget
+                             */
+                        «ENDIF»
+                        virtual «itsElement.generateDefinition(true)» = 0;
+                    «ENDIF»
+                    «IF !itsElement.isFireAndForget»
+                        virtual «itsElement.generateAsyncDefinition(true)» = 0;
+                    «ENDIF»
                 «ENDIF»
             «ENDFOR»
             «FOR managed : fInterface.managedInterfaces»
                 virtual CommonAPI::ProxyManager& «managed.proxyManagerGetterName»() = 0;
             «ENDFOR»
+
+            virtual std::future<void> getCompletionFuture() = 0;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
@@ -151,20 +143,18 @@ class FInterfaceProxyGenerator {
 
         #include <«fInterface.proxyBaseHeaderPath»>
 
-        «IF fInterface.base != null»
+        «IF fInterface.base !== null»
             #include "«fInterface.base.proxyHeaderPath»"
         «ENDIF»
 
-        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
-        #define COMMONAPI_INTERNAL_COMPILATION
-        #endif
-
+        «startInternalCompilation»
+        
         «IF fInterface.hasAttributes»
             #include <CommonAPI/AttributeExtension.hpp>
             #include <CommonAPI/Factory.hpp>
         «ENDIF»
 
-        #undef COMMONAPI_INTERNAL_COMPILATION
+        «endInternalCompilation»
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
@@ -172,7 +162,7 @@ class FInterfaceProxyGenerator {
         template <typename ... _AttributeExtensions>
         class «fInterface.proxyClassName»
             : virtual public «fInterface.elementName»,
-              virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base != null»
+              virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base !== null»
               public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
               virtual public _AttributeExtensions... {
         public:
@@ -181,64 +171,11 @@ class FInterfaceProxyGenerator {
 
             typedef «fInterface.getRelativeNameReference(fInterface)» InterfaceType;
 
-            «IF fInterface.base != null»
+            «IF fInterface.base !== null»
                 inline static const char* getInterface() {
                     return(«fInterface.elementName»::getInterface());
                 }
             «ENDIF»
-
-            «FOR attribute : fInterface.attributes»
-                «FTypeGenerator::generateComments(attribute, false)»
-                /**
-                 * Returns the wrapper class that provides access to the attribute «attribute.elementName».
-                 */
-                virtual «attribute.generateGetMethodDefinition» {
-                    return delegate_->get«attribute.className»();
-                }
-            «ENDFOR»
-
-            «FOR broadcast : fInterface.broadcasts»
-                «FTypeGenerator::generateComments(broadcast, false)»
-                /**
-                 * Returns the wrapper class that provides access to the broadcast «broadcast.elementName».
-                 */
-                virtual «broadcast.generateGetMethodDefinition» {
-                    return delegate_->get«broadcast.className»();
-                }
-            «ENDFOR»
-
-            «FOR method : fInterface.methods»
-                «IF generateSyncCalls || method.isFireAndForget»
-                /**
-                «FTypeGenerator::generateComments(method, true)»
-                 * Calls «method.elementName» with «IF method.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
-                 *
-                «IF !method.inArgs.empty»* All const parameters are input parameters to this method.«ENDIF»
-                «IF !method.outArgs.empty»* All non-const parameters will be filled with the returned values.«ENDIF»
-                 * The CallStatus will be filled when the method returns and indicate either
-                 * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
-                 * will be set.
-                 */
-                virtual «method.generateDefinition(true)»;
-                «ENDIF»
-                «IF !method.isFireAndForget»
-                    /**
-                     * Calls «method.elementName» with asynchronous semantics.
-                     *
-                     * The provided callback will be called when the reply to this call arrives or
-                     * an error occurs during the call. The CallStatus will indicate either "SUCCESS"
-                     * or which type of error has occurred. In case of any error, ONLY the CallStatus
-                     * will have a defined value.
-                     * The std::future returned by this method will be fulfilled at arrival of the reply.
-                     * It will provide the same value for CallStatus as will be handed to the callback.
-                     */
-                    virtual «method.generateAsyncDefinition(true)»;
-                «ENDIF»
-            «ENDFOR»
-
-            «FOR managed : fInterface.managedInterfaces»
-                virtual CommonAPI::ProxyManager& «managed.proxyManagerGetterName»();
-            «ENDFOR»
 
             /**
              * Returns the CommonAPI address of the remote partner this proxy communicates with.
@@ -267,6 +204,60 @@ class FInterfaceProxyGenerator {
              */
             virtual CommonAPI::InterfaceVersionAttribute& getInterfaceVersionAttribute();
 
+            virtual std::future<void> getCompletionFuture();
+
+            «FOR itsElement : fInterface.elements»
+                «IF itsElement instanceof FAttribute»
+                    «FTypeGenerator::generateComments(itsElement, false)»
+                    /**
+                     * Returns the wrapper class that provides access to the attribute «itsElement.elementName».
+                     */
+                    virtual «itsElement.generateGetMethodDefinition» {
+                        return delegate_->get«itsElement.className»();
+                    }
+                «ELSEIF itsElement instanceof FBroadcast»
+                    «FTypeGenerator::generateComments(itsElement, false)»
+                    /**
+                     * Returns the wrapper class that provides access to the broadcast «itsElement.elementName».
+                     */
+                    virtual «itsElement.generateGetMethodDefinition» {
+                        return delegate_->get«itsElement.className»();
+                    }
+                «ELSEIF itsElement instanceof FMethod»
+                    «IF generateSyncCalls || itsElement.isFireAndForget»
+                        /**
+                        «FTypeGenerator::generateComments(itsElement, true)»
+                         * Calls «itsElement.elementName» with «IF itsElement.isFireAndForget»Fire&Forget«ELSE»synchronous«ENDIF» semantics.
+                         *
+                        «IF !itsElement.inArgs.empty» * All const parameters are input parameters to this method.«ENDIF»
+                        «IF !itsElement.outArgs.empty» * All non-const parameters will be filled with the returned values.«ENDIF»
+                         * The CallStatus will be filled when the method returns and indicate either
+                         * "SUCCESS" or which type of error has occurred. In case of an error, ONLY the CallStatus
+                         * will be set.
+                         */
+                        virtual «itsElement.generateDefinition(true)»;
+                    «ENDIF»
+                    «IF !itsElement.isFireAndForget»
+                        /**
+                         * Calls «itsElement.elementName» with asynchronous semantics.
+                         *
+                         * The provided callback will be called when the reply to this call arrives or
+                         * an error occurs during the call. The CallStatus will indicate either "SUCCESS"
+                         * or which type of error has occurred. In case of any error, ONLY the CallStatus
+                         * will have a defined value.
+                         * The std::future returned by this method will be fulfilled at arrival of the reply.
+                         * It will provide the same value for CallStatus as will be handed to the callback.
+                         */
+                        virtual «itsElement.generateAsyncDefinition(true)»;
+                    «ENDIF»
+                «ENDIF»
+            «ENDFOR»
+
+            «FOR managed : fInterface.managedInterfaces»
+                virtual CommonAPI::ProxyManager& «managed.proxyManagerGetterName»();
+            «ENDFOR»
+
+
          private:
             std::shared_ptr< «fInterface.proxyBaseClassName»> delegate_;
         };
@@ -287,7 +278,7 @@ class FInterfaceProxyGenerator {
         //
         template <typename ... _AttributeExtensions>
         «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
-                «IF fInterface.base != null»
+                «IF fInterface.base !== null»
                 «fInterface.base.getFullName()»Proxy<_AttributeExtensions...>(delegate),
                 «ENDIF»
                 _AttributeExtensions(*(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)))...,
@@ -298,40 +289,42 @@ class FInterfaceProxyGenerator {
         «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
         }
 
-        «FOR method : fInterface.methods»
-            «FTypeGenerator::generateComments(method, false)»
-            «IF generateSyncCalls || method.isFireAndForget»
-            template <typename ... _AttributeExtensions>
-            «method.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
-                «FOR arg : method.inArgs»
-                    «IF !arg.array && arg.getType.supportsValidation»
-                        if (!_«arg.elementName».validate()) {
-                            _internalCallStatus = CommonAPI::CallStatus::INVALID_VALUE;
-                            return;
-                        }
-                    «ENDIF»
-                «ENDFOR»
-                delegate_->«method.elementName»(«method.generateSyncVariableList»);
-            }
-            «ENDIF»
-            «IF !method.isFireAndForget»
-
+        «FOR itsElement : fInterface.elements»
+            «IF itsElement instanceof FMethod»
+                «FTypeGenerator::generateComments(itsElement, false)»
+                «IF generateSyncCalls || itsElement.isFireAndForget»
                 template <typename ... _AttributeExtensions>
-                «method.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
-                    «FOR arg : method.inArgs»
+                «itsElement.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                    «FOR arg : itsElement.inArgs»
                         «IF !arg.array && arg.getType.supportsValidation»
                             if (!_«arg.elementName».validate()) {
-                                «method.generateDummyArgumentDefinitions»
-                                 «val callbackArguments = method.generateDummyArgumentList»
-                                _callback(CommonAPI::CallStatus::INVALID_VALUE«IF callbackArguments != ""», «callbackArguments»«ENDIF»);
-                                std::promise<CommonAPI::CallStatus> promise;
-                                promise.set_value(CommonAPI::CallStatus::INVALID_VALUE);
-                                return promise.get_future();
+                                _internalCallStatus = CommonAPI::CallStatus::INVALID_VALUE;
+                                return;
                             }
                         «ENDIF»
                     «ENDFOR»
-                    return delegate_->«method.elementName»Async(«method.generateASyncVariableList»);
+                    delegate_->«itsElement.elementName»(«itsElement.generateSyncVariableList»);
                 }
+                «ENDIF»
+                «IF !itsElement.isFireAndForget»
+
+                    template <typename ... _AttributeExtensions>
+                    «itsElement.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                        «FOR arg : itsElement.inArgs»
+                            «IF !arg.array && arg.getType.supportsValidation»
+                                if (!_«arg.elementName».validate()) {
+                                    «itsElement.generateDummyArgumentDefinitions»
+                                     «val callbackArguments = itsElement.generateDummyArgumentList»
+                                    _callback(CommonAPI::CallStatus::INVALID_VALUE«IF callbackArguments != ""», «callbackArguments»«ENDIF»);
+                                    std::promise<CommonAPI::CallStatus> promise;
+                                    promise.set_value(CommonAPI::CallStatus::INVALID_VALUE);
+                                    return promise.get_future();
+                                }
+                            «ENDIF»
+                        «ENDFOR»
+                        return delegate_->«itsElement.elementName»Async(«itsElement.generateASyncVariableList»);
+                    }
+                «ENDIF»
             «ENDIF»
         «ENDFOR»
 
@@ -366,6 +359,11 @@ class FInterfaceProxyGenerator {
                 return delegate_->«managed.proxyManagerGetterName»();
             }
         «ENDFOR»
+
+        template <typename ... _AttributeExtensions>
+        std::future<void> «fInterface.proxyClassName»<_AttributeExtensions...>::getCompletionFuture() {
+            return delegate_->getCompletionFuture();
+        }
 
         «fInterface.model.generateNamespaceEndDeclaration»
         «fInterface.generateVersionNamespaceEnd»

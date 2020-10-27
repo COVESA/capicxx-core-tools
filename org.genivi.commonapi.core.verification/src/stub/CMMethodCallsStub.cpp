@@ -1,11 +1,12 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #include <iostream>
-#include "CMMethodCallsStub.h"
+#include "CMMethodCallsStub.hpp"
+#include <thread>
+#include <chrono>
 
 namespace v1 {
 namespace commonapi {
@@ -35,6 +36,14 @@ void CMMethodCallsStub::testDontCare(const std::shared_ptr<CommonAPI::ClientId> 
 	(void)_client;
 	(void)_x;
 	fireBTestEvent(1);
+}
+
+void CMMethodCallsStub::testMethodBlocking(
+        const std::shared_ptr<CommonAPI::ClientId> _client, uint32_t _blockTime,
+        testMethodBlockingReply_t _reply) {
+    (void)_client;
+    std::this_thread::sleep_for(std::chrono::milliseconds(_blockTime));
+    _reply();
 }
 
 } /* namespace v1 */

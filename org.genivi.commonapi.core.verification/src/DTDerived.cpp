@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -17,7 +16,7 @@
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/datatypes/derived/TestInterfaceProxy.hpp"
-#include "stub/DTDerivedStub.h"
+#include "stub/DTDerivedStub.hpp"
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.datatypes.derived.TestInterface";
@@ -81,11 +80,13 @@ protected:
     v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtTestValue_;
     v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtTestValue_;
     v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtTestValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::defUnionExtended unionStructTestValue_;
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructTestValue_;
 
     v1_0::commonapi::datatypes::derived::TestInterface::tStructExt structExtResultValue_;
     v1_0::commonapi::datatypes::derived::TestInterface::tEnumExt enumExtResultValue_;
     v1_0::commonapi::datatypes::derived::TestInterface::tUnionExt unionExtResultValue_;
+    v1_0::commonapi::datatypes::derived::TestInterface::defUnionExtended unionStructResultValue_;
     std::shared_ptr<v1_0::commonapi::datatypes::derived::TestInterface::tBaseStruct> baseStructResultValue_;
 
 };
@@ -175,6 +176,16 @@ TEST_F(DTDerived, AttributeSet) {
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(unionExtTestValue_, unionExtResultValue_);
 
+    v1_0::commonapi::datatypes::derived::TestInterface::defStruct2 union_s2element;
+    union_s2element.setV8("test");
+    v1_0::commonapi::datatypes::derived::TestInterface::defStruct union_selement;
+    union_selement.setV8(16);
+    union_s2element.setS1(union_selement);
+    unionStructTestValue_ = union_s2element;
+    testProxy_->getAdefUnionExtendedAttribute().setValue(unionStructTestValue_, callStatus, unionStructResultValue_);
+    ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(unionStructTestValue_, unionStructResultValue_);
+
     testProxy_->getABaseStructAttribute().setValue(baseStructTestValue_, callStatus, baseStructResultValue_);
     ASSERT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
 
@@ -193,7 +204,7 @@ TEST_F(DTDerived, AttributeSet) {
 TEST_F(DTDerived, BroadcastReceive) {
 
     CommonAPI::CallStatus callStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
 
     structExtTestValue_.setBaseMember(42);
     structExtTestValue_.setExtendedMember("Hello World");

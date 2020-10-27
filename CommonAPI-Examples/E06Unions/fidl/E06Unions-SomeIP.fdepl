@@ -1,0 +1,73 @@
+/* Copyright (C) 2014 BMW Group
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-4-SOMEIP_deployment_spec.fdepl"
+import "E06Unions.fidl"
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E06Unions {
+    SomeIpServiceID = 4660
+    SomeIpEventGroups = { 7000, 7001 }
+
+    attribute u {
+        SomeIpGetterID = 3000
+        SomeIpSetterID = 3001
+        SomeIpNotifierID = 33010
+        SomeIpNotifierEventGroups = { 33010 }
+    }
+
+    attribute x {
+        SomeIpGetterID = 3002
+        SomeIpSetterID = 3003
+        SomeIpNotifierID = 33011
+        SomeIpNotifierEventGroups = { 33011 }
+    }
+
+}
+
+define org.genivi.commonapi.someip.deployment for typeCollection commonapi.examples.CommonTypes {
+
+    union SettingsUnion {
+        id {
+        }
+        status {
+        }
+        channel {
+        }
+        name {
+        }
+    }
+
+    struct SettingsStructMyTypedef {
+        id  {
+        }
+    }
+
+    struct SettingsStructMyEnum {
+        status  {
+        }
+    }
+
+    struct SettingsStructUInt8 {
+        channel  {
+        }
+    }
+
+    struct SettingsStructString {
+        name  {
+        }
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for provider as Service {
+    instance commonapi.examples.E06Unions {
+        InstanceId = "commonapi.examples.Unions"
+
+        SomeIpInstanceID = 22136
+
+        SomeIpUnicastAddress = "192.168.0.2"
+        SomeIpReliableUnicastPort = 30490
+        SomeIpUnreliableUnicastPort = 30491
+}
+}

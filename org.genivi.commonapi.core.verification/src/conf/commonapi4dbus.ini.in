@@ -19,6 +19,8 @@ local:commonapi.advanced.managed.SpecialDevice:v1_0:commonapi.advanced.managed.M
 local:commonapi.advanced.managed.HLevelTop:v1_0:commonapi.advanced.managed.HLevelTop=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.HLevelMiddle:v1_0:commonapi.advanced.managed.HLevelMiddle=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.HLevelBottom:v1_0:commonapi.advanced.managed.HLevelBottom=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.HLevelMiddle:v1_0:commonapi.advanced.managed.HLevelTop.middle01=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.HLevelBottom:v1_0:commonapi.advanced.managed.HLevelTop.middle01.bottom01=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.polymorph.TestInterface:v1_0:commonapi.advanced.polymorph.TestInterface=@GLUECODE_SO_DBUS@
 local:commonapi.datatypes.primitive.TestInterface:v1_0:commonapi.datatypes.primitive.TestInterface=@GLUECODE_SO_DBUS@
 local:commonapi.datatypes.advanced.TestInterface:v1_0:commonapi.datatypes.advanced.TestInterface=@GLUECODE_SO_DBUS@
@@ -84,10 +86,15 @@ local:commonapi.communication.TestInterface:v1_0:commonapi.communication.TestInt
 local:commonapi.advanced.bselective.TestInterface:v1_0:commonapi.advanced.bselective.TestInterface=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.Manager:v1_0:commonapi.advanced.managed.Manager=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.Device:v1_0:commonapi.advanced.managed.Device=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.Device:v1_0:commonapi.advanced.managed.Manager.device01=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.Device:v1_0:commonapi.advanced.managed.Manager.device02=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.SpecialDevice:v1_0:commonapi.advanced.managed.SpecialDevice=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.SpecialDevice:v1_0:commonapi.advanced.managed.Manager.specialDevice00=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.HLevelTop:v1_0:commonapi.advanced.managed.HLevelTop=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.HLevelMiddle:v1_0:commonapi.advanced.managed.HLevelMiddle=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.managed.HLevelBottom:v1_0:commonapi.advanced.managed.HLevelBottom=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.HLevelMiddle:v1_0:commonapi.advanced.managed.HLevelTop.middle01=@GLUECODE_SO_DBUS@
+local:commonapi.advanced.managed.HLevelBottom:v1_0:commonapi.advanced.managed.HLevelTop.middle01.bottom01=@GLUECODE_SO_DBUS@
 local:commonapi.advanced.polymorph.TestInterface:v1_0:commonapi.advanced.polymorph.TestInterface=@GLUECODE_SO_DBUS@
 local:commonapi.datatypes.primitive.TestInterface:v1_0:commonapi.datatypes.primitive.TestInterface=@GLUECODE_SO_DBUS@
 local:commonapi.datatypes.advanced.TestInterface:v1_0:commonapi.datatypes.advanced.TestInterface=@GLUECODE_SO_DBUS@

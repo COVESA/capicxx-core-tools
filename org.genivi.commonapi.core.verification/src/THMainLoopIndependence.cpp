@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 - 2015 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014 - 2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -10,10 +9,10 @@
 
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "utils/VerificationMainLoop.h"
+#include "utils/VerificationMainLoop.hpp"
 #include "v1/commonapi/threading/TestInterfaceProxy.hpp"
 #include "v1/commonapi/threading/TestInterfaceStubDefault.hpp"
-#include "utils/VerificationMainLoop.h"
+#include <atomic>
 
 const std::string domain = "local";
 const std::string instance6 = "my.test.commonapi.address.six";
@@ -235,17 +234,19 @@ TEST_F(THMainLoopIndependence, ProxyReceivesAnswerOnlyIfStubMainLoopRuns) {
 /**
 * @test Proxy Receives Just His Own Answers.
 *     - start 2 proxies in own threads
-*     - call test method in each proxy
+*     - call test method in each proxy synchronously
 *     - now each proxy should have received the answer to his own request
 */
-TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
+TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswersSync) {
     std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
     auto runtime = CommonAPI::Runtime::get();
     ASSERT_TRUE(runtime->registerService(domain, instance6, stubThirdParty, thirdPartyServiceId));
 
-    CommonAPI::CallStatus callStatusProxy1, callStatusProxy2;
+    CommonAPI::CallStatus callStatusProxy1(CommonAPI::CallStatus::UNKNOWN);
+    CommonAPI::CallStatus callStatusProxy2(CommonAPI::CallStatus::UNKNOWN);
 
-    bool finish1, finish2 = false;
+    bool finish1(false);
+    bool finish2(false);
 
     mainLoopRunnerProxy1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
     mainLoopRunnerProxy2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
@@ -265,7 +266,8 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
             if (y1 == 1) break;
             std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
-        ASSERT_EQ(1, y1);
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatusProxy1);
+        EXPECT_EQ(1, y1);
 
         std::unique_lock<std::mutex> lock(m1_);
         finish1 = true;
@@ -283,7 +285,95 @@ TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswers) {
             if (y2 == 2) break;
             std::this_thread::sleep_for(std::chrono::microseconds(tasync));
         }
-        ASSERT_EQ(2, y2);
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatusProxy2);
+        EXPECT_EQ(2, y2);
+
+        std::unique_lock<std::mutex> lock(m2_);
+        finish2 = true;
+        condVar2_.notify_one();
+    });
+
+    std::unique_lock<std::mutex> lock1(m1_);
+    while(!finish1) {
+        condVar1_.wait(lock1);
+    }
+
+    std::unique_lock<std::mutex> lock2(m2_);
+    while(!finish2) {
+        condVar2_.wait(lock2);
+    }
+}
+
+/**
+* @test Proxy Receives Just His Own Answers.
+*     - start 2 proxies in own threads
+*     - call test method in each proxy asynchronously
+*     - now each proxy should have received the answer to his own request
+*/
+TEST_F(THMainLoopIndependence, ProxyReceivesJustHisOwnAnswersAsync) {
+    std::shared_ptr<PingPongTestStub> stubThirdParty = std::make_shared<PingPongTestStub>();
+    auto runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE(runtime->registerService(domain, instance6, stubThirdParty, thirdPartyServiceId));
+
+    std::atomic<CommonAPI::CallStatus> callStatusProxy1, callStatusProxy2;
+
+    callStatusProxy1 = CommonAPI::CallStatus::UNKNOWN;
+    callStatusProxy2 = CommonAPI::CallStatus::UNKNOWN;
+
+    bool finish1(false);
+    bool finish2(false);
+
+    mainLoopRunnerProxy1_ = std::thread([&]() { threadCtx1_.mainLoop_->run(); });
+    mainLoopRunnerProxy2_ = std::thread([&]() { threadCtx2_.mainLoop_->run(); });
+
+    while(!(threadCtx1_.proxyThirdParty_->isAvailable() && threadCtx2_.proxyThirdParty_->isAvailable())) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+
+    mainLoopThread1_ = std::thread([&]() {
+        uint8_t x1;
+        std::atomic<std::uint8_t> y1;
+        x1 = 1;
+        y1 = 0;
+
+        threadCtx1_.proxyThirdParty_->testMethodAsync(x1,
+            [&](const CommonAPI::CallStatus& status, const uint8_t& value) {
+                y1 = value;
+                callStatusProxy1 = status;
+            }
+        );
+
+        for (int i = 0; i < 100; ++i) {
+            if (y1 == 1) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatusProxy1);
+        EXPECT_EQ(1, y1);
+
+        std::unique_lock<std::mutex> lock(m1_);
+        finish1 = true;
+        condVar1_.notify_one();
+    });
+
+    mainLoopThread2_ = std::thread([&]() {
+        uint8_t x2;
+        std::atomic<std::uint8_t> y2;
+        x2 = 2;
+        y2 = 0;
+
+        threadCtx1_.proxyThirdParty_->testMethodAsync(x2,
+            [&](const CommonAPI::CallStatus& status, const uint8_t& value) {
+                y2 = value;
+                callStatusProxy2 = status;
+            }
+        );
+
+        for (int i = 0; i < 100; ++i) {
+            if (y2 == 2) break;
+            std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+        }
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatusProxy2);
+        EXPECT_EQ(2, y2);
 
         std::unique_lock<std::mutex> lock(m2_);
         finish2 = true;

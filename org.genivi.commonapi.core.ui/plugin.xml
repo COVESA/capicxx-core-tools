@@ -4,14 +4,14 @@
    <extension
          point="org.eclipse.ui.handlers">
       <handler
-            class="org.genivi.commonapi.core.ui.CommandExecutableExtensionFactory:org.genivi.commonapi.core.ui.handler.GenerationCommand"
-            commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand">
+            class="org.genivi.commonapi.core.ui.CommandExecutableExtensionFactory:org.genivi.commonapi.core.ui.handler.CoreGenerationCommand"
+            commandId="org.genivi.commonapi.core.ui.handler.CoreGenerationCommand">
       </handler>
    </extension>
    <extension
          point="org.eclipse.ui.commands">
       <command
-            id="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+            id="org.genivi.commonapi.core.ui.handler.CoreGenerationCommand"
             name="Generate C++ Code">
       </command>
    </extension>
@@ -22,14 +22,14 @@
             locationURI="popup:org.eclipse.ui.popup.any?after=additions">
          <menu
                id="org.genivi.commonapi.core.ui.popup.menu"
-               label="Common API">
+               label="CommonAPI">
          </menu>
       </menuContribution>
       <menuContribution
             allPopups="false"
             locationURI="popup:org.genivi.commonapi.core.ui.popup.menu">
          <command
-               commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+               commandId="org.genivi.commonapi.core.ui.handler.CoreGenerationCommand"
                label="Generate C++ Code"
                style="push">
             <visibleWhen
@@ -89,7 +89,7 @@
       <page
             class="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
             id="org.genivi.commonapi.core.ui.preferences.CommonAPIPreferencePage"
-            name="CommonAPI">
+            name="CommonAPI Core">
       </page>
    </extension> <extension
          point="org.eclipse.core.runtime.preferences">
@@ -121,7 +121,7 @@
                 <extension
                       point="org.eclipse.ui.bindings">
                    <key
-                         commandId="org.genivi.commonapi.core.ui.handler.GenerationCommand"
+                         commandId="org.genivi.commonapi.core.ui.handler.CoreGenerationCommand"
                          contextId="org.eclipse.ui.contexts.window"
                          schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
                          sequence="Ctrl+Shift+C">

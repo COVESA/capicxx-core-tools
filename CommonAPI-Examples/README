@@ -30,6 +30,8 @@ If do not specify any configuration file it is assumed that you want to use the 
 
 * +VSOMEIP_CONFIGURATION+ should contain the path to your vsomeip configuration file if you are using the SOME/IP binding, e.g. +VSOMEIP_CONFIGURATION=<path to CommonAPI-Tools>/CommonAPI-Examples/E01HelloWorld/vsomeip-local.json+
 
+* +COMMONAPI_OVERRIDE_GLOBAL_CALL_TIMEOUT+ overrides the timeout for all calls, default and custom, by assigning a value in ms to the environment variable, e.g. +COMMONAPI_OVERRIDE_GLOBAL_CALL_TIMEOUT=3000+
+
 Here are some hints if you want to configure your eclipse project for the CMake build:
 
 - Install the CMakeEd plug-in which provides an editor for CMake files (http://cmakeed.sourceforge.net/eclipse/).

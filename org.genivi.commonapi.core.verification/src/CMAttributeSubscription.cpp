@@ -1,5 +1,4 @@
-/* Copyright (C) 2014-2015 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -19,7 +18,7 @@
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
 #include "v1/commonapi/communication/TestInterfaceStubDefault.hpp"
 #include "v1/commonapi/communication/DaemonStubDefault.hpp"
-#include "stub/CMAttributesStub.h"
+#include "stub/CMAttributesStub.hpp"
 
 const std::string daemonId = "service-sample";
 const std::string clientId = "client-sample";
@@ -87,17 +86,7 @@ public:
 
         /* for test purposes, magic value 99 unsubscribes the attribute. */
         if (val == 99) {
-
-            // We can't call cancleSubscribe() within the async handler
-            // because it lead to a dead lock with the SomeIP-binding.
-            // Therefore we unsubscribe within the main thread of the test case!
-            //
-            // The reason for the dead lock is because within the async handler
-            // the connection thread is holding the Connection::sendReceiveMutex_
-            // which will locked again when calling Connection::removeEventHandler
-            // which is implicitly called when unsubscribing!
-
-            // cancelSubscribe();
+            cancelSubscribe();
         }
     }
 
@@ -461,7 +450,7 @@ TEST_F(CMAttributeSubscription, SubscriptionStandard) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
             [&](
@@ -698,9 +687,6 @@ TEST_F(CMAttributeSubscription, SubscriptionUnsubscribeFromCallback) {
     testStub_->setTestAttributeAttribute(99);
     subscriptionHandler.wait_Attribute(99);
     EXPECT_EQ(99, subscriptionHandler.getSubscriptedTestAttribute());
-
-    subscriptionHandler.cancelSubscribe();
-    std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
 
     testStub_->setTestAttributeAttribute(250);
     std::this_thread::sleep_for(std::chrono::microseconds(wt*wf));
@@ -1063,7 +1049,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeUnsubscribe) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
     [&](
@@ -1224,7 +1210,7 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                 [&](
@@ -1289,7 +1275,7 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterSetValueRegisterService) {
         serviceRegistered = runtime_->registerService(domain, testAddress, testStub_, serviceId);
         ASSERT_TRUE(serviceRegistered);
 
-        std::atomic<CommonAPI::CallStatus> subStatus;
+        std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
         CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                     [&](
@@ -1355,7 +1341,7 @@ TEST_F(CMAttributeSubscription, SubscribeUnregisterNoValueSetRegisterService) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                 [&](
@@ -1655,7 +1641,9 @@ TEST_F(CMAttributeSubscription, SubscribeThreeCallbacksServiceAvailable) {
     std::function<void (const uint8_t&)> myCallback3 =
             std::bind(&ThreeCallbackHandler::callback_3, &threeCallbackHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus1, subStatus2, subStatus3;
+    std::atomic<CommonAPI::CallStatus> subStatus1(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
+    std::atomic<CommonAPI::CallStatus> subStatus3(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription firstSubscribedListener =
         testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback1,
                 [&](
@@ -1760,7 +1748,7 @@ TEST_F(CMAttributeSubscription, SubscribeAndUnsubscribeAndReSubscribe) {
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                     [&](
@@ -1863,7 +1851,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                     [&](
@@ -1881,7 +1869,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
     subscriptionHandler.wait_Attribute(42);
 
-    std::atomic<CommonAPI::CallStatus> subStatus2;
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
     //subscribe proxy B
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
@@ -1996,7 +1984,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                     [&](
@@ -2018,7 +2006,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeAllResubscribe
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
-    std::atomic<CommonAPI::CallStatus> subStatus2;
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
             testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB,
                     [&](
@@ -2157,7 +2145,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribe
     SubscriptionHandler subscriptionHandler(testProxy_);
     std::function<void (const uint8_t&)> myCallback =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandler, std::placeholders::_1);
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListener =
             testProxy_->getTestAttributeAttribute().getChangedEvent().subscribe(myCallback,
                     [&](
@@ -2180,7 +2168,7 @@ TEST_F(CMAttributeSubscription, SubscribeMultipleProxysUnsubscribeOneResubscribe
     SubscriptionHandler subscriptionHandlerB(testProxyB_);
     std::function<void (const uint8_t&)> myCallbackB =
             std::bind(&SubscriptionHandler::myCallback, &subscriptionHandlerB, std::placeholders::_1);
-    std::atomic<CommonAPI::CallStatus> subStatus2;
+    std::atomic<CommonAPI::CallStatus> subStatus2(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::Event<uint8_t>::Subscription subscribedListenerB =
             testProxyB_->getTestDAttribute().getChangedEvent().subscribe(myCallbackB,
                     [&](

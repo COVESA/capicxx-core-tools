@@ -5,9 +5,9 @@ package commonapi.communication
 
 interface TestInterface {
     version { major 1 minor 0 }
-    
+
     attribute UInt8 testAttribute
-    
+
     attribute UInt8 testA readonly
     attribute UInt8 testB noSubscriptions
     attribute UInt8 testC readonly noSubscriptions
@@ -23,9 +23,9 @@ interface TestInterface {
     }
 
     method testMethodTimeout {
-	out {
-	    UInt8 result
-	}
+        out {
+            UInt8 result
+        }
     }
 
     method testDontCare fireAndForget {
@@ -33,7 +33,40 @@ interface TestInterface {
             UInt8 x
         }
     }
-    
+
+    method testMethodBlocking {
+        in {
+            UInt32 blockTime
+        }
+    }
+
+    /* check various ways of defining method errors. */
+    enumeration terrorEnum {
+        Err1
+    }
+    method testMethodError1 {
+        in {
+            UInt32 blockTime
+        }
+        error extends terrorEnum {
+            Err2
+        }
+    }
+    method testMethodError2 {
+        in {
+            UInt32 blockTime
+        }
+        error terrorEnum
+    }
+    method testMethodError3 {
+        in {
+            UInt32 blockTime
+        }
+        error {
+            Err3
+        }
+    }
+
     broadcast bTestSelective selective {
         out {
             UInt8 ux
@@ -44,7 +77,7 @@ interface TestInterface {
             UInt8 ux
         }
     }
-    
+
 }
 
 interface Daemon {

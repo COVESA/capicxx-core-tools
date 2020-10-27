@@ -1,4 +1,4 @@
-import "platform:/plugin/org.genivi.commonapi.dbus/deployment/CommonAPI-DBus_deployment_spec.fdepl"
+import "platform:/plugin/org.genivi.commonapi.dbus/deployment/CommonAPI-4-DBus_deployment_spec.fdepl"
 import "E04PhoneBook.fidl"
 
 define org.genivi.commonapi.dbus.deployment for interface commonapi.examples.E04PhoneBook {

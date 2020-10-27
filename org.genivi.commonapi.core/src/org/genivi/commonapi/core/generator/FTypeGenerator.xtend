@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.Collection
@@ -34,12 +32,27 @@ import org.genivi.commonapi.core.deployment.PropertyAccessor
 import static com.google.common.base.Preconditions.*
 
 import static extension org.genivi.commonapi.core.generator.FrancaGeneratorExtensions.*
+import org.franca.core.franca.FConstantDef
+import org.franca.core.franca.impl.FBooleanConstantImpl
+import org.franca.core.franca.impl.FExpressionImpl
+import org.franca.core.franca.impl.FInitializerExpressionImpl
+import org.franca.core.franca.impl.FCurrentErrorImpl
+import org.franca.core.franca.impl.FMethodErrorEnumRefImpl
+import org.franca.core.franca.impl.FQualifiedElementRefImpl
+import org.franca.core.franca.impl.FBracketInitializerImpl
+import org.franca.core.franca.impl.FCompoundInitializerImpl
+import org.franca.core.franca.impl.FDoubleConstantImpl
+import org.franca.core.franca.impl.FFloatConstantImpl
+import org.franca.core.franca.impl.FIntegerConstantImpl
+import org.franca.core.franca.impl.FStringConstantImpl
+import org.franca.core.franca.impl.FBinaryOperationImpl
+import org.franca.core.franca.impl.FUnaryOperationImpl
 
 class FTypeGenerator {
-    @Inject private extension FrancaGeneratorExtensions francaGeneratorExtensions
+	@Inject extension FrancaGeneratorExtensions francaGeneratorExtensions
 
     def static isdeprecated(FAnnotationBlock annotations) {
-        if(annotations == null)
+        if(annotations === null)
             return false
         for(annotation : annotations.elements) {
             if(annotation.type.value.equals(FAnnotationType::DEPRECATED_VALUE))
@@ -71,13 +84,13 @@ class FTypeGenerator {
         var intro = ""
         var tail = ""
         var annoCommentText = ""
-        if( model != null && model.comment != null){
+        if( model !== null && model.comment !== null){
             if(!inline) {
                 intro = "/*\n"
                 tail = "\n */"
             }
             for(annoComment : model.comment.elements) {
-                if(annoComment != null){
+                if(annoComment !== null){
                     annoCommentText += breaktext(annoComment.comment, annoComment.type)
                 }
             }
@@ -144,7 +157,7 @@ class FTypeGenerator {
 
     def dispatch generateFTypeDeclaration(FArrayType fArrayType, PropertyAccessor deploymentAccessor) '''
         «generateComments(fArrayType, false)»
-        «IF fArrayType.elementType.derived != null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
+        «IF fArrayType.elementType.derived !== null && fArrayType.elementType.derived instanceof FStructType && (fArrayType.elementType.derived as FStructType).polymorphic»
             typedef std::vector<std::shared_ptr< «fArrayType.elementType.getElementType(fArrayType, true)»>> «fArrayType.elementName»;
         «ELSE»
             typedef std::vector< «fArrayType.elementType.getElementType(fArrayType, true)»> «fArrayType.elementName»;
@@ -163,7 +176,7 @@ class FTypeGenerator {
 
         «ENDIF»
         «IF fStructType.hasPolymorphicBase()»
-            «IF fStructType.base == null»
+            «IF fStructType.base === null»
             struct «fStructType.elementName» : CommonAPI::PolymorphicStruct {
             «ELSE»
             struct «fStructType.elementName» : «fStructType.base.getElementName(fStructType, false)» {
@@ -179,7 +192,7 @@ class FTypeGenerator {
             «ENDIF»
 
             «fStructType.elementName»()
-            «IF fStructType.hasPolymorphicBase() && fStructType.base != null»
+            «IF fStructType.hasPolymorphicBase() && fStructType.base !== null»
                 : «fStructType.base.elementName»()
             «ENDIF»
             {
@@ -193,9 +206,11 @@ class FTypeGenerator {
                     «IF nindex >= 0 »
                         «IF (element.type.derived instanceof FStructType && (element.type.derived as FStructType).hasPolymorphicBase) && !element.array»
                                 std::get< «nindex»>(values_) = std::make_shared< «element.type.getElementType(fStructType, false)»>();
-                        «ELSEIF element.type.derived != null && !element.array»
+                        «ELSEIF element.type.derived !== null && !element.array»
                                 std::get< «nindex»>(values_) = «element.getTypeName(fStructType, false)»();
-                        «ELSEIF element.type.predefined != null && !element.array»
+                        «ELSEIF element.type.interval !== null && !element.array»
+                                std::get< «nindex»>(values_) = «element.type.generateDummyValue()»;
+                        «ELSEIF element.type.predefined !== null && !element.array»
                                 std::get< «nindex»>(values_) = «element.type.generateDummyValue()»;
                         «ELSE»
                                 std::get< «nindex»>(values_) = «element.getTypeName(fStructType, false)»();
@@ -207,7 +222,7 @@ class FTypeGenerator {
             }
             «IF fStructType.allElements.size > 0»
                 «fStructType.elementName»(«fStructType.allElements.map[getConstReferenceVariable(fStructType)].join(", ")»)
-                «IF fStructType.hasPolymorphicBase() && fStructType.base != null»
+                «IF fStructType.hasPolymorphicBase() && fStructType.base !== null»
                     : «fStructType.base.elementName»(«fStructType.base.allElements.map["_" + elementName].join(", ")»)
                 «ENDIF»
                 {
@@ -385,7 +400,7 @@ class FTypeGenerator {
     }
 
     def String getInitialValue(FEnumerationType _enumeration) {
-        if (_enumeration.base != null)
+        if (_enumeration.base !== null)
             return _enumeration.base.getInitialValue()
         return "Literal::" + enumPrefix + _enumeration.enumerators.head.elementName
     }
@@ -393,7 +408,7 @@ class FTypeGenerator {
     def String generateLiterals(FEnumerationType _enumeration, String _backingType) {
         var String literals = new String()
         var String comment = ""
-        if (_enumeration.base != null)
+        if (_enumeration.base !== null)
             literals += _enumeration.base.generateLiterals(_backingType) + ",\n"
         for (enumerator : _enumeration.enumerators) {
             comment = generateComments(enumerator, false)
@@ -407,17 +422,25 @@ class FTypeGenerator {
     }
 
     def String generateLiteralValidation(FEnumerationType _enumeration, String backingType, Set<String> _values) '''
-        «IF _enumeration.base!=null»«_enumeration.base.generateLiteralValidation(backingType, _values)»«ENDIF»
+        «IF _enumeration.base !== null»«_enumeration.base.generateLiteralValidation(backingType, _values)»«ENDIF»
         «FOR enumerator : _enumeration.enumerators»
             «IF _values.contains(enumerator.value.enumeratorValue)»//«ENDIF»case static_cast< «backingType»>(Literal::«enumPrefix»«enumerator.elementName»):
             «{_values.add(enumerator.value.enumeratorValue) ""}»
         «ENDFOR»
     '''
 
+    def String generateLiteralString(FEnumerationType _enumeration, String backingType, Set<String> _values) '''
+        «IF _enumeration.base!==null»«_enumeration.base.generateLiteralString(backingType, _values)»«ENDIF»
+        «FOR enumerator : _enumeration.enumerators»
+            «IF _values.contains(enumerator.value.enumeratorValue)»//«ENDIF»case static_cast< «backingType»>(Literal::«enumPrefix»«enumerator.elementName»): return "«enumerator.elementName»";
+            «{_values.add(enumerator.value.enumeratorValue) ""}»
+        «ENDFOR»
+    '''
+
     def generateDeclaration(FEnumerationType _enumeration, FModelElement _parent, PropertyAccessor _accessor) '''
         «_enumeration.setEnumerationValues»
-        «IF _enumeration.name == null»
-            «IF _parent.name != null»
+        «IF _enumeration.name === null»
+            «IF _parent.name !== null»
                 «_enumeration.name = _parent.name + "Enum"»
             «ELSE»
                 «_enumeration.name = (_parent.eContainer as FModelElement).name + "Error"»
@@ -459,11 +482,20 @@ class FTypeGenerator {
             inline bool operator>=(const Literal &_value) const { return (value_ >= static_cast< «backingType»>(_value)); }
             inline bool operator<(const Literal &_value) const { return (value_ < static_cast< «backingType»>(_value)); }
             inline bool operator>(const Literal &_value) const { return (value_ > static_cast< «backingType»>(_value)); }
+
+            const char* toString() const noexcept
+            {
+                switch(value_)
+                {
+                «_enumeration.generateLiteralString(backingType, new HashSet<String>)»
+                default: return "UNDEFINED";
+                }
+            }
         };
     '''
 
     def CharSequence generateEnumBaseTypeConstructor(FEnumerationType _enumeration, String _name, String _baseName, String _backingType) '''
-       «IF _enumeration.base != null»
+       «IF _enumeration.base !== null»
            «generateEnumBaseTypeConstructor(_enumeration.base, _name, _baseName, _backingType)»
            «_name»(const «_enumeration.getBaseType(_enumeration, _backingType)»::Literal &_value)
                : «_baseName»(_value) {}
@@ -476,7 +508,7 @@ class FTypeGenerator {
     '''
 
     def CharSequence generateBaseTypeAssignmentOperator(FEnumerationType _enumeration, FEnumerationType _other, PropertyAccessor _accessor) '''
-        «IF _other.base != null»
+        «IF _other.base !== null»
             «val backingType = _enumeration.getBackingType(_accessor).primitiveTypeName»
             «val baseTypeName = _other.getBaseType(_enumeration, backingType)»
             «_enumeration.name» &operator=(const «baseTypeName»::Literal &_value) {
@@ -494,7 +526,7 @@ class FTypeGenerator {
 
     def private String getElementNames(FUnionType fUnion) {
         var names = ""
-        if (fUnion.base != null) {
+        if (fUnion.base !== null) {
             names += fUnion.base.getElementNames
             if (names != "") {
                 names += ", "
@@ -561,7 +593,7 @@ class FTypeGenerator {
     }
 
     def void generateInheritanceIncludes(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if(fInterface.base != null) {
+        if(fInterface.base !== null) {
             generatedHeaders.add(fInterface.base.stubHeaderPath)
         }
     }
@@ -618,7 +650,7 @@ class FTypeGenerator {
         fMapType.valueType.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
     }
     def private dispatch void addFTypeRequiredHeaders(FStructType fStructType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if (fStructType.base != null)
+        if (fStructType.base !== null)
             generatedHeaders.add(fStructType.base.FTypeCollection.headerPath)
         else
             libraryHeaders.addAll('CommonAPI/Deployment.hpp', 'CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp', 'CommonAPI/Struct.hpp')
@@ -627,12 +659,12 @@ class FTypeGenerator {
         fStructType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
     }
     def private dispatch void addFTypeRequiredHeaders(FEnumerationType fEnumerationType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if (fEnumerationType.base != null)
+        if (fEnumerationType.base !== null)
             generatedHeaders.add(fEnumerationType.base.FTypeCollection.headerPath)
         libraryHeaders.addAll('cstdint', 'CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp')
     }
     def private dispatch void addFTypeRequiredHeaders(FUnionType fUnionType, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if (fUnionType.base != null)
+        if (fUnionType.base !== null)
             generatedHeaders.add(fUnionType.base.FTypeCollection.headerPath)
         else
             libraryHeaders.add('CommonAPI/Variant.hpp')
@@ -641,9 +673,12 @@ class FTypeGenerator {
     }
 
     def private void getRequiredHeaderPath(FTypeRef fTypeRef, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
-        if (fTypeRef.derived != null) {
+        if (fTypeRef.derived !== null) {
             generatedHeaders.add(fTypeRef.derived.FTypeCollection.headerPath)
-            }
+        }
+        if (fTypeRef.interval !== null) {
+            libraryHeaders.add('CommonAPI/RangedInteger.hpp')
+        }
         fTypeRef.predefined.getRequiredHeaderPath(generatedHeaders, libraryHeaders)
     }
 
@@ -661,7 +696,7 @@ class FTypeGenerator {
 
     def private getClassNamespaceWithName(FModelElement child, String name, FModelElement parent, String parentName) {
         var reference = name
-        if (parent != null && parent != child)
+        if (parent !== null && parent != child)
             reference = parentName + '::' + reference
         return reference
     }
@@ -677,7 +712,7 @@ class FTypeGenerator {
         if (fMap.keyType.polymorphic) {
             return "std::shared_ptr<" + fMap.keyType.getElementType(null, true) + ">"
         }
-        if(fMap.keyType.derived != null) {
+        if(fMap.keyType.derived !== null) {
             return fMap.keyType.derived.getFullName
         } else {
             return fMap.keyType.getElementType(null, true)
@@ -688,7 +723,7 @@ class FTypeGenerator {
         if (fMap.valueType.polymorphic) {
             return "std::shared_ptr<" + fMap.valueType.getElementType(null, true) + ">"
         }
-        if(fMap.valueType.derived != null) {
+        if(fMap.valueType.derived !== null) {
             return fMap.valueType.derived.getFullName
         } else {
             return fMap.valueType.getElementType(null, true)
@@ -698,4 +733,109 @@ class FTypeGenerator {
     def private getConstReferenceVariable(FField destination, FModelElement source) {
         "const " + destination.getTypeName(source, false) + " &_" + destination.elementName
     }
+
+    def generateFConstDeclarations(FTypeCollection fTypeCollection, PropertyAccessor deploymentAccessor) '''
+		«FOR fconst : fTypeCollection.constants»
+			«fconst.generateFConstDeclaration(deploymentAccessor)»
+		«ENDFOR»
+	'''
+
+	def private generateFConstDeclaration(FConstantDef fconst, PropertyAccessor deploymentAccessor) {
+		val rhs = fconst.rhs as FInitializerExpressionImpl
+		"const " + fconst.getTypeName(null, false) + " " + fconst.name + " = " + rhs.printInitializerExpression + ";"
+	}
+
+	def dispatch String printInitializerExpression(FCurrentErrorImpl rhs) {
+		"error"
+	}
+
+	def dispatch String printInitializerExpression(FBracketInitializerImpl rhs) {
+		var retval = "{ "
+		var isNotFirst = false;
+		for (elem : rhs.getElements()) {
+
+			// handle comma between elements
+			if (isNotFirst) {
+				retval = retval + ", "
+			}
+			isNotFirst = true
+			if (elem.getSecond() !== null) {
+				retval = retval + "{ ";
+			}
+			retval = retval + (elem.getFirst() as FInitializerExpressionImpl).printInitializerExpression()
+
+			if (elem.getSecond() !== null) {
+				retval = retval + ", " + (elem.getSecond() as FInitializerExpressionImpl).printInitializerExpression() +
+					"} "
+			}
+		}
+		retval = retval + "}"
+	}
+
+	def dispatch String printInitializerExpression(FCompoundInitializerImpl rhs) {
+		var retval = "{ "
+		var isNotFirst = false;
+		for (elem : rhs.getElements()) {
+
+			// handle comma between elements
+			if (isNotFirst) {
+				retval = retval + ", "
+			}
+			isNotFirst = true
+
+			// tagged initialization does not really work on C++, especially
+			// on Windows, so it's in comments for now
+			retval = retval + /* "." + elem.getElement().getName() + " = " + */
+				(elem.getValue() as FInitializerExpressionImpl).printInitializerExpression()
+		}
+		retval = retval + "}"
+	}
+
+	def dispatch String printInitializerExpression(FBooleanConstantImpl rhs) {
+		if(rhs.isVal()) "true" else "false"
+	}
+
+	def dispatch String printInitializerExpression(FDoubleConstantImpl rhs) {
+		rhs.^val.toString
+	}
+
+	def dispatch String printInitializerExpression(FFloatConstantImpl rhs) {
+		rhs.^val.toString
+	}
+
+	def dispatch String printInitializerExpression(FIntegerConstantImpl rhs) {
+		rhs.^val.toString
+
+	}
+
+	def dispatch String printInitializerExpression(FStringConstantImpl rhs) {
+		"\"" + rhs.^val.toString + "\""
+	}
+
+	def dispatch String printInitializerExpression(FMethodErrorEnumRefImpl rhs) {
+		"method error enum ref"
+	}
+
+	def dispatch String printInitializerExpression(FBinaryOperationImpl rhs) {
+		"(" + (rhs.left as FExpressionImpl).printInitializerExpression + ")" + rhs.getOp() + "(" +
+			(rhs.right as FExpressionImpl).printInitializerExpression + ")"
+	}
+
+	def dispatch String printInitializerExpression(FUnaryOperationImpl rhs) {
+		rhs.op.toString + "(" + (rhs.operand as FExpressionImpl).printInitializerExpression + ")"
+	}
+
+	def dispatch String printInitializerExpression(FQualifiedElementRefImpl rhs) {
+		var retval = ""
+		if (rhs.element === null) {
+			val getter = if (rhs.field.eContainer instanceof FStructType)
+					"get" + rhs.field.name.toFirstUpper() + "()"
+				else
+					"get()"
+			retval = rhs.qualifier.element.fullyQualifiedCppName + "." + getter
+		} else {
+			retval = rhs.element.fullyQualifiedCppName
+		}
+		retval
+	}
 }

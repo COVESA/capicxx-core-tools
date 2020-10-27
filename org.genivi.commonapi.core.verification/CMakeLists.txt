@@ -227,40 +227,44 @@ if (NOT ${TESTS_BAT})
 
     add_executable(RTBuildProxiesAndStubs
         src/RTBuildProxiesAndStubs.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/runtime/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(RTBuildProxiesAndStubs ${TEST_LINK_LIBRARIES})
 endif()
 
 add_executable(CMMethodCalls
     src/CMMethodCalls.cpp
     src/stub/CMMethodCallsStub.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
+)
 target_link_libraries(CMMethodCalls ${TEST_LINK_LIBRARIES})
+
+add_executable(CMBlockingCalls
+    src/CMBlockingCalls.cpp
+    src/stub/CMMethodCallsStub.cpp
+)
+target_link_libraries(CMBlockingCalls ${TEST_LINK_LIBRARIES})
 
 add_executable(CMAttributes
     src/CMAttributes.cpp
     src/stub/CMAttributesStub.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp)
+)
 target_link_libraries(CMAttributes ${TEST_LINK_LIBRARIES})
 
 add_executable(CMAttributeSubscription
     src/CMAttributeSubscription.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/DaemonStubDefault.cpp)
+)
 target_link_libraries(CMAttributeSubscription ${TEST_LINK_LIBRARIES})
 
 add_executable(CMBroadcasts
     src/CMBroadcasts.cpp
     src/stub/CMBroadcastsStub.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/TestInterfaceStubDefault.cpp
-    ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/communication/DaemonStubDefault.cpp)
+)
 target_link_libraries(CMBroadcasts ${TEST_LINK_LIBRARIES})
 
 if (NOT ${TESTS_BAT})
     add_executable(AFSelective
         src/AFSelective.cpp
         src/stub/AFSelectiveStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/bselective/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(AFSelective ${TEST_LINK_LIBRARIES})
 
     add_executable(AFManaged
@@ -271,74 +275,72 @@ if (NOT ${TESTS_BAT})
         src/stub/HLevelTopStubImpl.cpp
         src/stub/HLevelMiddleStubImpl.cpp
         src/stub/HLevelBottomStubImpl.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelTopStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelMiddleStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/HLevelBottomStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/DeviceStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/SpecialDeviceStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/managed/ManagerStubDefault.cpp)
+    )
     target_link_libraries(AFManaged ${TEST_LINK_LIBRARIES})
 
     add_executable(AFExtended
         src/AFExtended.cpp
         src/stub/AFExtendedStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedBaseStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedOnceStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/extended/AFExtendedTwiceStubDefault.cpp)
+    )
     target_link_libraries(AFExtended ${TEST_LINK_LIBRARIES})
 
     add_executable(AFPolymorph
         src/AFPolymorph.cpp
         src/stub/AFPolymorphStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/polymorph/TestInterfaceStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/polymorph/TestInterface.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/advanced/polymorph/TestInterface.cpp
+    )
     target_link_libraries(AFPolymorph ${TEST_LINK_LIBRARIES})
 
     add_executable(DTPrimitive
         src/DTPrimitive.cpp
         src/stub/DTPrimitiveStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/primitive/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(DTPrimitive ${TEST_LINK_LIBRARIES})
+
+    add_executable(DTConstants
+        src/DTConstants.cpp
+    )
+    target_link_libraries(DTConstants ${TEST_LINK_LIBRARIES})
 
     add_executable(DTAdvanced
         src/DTAdvanced.cpp
         src/stub/DTAdvancedStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/advanced/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(DTAdvanced ${TEST_LINK_LIBRARIES})
 
     add_executable(DTDerived
         src/DTDerived.cpp
         src/stub/DTDerivedStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/derived/TestInterfaceStubDefault.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/derived/TestInterface.cpp)
+        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/derived/TestInterface.cpp
+    )
     target_link_libraries(DTDerived ${TEST_LINK_LIBRARIES})
 
     add_executable(DTCombined
         src/DTCombined.cpp
         src/stub/DTCombinedStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/combined/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(DTCombined ${TEST_LINK_LIBRARIES})
 
     add_executable(DTDeployment
         src/DTDeployment.cpp
         src/stub/DTDeploymentStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/datatypes/deployment/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(DTDeployment ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopIntegration
         src/THMainLoopIntegration.cpp
         src/stub/THMainLoopIntegrationStub.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(THMainLoopIntegration ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopIndependence
         src/THMainLoopIndependence.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(THMainLoopIndependence ${TEST_LINK_LIBRARIES})
 
     add_executable(THMainLoopTwoThreads
         src/THMainLoopTwoThreads.cpp
-        ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/threading/TestInterfaceStubDefault.cpp)
+    )
     target_link_libraries(THMainLoopTwoThreads ${TEST_LINK_LIBRARIES})
 
     if(${TESTS_EXTRA})
@@ -346,20 +348,20 @@ if (NOT ${TESTS_BAT})
             src/PFPrimitive.cpp
             src/stub/PFPrimitiveStub.cpp
             src/utils/StopWatch.cpp
-            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/performance/primitive/TestInterfaceStubDefault.cpp)
+	)
         target_link_libraries(PFPrimitive ${TEST_LINK_LIBRARIES} ${USE_RT})
 
         add_executable(PFComplex
             src/PFComplex.cpp
             src/stub/PFComplexStub.cpp
             src/utils/StopWatch.cpp
-            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/performance/complex/TestInterfaceStubDefault.cpp)
+	)
         target_link_libraries(PFComplex ${TEST_LINK_LIBRARIES} ${USE_RT})
 
         add_executable(StabilitySP
             src/StabilitySP.cpp
             src/stub/StabilitySPStub.cpp
-            ${COMMONAPI_SRC_GEN_DEST}/v1/commonapi/stability/sp/TestInterfaceStubDefault.cpp)
+	)
         target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
 
     endif()
@@ -375,11 +377,13 @@ add_dependencies(CMAttributes gtest)
 add_dependencies(CMAttributeSubscription gtest)
 add_dependencies(CMBroadcasts gtest)
 if (NOT ${TESTS_BAT})
+    add_dependencies(CMBlockingCalls gtest)
     add_dependencies(AFSelective gtest)
     add_dependencies(AFManaged gtest)
     add_dependencies(AFExtended gtest)
     add_dependencies(AFPolymorph gtest)
     add_dependencies(DTPrimitive gtest)
+    add_dependencies(DTConstants gtest)
     add_dependencies(DTAdvanced gtest)
     add_dependencies(DTDerived gtest)
     add_dependencies(DTCombined gtest)
@@ -403,11 +407,13 @@ add_dependencies(check CMAttributes)
 add_dependencies(check CMAttributeSubscription)
 add_dependencies(check CMBroadcasts)
 if (NOT ${TESTS_BAT})
+    add_dependencies(check CMBlockingCalls)
     add_dependencies(check AFSelective)
     add_dependencies(check AFManaged)
     add_dependencies(check AFExtended)
     add_dependencies(check AFPolymorph)
     add_dependencies(check DTPrimitive)
+    add_dependencies(check DTConstants)
     add_dependencies(check DTAdvanced)
     add_dependencies(check DTDerived)
     add_dependencies(check DTCombined)
@@ -445,6 +451,8 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
     add_test(NAME CMBroadcastsDBus COMMAND CMBroadcasts)
     set_property(TEST CMBroadcastsDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
     if (NOT ${TESTS_BAT})
+        #add_test(NAME CMBlockingCallsDBus COMMAND CMBlockingCalls)
+        #set_property(TEST CMBlockingCallsDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME AFSelectiveDBus COMMAND AFSelective)
         set_property(TEST AFSelectiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME AFManagedDBus COMMAND AFManaged)
@@ -455,6 +463,8 @@ if(NOT "${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na")
         set_property(TEST AFPolymorphDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME DTPrimitiveDBus COMMAND DTPrimitive)
         set_property(TEST DTPrimitiveDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
+        add_test(NAME DTConstantsDBus COMMAND DTConstants)
+        set_property(TEST DTConstantsDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME DTAdvancedDBus COMMAND DTAdvanced)
         set_property(TEST DTAdvancedDBus APPEND PROPERTY ENVIRONMENT ${DBUS_TEST_ENVIRONMENT})
         add_test(NAME DTDerivedDBus COMMAND DTDerived)
@@ -505,6 +515,8 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
     add_test(NAME CMBroadcastsSomeIP COMMAND CMBroadcasts)
     set_property(TEST CMBroadcastsSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
     if (NOT ${TESTS_BAT})
+        add_test(NAME CMBlockingCallsSomeIP COMMAND CMBlockingCalls)
+        set_property(TEST CMBlockingCallsSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME AFSelectiveSomeIP COMMAND AFSelective)
         set_property(TEST AFSelectiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME AFManagedSomeIP COMMAND AFManaged)
@@ -515,6 +527,8 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
         set_property(TEST AFPolymorphSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME DTPrimitiveSomeIP COMMAND DTPrimitive)
         set_property(TEST DTPrimitiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+        add_test(NAME DTConstantsSomeIP COMMAND DTConstants)
+        set_property(TEST DTConstantsSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME DTAdvancedSomeIP COMMAND DTAdvanced)
         set_property(TEST DTAdvancedSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME DTDerivedSomeIP COMMAND DTDerived)

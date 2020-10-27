@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.io.File
@@ -12,7 +10,6 @@ import java.util.HashSet
 import java.util.List
 import java.util.Map
 import java.util.Set
-import java.util.HashMap
 import javax.inject.Inject
 import org.eclipse.core.resources.IResource
 import org.eclipse.emf.ecore.resource.Resource
@@ -25,35 +22,35 @@ import org.franca.deploymodel.core.FDeployedInterface
 import org.franca.deploymodel.core.FDeployedTypeCollection
 import org.franca.deploymodel.dsl.fDeploy.FDInterface
 import org.franca.deploymodel.dsl.fDeploy.FDModel
-import org.franca.deploymodel.dsl.fDeploy.FDProvider
 import org.franca.deploymodel.dsl.fDeploy.FDTypes
 import org.genivi.commonapi.core.deployment.PropertyAccessor
 import org.genivi.commonapi.core.preferences.FPreferences
 import org.genivi.commonapi.core.preferences.PreferenceConstants
-import org.franca.deploymodel.core.FDeployedProvider
-import org.franca.core.franca.FTypeCollection
+import org.franca.deploymodel.ext.providers.FDeployedProvider
+import org.franca.deploymodel.dsl.fDeploy.FDExtensionRoot
+import org.franca.deploymodel.ext.providers.ProviderUtils
 
 class FrancaGenerator implements IGenerator {
-    @Inject private extension FTypeCollectionGenerator
-    @Inject private extension FInterfaceGenerator
-    @Inject private extension FInterfaceProxyGenerator
-    @Inject private extension FInterfaceStubGenerator
-    @Inject private extension FrancaGeneratorExtensions
+	@Inject extension FTypeCollectionGenerator
+	@Inject extension FInterfaceGenerator
+	@Inject extension FInterfaceProxyGenerator
+	@Inject extension FInterfaceStubGenerator
+	@Inject extension FrancaGeneratorExtensions
 
-    @Inject private FrancaPersistenceManager francaPersistenceManager
-    @Inject private FDeployManager fDeployManager
+    //@Inject FrancaPersistenceManager francaPersistenceManager
+	@Inject FDeployManager fDeployManager
 
     val String CORE_SPECIFICATION_TYPE = "core.deployment"
 
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
-        if (!input.URI.fileExtension.equals(francaPersistenceManager.fileExtension) &&
+        if (!input.URI.fileExtension.equals(FrancaPersistenceManager.FRANCA_FILE_EXTENSION) &&
             !input.URI.fileExtension.equals(FDeployManager.fileExtension)) {
                 return
         }
 
         var List<FDInterface> deployedInterfaces = new ArrayList<FDInterface>()
         var List<FDTypes> deployedTypeCollections = new ArrayList<FDTypes>()
-        var List<FDProvider> deployedProviders = new ArrayList<FDProvider>()
+        var List<FDExtensionRoot> deployedProviders = new ArrayList<FDExtensionRoot>()
         var IResource res = null
 
         var rootModel = fDeployManager.loadModel(input.URI, input.URI);
@@ -82,7 +79,7 @@ class FrancaGenerator implements IGenerator {
 
             val List<FDInterface> itsInterfaces = getFDInterfaces(itsDeployment, CORE_SPECIFICATION_TYPE)
             val List<FDTypes> itsTypeCollections = getFDTypesList(itsDeployment, CORE_SPECIFICATION_TYPE)
-            val List<FDProvider> itsProviders = getAllFDProviders(itsDeployment)
+            val List<FDExtensionRoot> itsProviders = getAllFDProviders(itsDeployment)
 
             deployedInterfaces.addAll(itsInterfaces)
             deployedTypeCollections.addAll(itsTypeCollections)
@@ -108,7 +105,7 @@ class FrancaGenerator implements IGenerator {
                                           Map<String, FModel> _models,
                                           List<FDInterface> _interfaces,
                                           List<FDTypes> _typeCollections,
-                                          List<FDProvider> _providers,
+                                          List<FDExtensionRoot> _providers,
                                           IFileSystemAccess _access,
                                           IResource _res,
                                           boolean _mustGenerate) {
@@ -159,7 +156,7 @@ class FrancaGenerator implements IGenerator {
                                      Map<String, FModel> _models,
                                      List<FDInterface> _interfaces,
                                      List<FDTypes> _typeCollections,
-                                     List<FDProvider> _providers,
+                                     List<FDExtensionRoot> _providers,
                                      IFileSystemAccess _access,
                                      IResource _res) {
 
@@ -179,7 +176,7 @@ class FrancaGenerator implements IGenerator {
         if (withDependencies_) {
             for (itsEntry : _models.entrySet) {
                 var FModel itsModel = itsEntry.value
-                if (itsModel != null) {
+                if (itsModel !== null && itsModel != _model) {
                     doGenerateComponents(itsModel,
                         _interfaces, _typeCollections, _providers,
                         _access, _res)
@@ -198,7 +195,7 @@ class FrancaGenerator implements IGenerator {
         interfacesToGenerate.forEach [
             val currentInterface = it
             var PropertyAccessor interfaceDeploymentAccessor
-            if (_deployedInterfaces != null && _deployedInterfaces.exists[it.target == currentInterface]) {
+            if (_deployedInterfaces !== null && _deployedInterfaces.exists[it.target == currentInterface]) {
                 interfaceDeploymentAccessor = new PropertyAccessor(
                     new FDeployedInterface(_deployedInterfaces.filter[it.target == currentInterface].last))
             } else {
@@ -212,7 +209,7 @@ class FrancaGenerator implements IGenerator {
             val currentTypeCollection = it
             if (!(currentTypeCollection instanceof FInterface)) {
                 var PropertyAccessor typeCollectionDeploymentAccessor
-                if (_deployedTypeCollections != null &&
+                if (_deployedTypeCollections !== null &&
                     _deployedTypeCollections.exists[it.target == currentTypeCollection]) {
                     typeCollectionDeploymentAccessor = new PropertyAccessor(
                         new FDeployedTypeCollection(
@@ -228,7 +225,7 @@ class FrancaGenerator implements IGenerator {
     def private void doGenerateComponents(FModel _model,
                                           List<FDInterface> _deployedInterfaces,
                                           List<FDTypes> _deployedTypeCollections,
-                                          List<FDProvider> _deployedProviders,
+                                          List<FDExtensionRoot> _deployedProviders,
                                           IFileSystemAccess _fileSystemAccess,
                                           IResource _res) {
         var typeCollectionsToGenerate = _model.typeCollections.toSet
@@ -239,7 +236,7 @@ class FrancaGenerator implements IGenerator {
             if (!(currentTypeCollection instanceof FInterface)) {
                 if (FPreferences::instance.getPreference(PreferenceConstants::P_GENERATE_COMMON, "true").equals("true")) {
                     var currentPropertyAccessor = getAccessor(it)
-                    if (currentPropertyAccessor == null) {
+                    if (currentPropertyAccessor === null) {
                         currentPropertyAccessor = new PropertyAccessor()
                     }
                     generate(it, _fileSystemAccess, currentPropertyAccessor, _res)
@@ -273,9 +270,9 @@ class FrancaGenerator implements IGenerator {
             val List<String> deployedInstances = new ArrayList<String>()
             _deployedProviders.forEach [
                 val deploymentAccessor = new PropertyAccessor(new FDeployedProvider(it))
-                it.instances.filter[currentInterface == target].forEach [
+                ProviderUtils.getInstances(it).filter[currentInterface == target].forEach [
                     var instanceId = deploymentAccessor.getInstanceId(it)
-                    if (instanceId != null) {
+                    if (instanceId !== null) {
                         deployedInstances.add(instanceId)
                     }
                 ]
@@ -286,16 +283,6 @@ class FrancaGenerator implements IGenerator {
         ]
     }
 
-    private static Map<FTypeCollection, PropertyAccessor> accessors__ = new HashMap<FTypeCollection, PropertyAccessor>()
-
-    def insertAccessor(FTypeCollection _tc, PropertyAccessor _pa) {
-        accessors__.put(_tc, _pa)
-    }
-
-    def PropertyAccessor getAccessor(FTypeCollection _tc) {
-        return accessors__.get(_tc)
-    }
-
-    private boolean withDependencies_ = false
-    private Set<String> generatedFiles_;
+    boolean withDependencies_ = false
+	Set<String> generatedFiles_;
 }

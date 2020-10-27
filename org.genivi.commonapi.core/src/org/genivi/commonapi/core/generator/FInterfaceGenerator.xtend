@@ -1,9 +1,7 @@
-/* Copyright (C) 2013 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.Collection
@@ -22,9 +20,9 @@ import org.franca.core.franca.FType
 import org.franca.core.franca.FStructType
 
 class FInterfaceGenerator {
-    @Inject private extension FTypeGenerator
-    @Inject private extension FTypeCommonAreaGenerator
-    @Inject private extension FrancaGeneratorExtensions
+	@Inject extension FTypeGenerator
+	@Inject extension FTypeCommonAreaGenerator
+	@Inject extension FrancaGeneratorExtensions
 
     def generateInterface(FInterface fInterface, IFileSystemAccess fileSystemAccess, PropertyAccessor deploymentAccessor, IResource modelid) {
 
@@ -92,24 +90,22 @@ class FInterfaceGenerator {
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        «IF fInterface.base != null»
+        «IF fInterface.base !== null»
             #include <«fInterface.base.headerPath»>
         «ENDIF»
 
-        #if !defined (COMMONAPI_INTERNAL_COMPILATION)
-        #define COMMONAPI_INTERNAL_COMPILATION
-        #endif
+        «startInternalCompilation»
 
         «FOR requiredHeaderFile : libraryHeaders.sort»
             #include <«requiredHeaderFile»>
         «ENDFOR»
 
-        #undef COMMONAPI_INTERNAL_COMPILATION
+        «endInternalCompilation»
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
-        class «fInterface.elementName»«IF fInterface.base != null»
+        class «fInterface.elementName»«IF fInterface.base !== null»
             : virtual public «fInterface.base.getTypeCollectionName(fInterface)»«ENDIF» {
         public:
             virtual ~«fInterface.elementName»() { }
@@ -117,6 +113,7 @@ class FInterfaceGenerator {
             static inline const char* getInterface();
             static inline CommonAPI::Version getInterfaceVersion();
             «fInterface.generateFTypeDeclarations(deploymentAccessor)»
+            «fInterface.generateFConstDeclarations(deploymentAccessor)»
         };
 
         const char* «fInterface.elementName»::getInterface() {
@@ -125,7 +122,7 @@ class FInterfaceGenerator {
 
         CommonAPI::Version «fInterface.elementName»::getInterfaceVersion() {
             «val FVersion itsVersion = fInterface.version»
-            «IF itsVersion != null»
+            «IF itsVersion !== null»
                 return CommonAPI::Version(«itsVersion.major», «itsVersion.minor»);
             «ELSE»
                 return CommonAPI::Version(0, 0);
@@ -176,18 +173,18 @@ class FInterfaceGenerator {
 
     def void getRequiredHeaderFiles(FInterface fInterface, Collection<String> generatedHeaders, Collection<String> libraryHeaders) {
         libraryHeaders.add('CommonAPI/Types.hpp')
-        if (!fInterface.methods.filter[errors != null].empty) {
+        if (!fInterface.methods.filter[errors !== null].empty) {
             libraryHeaders.addAll('CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp')
         }
         if (!fInterface.managedInterfaces.empty) {
             generatedHeaders.add('set');
         }
         fInterface.types.forEach[addRequiredHeaders(generatedHeaders, libraryHeaders)]
-        var Iterable<FMethod> errorMethods = fInterface.methods.filter[errors!=null]
+        var Iterable<FMethod> errorMethods = fInterface.methods.filter[errors!==null]
         if(errorMethods.size!=0){
             libraryHeaders.addAll('CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp')
             errorMethods.forEach[
-                if (errors.base != null) {
+                if (errors.base !== null) {
                    errors.base.addRequiredHeaders(generatedHeaders, libraryHeaders)
                 }
             ]

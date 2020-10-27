@@ -1,3 +1,7 @@
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.verification;
 
 import java.io.File;
@@ -39,6 +43,7 @@ public class CommandlineValidator {
 
 	private ValidationMessageAcceptor cliMessageAcceptor;
 	private List<String> ignoreList;
+	private List<String> ignoreMessageList;
 	protected static final String DEPLOYMENT_SPEC = "deployment_spec.fdepl";
 	protected static final String UNKNOWN_DEPLOYMENT_SPEC = "Couldn't resolve reference to FDSpecification";
 	private ResourceSet resourceSet;
@@ -48,6 +53,8 @@ public class CommandlineValidator {
 		this.cliMessageAcceptor = cliMessageAcceptor;
 		resourceSet = new ResourceSetImpl();
 		ignoreList = new ArrayList<String>();
+		ignoreMessageList = new ArrayList<String>();
+		ignoreMessageList.add("Duplicate element type");
 	}
 
 	private void showError(String message) {
@@ -132,7 +139,7 @@ public class CommandlineValidator {
 				for (Issue issue : issues) {
 					if (issue.getSeverity() == Severity.ERROR) {
 						// ignore certain errors due to unknown deployment specs (SomeIP/DBus)
-						if(isErrorToIgnore(issue)) {
+						if (isErrorToIgnore(issue)) {
 							continue;
 						}
 						showError(issue.toString());
@@ -178,6 +185,12 @@ public class CommandlineValidator {
 
 
 	private boolean isErrorToIgnore(Issue issue) {
+		
+		for(String ignoreMessage : ignoreMessageList) {
+			if (issue.getMessage().startsWith(ignoreMessage))
+				return true;
+		}
+
 		for(String ignoreString : ignoreList) {
 			if(issue.toString().contains(ignoreString)) {
 				return true;
@@ -326,7 +339,7 @@ public class CommandlineValidator {
         if (!outputIssues(issues))
             hasValidationError = true;
         if (showResultMessage)
-            showInfo("Validaton of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
+            showInfo("Validation of deployment finished with: " + numErrors + " errors, " + numWarnings + " warnings.");
 
         return !hasValidationError;
     }

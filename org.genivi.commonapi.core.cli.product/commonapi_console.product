@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="CommonAPI Code Generator" uid="org.genivi.commonapi.core.cli.product" id="org.genivi.commonapi.console.product" application="org.genivi.commonapi.console.application" version="3.1.12" useFeatures="true" includeLaunchers="true">
+<product name="GENIVI CommonAPI Code C++ Generator" uid="org.genivi.commonapi.core.cli.product" id="org.genivi.commonapi.console.product" application="org.genivi.commonapi.console.application" version="3.2.0" useFeatures="true" includeLaunchers="true">
 
    <configIni use="default">
    </configIni>
@@ -15,8 +15,7 @@
 
    <windowImages/>
 
-   <launcher name="commonapi-generator">
-      <solaris/>
+   <launcher name="commonapi-core-generator">
       <win useIco="false">
          <bmp/>
       </win>

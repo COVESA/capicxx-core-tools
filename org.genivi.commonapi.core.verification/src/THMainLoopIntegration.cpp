@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 - 2015 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014 - 2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -10,10 +9,11 @@
 
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
-#include "utils/VerificationMainLoop.h"
+#include "stub/THMainLoopIntegrationStub.hpp"
+#include "utils/VerificationMainLoop.hpp"
 #include "v1/commonapi/threading/TestInterfaceProxy.hpp"
-#include "utils/VerificationMainLoop.h"
-#include "stub/THMainLoopIntegrationStub.h"
+#include "v1/commonapi/threading/TestInterfaceManagerStubDefault.hpp"
+#include "v1/commonapi/threading/TestInterfaceManagerProxy.hpp"
 
 const std::string domain = "local";
 const std::string instance = "my.test.commonapi.address";
@@ -74,9 +74,13 @@ protected:
             stubThread_.join();
         }
 
+        std::future<void> proxyCompletionFuture = testProxy_->getCompletionFuture();
+
         testProxy_.reset();
 
-        std::this_thread::sleep_for(std::chrono::microseconds(200));
+        if (std::future_status::timeout == proxyCompletionFuture.wait_for(std::chrono::seconds(5))) {
+            ADD_FAILURE() << "Proxy wasn't destroyed within time";
+        }
 
         delete mainLoopForProxy_;
         delete mainLoopForStub_;
@@ -218,7 +222,7 @@ TEST_F(THMainLoopIntegration, VerifySyncCallMessageHandlingOrder) {
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
-    CommonAPI::CallStatus subStatus;
+    CommonAPI::CallStatus subStatus(CommonAPI::CallStatus::UNKNOWN);
     auto& broadcastEvent = testProxy_->getTestBroadcastEvent();
     broadcastEvent.subscribe(std::bind(&THMainLoopIntegration::broadcastCallback, this, std::placeholders::_1),
     [&](
@@ -291,7 +295,7 @@ TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
     }
     ASSERT_TRUE(testProxy_->isAvailable());
 
-    std::uint32_t broadcastTestValue(1234);
+    std::atomic<uint32_t> broadcastTestValue(1234);
     std::atomic<std::uint32_t> selectiveHandlerCalled(0);
     std::atomic<std::uint32_t> selectiveErrorHandlerCalled(0);
 
@@ -336,6 +340,130 @@ TEST_F(THMainLoopIntegration, SelectiveErrorHandlerWithMainLoop) {
     }
     EXPECT_EQ(2u, selectiveHandlerCalled);
     EXPECT_EQ(2u, selectiveErrorHandlerCalled);
+}
+
+/**
+* @test Call test method multiple times asynchronously while the service is
+* unavailable and check if the provided callback is called with an error for
+* every method call done.
+*/
+
+TEST_F(THMainLoopIntegration, AsynchronousMethodCallsReceiveNotAvailable) {
+    proxyThread_ = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(); });
+    runtime_->unregisterService(domain,
+            v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(),
+            instance);
+
+    for (int counter = 0; testProxy_->isAvailable() && counter < 100; counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    std::uint32_t numberCalls(250);
+    std::atomic<std::uint32_t> numberCallbackCalled(0);
+    std::mutex itsMutex;
+    std::unique_lock<std::mutex> itsLock(itsMutex);
+    std::condition_variable itsCondition;
+
+    std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
+            [&](const CommonAPI::CallStatus& callStatus, uint8_t y) {
+        (void)y;
+        numberCallbackCalled++;
+        EXPECT_EQ(CommonAPI::CallStatus::NOT_AVAILABLE, callStatus);
+        if (numberCallbackCalled == numberCalls) {
+            std::lock_guard<std::mutex> itsLock2(itsMutex);
+            itsCondition.notify_one();
+        }
+    };
+
+    CommonAPI::CallInfo its_info(100);
+
+    uint8_t x = 5;
+    for (std::uint32_t i = 0; i < numberCalls; i++ ) {
+        testProxy_->testMethodAsync(x, myCallback, &its_info);
+    }
+    if (std::cv_status::timeout == itsCondition.wait_for(itsLock, std::chrono::seconds(5))) {
+        ADD_FAILURE() << "Didn't receive all NOT_AVAILABLE within time: "
+                << std::dec << numberCallbackCalled << "/" << std::dec
+                << numberCalls;
+    }
+    EXPECT_EQ(numberCalls, numberCallbackCalled);
+
+}
+
+/**
+* @test Offer a interface manager and build two proxies to it.
+* One proxy uses the same connection as the manager while the other uses
+* a different connection. Check that both proxies get available and receive a
+* available event
+*/
+
+TEST_F(THMainLoopIntegration, CreateProxyToManagerInSameProcess) {
+    proxyThread_ = std::thread([&](){ mainLoopForProxy_->run(); });
+    stubThread_ = std::thread([&](){ mainLoopForStub_->run(); });
+
+    for(unsigned int i = 0; !testProxy_->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(testProxy_->isAvailable());
+
+    runtime_->unregisterService(domain,
+            v1_0::commonapi::threading::THMainLoopIntegrationStub::StubInterface::getInterface(),
+            instance);
+
+    for (int counter = 0; testProxy_->isAvailable() && counter < 100; counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    std::shared_ptr<v1_0::commonapi::threading::TestInterfaceManagerStubDefault> managerStub =
+            std::make_shared<
+                    v1_0::commonapi::threading::TestInterfaceManagerStubDefault>();
+    ASSERT_TRUE(
+            runtime_->registerService(domain, "1", managerStub,
+                    contextForStub_));
+    ASSERT_TRUE(serviceRegistered_);
+
+    // build proxies
+    std::promise<bool> p1, p2;
+    std::shared_ptr<v1_0::commonapi::threading::TestInterfaceManagerProxy<>> managerProxy =
+            runtime_->buildProxy<
+                    v1_0::commonapi::threading::TestInterfaceManagerProxy>(
+                    domain, "1", contextForStub_);
+    ASSERT_TRUE((bool )managerProxy);
+    managerProxy->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& _status) {
+        if (_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+            p1.set_value(true);
+        }
+    });
+
+    std::shared_ptr<v1_0::commonapi::threading::TestInterfaceManagerProxy<>> managerProxy2 =
+            runtime_->buildProxy<
+                    v1_0::commonapi::threading::TestInterfaceManagerProxy>(
+                    domain, "1", contextForProxy_);
+    ASSERT_TRUE((bool )managerProxy2);
+    managerProxy2->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& _status) {
+        if (_status == CommonAPI::AvailabilityStatus::AVAILABLE) {
+            p2.set_value(true);
+        }
+    });
+
+    for (unsigned int i = 0; !managerProxy->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(managerProxy->isAvailable());
+
+    for (unsigned int i = 0; !managerProxy2->isAvailable() && i < 100; ++i) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_TRUE(managerProxy2->isAvailable());
+
+    EXPECT_EQ(std::future_status::ready, p1.get_future().wait_for(std::chrono::seconds(10)));
+    EXPECT_EQ(std::future_status::ready, p2.get_future().wait_for(std::chrono::seconds(10)));
+
+    ASSERT_TRUE(runtime_->unregisterService(domain, v1_0::commonapi::threading::TestInterfaceManagerStub::StubInterface::getInterface(), "1"));
 }
 
 int main(int argc, char** argv) {

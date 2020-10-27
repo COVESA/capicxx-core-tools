@@ -1,9 +1,9 @@
-/* Copyright (C) 2015 BMW Group
+/* Copyright (C) 2015-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "StabilitySPStub.h"
+#include "StabilitySPStub.hpp"
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -40,13 +40,11 @@ void StabilitySPStub::testMethod(const std::shared_ptr<CommonAPI::ClientId> _cli
 
 }
 
-void StabilitySPStub::setTestValues(TestInterface::tArray x) {
-    setTestAttributeAttribute(x);
+void StabilitySPStub::setTestValues(const TestInterface::tArray &_x) {
+    setTestAttributeAttribute(_x);
 }
 
 } /* namespace v1 */
 } /* namespace sp */
 } /* namespace stability */
 } /* namespace commonapi */
-
-

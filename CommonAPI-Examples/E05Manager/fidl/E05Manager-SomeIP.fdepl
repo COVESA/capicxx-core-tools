@@ -1,0 +1,79 @@
+/* Copyright (C) 2015 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-4-SOMEIP_deployment_spec.fdepl"
+import "E05Manager.fidl"
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Manager {
+    SomeIpServiceID = 4660
+
+    attribute myDevices {
+        SomeIpGetterID = 3000
+        SomeIpSetterID = 3001
+        SomeIpNotifierID = 33000
+        SomeIpNotifierEventGroups = { 17749 }
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for provider as Service {
+    instance commonapi.examples.E05Manager {
+        InstanceId = "commonapi.examples.Manager"
+
+        SomeIpInstanceID = 1000
+
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpReliableUnicastPort = 30499
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05Device {
+    SomeIpServiceID = 4661
+
+    method doSomething {
+        SomeIpMethodID = 30001
+    }
+}
+
+
+define org.genivi.commonapi.someip.deployment for provider as Service {
+    instance commonapi.examples.E05Device {
+        InstanceId = "commonapi.examples.Manager.device01"
+
+        SomeIpInstanceID = 2000
+
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30500
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for provider as Service {
+    instance commonapi.examples.E05Device {
+        InstanceId = "commonapi.examples.Manager.device02"
+
+        SomeIpInstanceID = 2001
+
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30501
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E05SpecialDevice {
+    SomeIpServiceID = 4662
+
+    method doSomethingSpecial {
+        SomeIpMethodID = 30002
+    }
+}
+
+define org.genivi.commonapi.someip.deployment for provider as Service {
+    instance commonapi.examples.E05SpecialDevice {
+        InstanceId = "commonapi.examples.Manager.specialDevice00"
+
+        SomeIpInstanceID = 3000
+
+        SomeIpUnicastAddress = "127.0.0.1"
+        SomeIpUnreliableUnicastPort = 30600
+    }
+}

@@ -1,16 +1,17 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: CommonAPI Console
+Bundle-Name: GENIVI CommonAPI Console
 Bundle-SymbolicName: org.genivi.commonapi.console;singleton:=true
-Bundle-Version: 3.1.12.qualifier
+Bundle-Version: 3.2.0.qualifier
 Bundle-Vendor: BMW AG
 Require-Bundle: org.eclipse.core.runtime;bundle-version="[3.8.0,4.0.0)";visibility:=reexport,
  org.apache.commons.cli;bundle-version="[1.2.0,2.0.0)";visibility:=reexport,
  org.apache.commons.lang;bundle-version="[2.6.0,3.0.0)";visibility:=reexport,
- org.franca.core.dsl;bundle-version="[0.9.0,0.10.0)";visibility:=reexport,
- org.franca.deploymodel.dsl;bundle-version="[0.9.0,0.10.0)";visibility:=reexport
+ org.franca.core.dsl;bundle-version="[0.13.1,0.14.0)";visibility:=reexport,
+ org.franca.deploymodel.dsl;bundle-version="[0.13.1,0.14.0)";visibility:=reexport
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Export-Package: org.genivi.commonapi.console,
  org.genivi.commonapi.console.internal;x-internal:=true
 Bundle-ActivationPolicy: lazy
 Bundle-Activator: org.genivi.commonapi.console.internal.Activator
+Automatic-Module-Name: org.genivi.commonapi.console

@@ -3,50 +3,46 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP_deployment_spec.fdepl"
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-4-SOMEIP_deployment_spec.fdepl"
 import "E02Attributes.fidl"
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E02Attributes {
     SomeIpServiceID = 4660
-    
+
     attribute x {
         SomeIpGetterID = 3000
         SomeIpSetterID = 3001
-        SomeIpNotifierID = 33010        
-        SomeIpEventGroups = { 33010 }
-        
-        SomeIpGetterReliable = true
-        SomeIpSetterReliable = true
-        SomeIpNotifierReliable = true
+        SomeIpNotifierID = 33010
+        SomeIpNotifierEventGroups = { 33010 }
+
+        SomeIpAttributeReliable = true
     }
-    
+
     attribute a1 {
         SomeIpGetterID = 3002
         SomeIpSetterID = 3003
-        SomeIpNotifierID = 33011        
-        SomeIpEventGroups = { 33011 }
+        SomeIpNotifierID = 33011
+        SomeIpNotifierEventGroups = { 33011 }
 
-        SomeIpGetterReliable = true
-        SomeIpSetterReliable = true
-        SomeIpNotifierReliable = true
+        SomeIpAttributeReliable = true
     }
 }
 
 define org.genivi.commonapi.someip.deployment for typeCollection commonapi.examples.CommonTypes {
     struct a1Struct {
     }
-    
+
     struct a2Struct {
     }
-    
+
 }
 
-define org.genivi.commonapi.someip.deployment for provider Service {
+define org.genivi.commonapi.someip.deployment for provider as Service {
     instance commonapi.examples.E02Attributes {
         InstanceId = "commonapi.examples.Attributes"
-        
+
         SomeIpInstanceID = 22136
-    
+
         SomeIpUnicastAddress = "192.168.0.2"
         SomeIpReliableUnicastPort = 30499
         SomeIpUnreliableUnicastPort = 30500

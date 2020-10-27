@@ -3,7 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-SOMEIP_deployment_spec.fdepl"
+import "platform:/plugin/org.genivi.commonapi.someip/deployment/CommonAPI-4-SOMEIP_deployment_spec.fdepl"
 import "E04PhoneBook.fidl"
 
 define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E04PhoneBook {
@@ -14,7 +14,7 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
         SomeIpGetterID = 30000
         SomeIpSetterID = 0
         SomeIpNotifierID = 38000
-        SomeIpEventGroups = { 7000 }
+        SomeIpNotifierEventGroups = { 7000 }
     }
 
     method setPhoneBookDataFilter {
@@ -104,12 +104,12 @@ define org.genivi.commonapi.someip.deployment for interface commonapi.examples.E
 
 }
 
-define org.genivi.commonapi.someip.deployment for provider Service {
+define org.genivi.commonapi.someip.deployment for provider as Service {
     instance commonapi.examples.E04PhoneBook {
         InstanceId = "commonapi.examples.PhoneBook"
 
         SomeIpInstanceID = 22136
-    
+
         SomeIpUnicastAddress = "192.168.0.2"
         SomeIpReliableUnicastPort = 30491
         SomeIpUnreliableUnicastPort = 30492

@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -20,7 +19,7 @@
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/datatypes/advanced/TestInterfaceProxy.hpp"
-#include "stub/DTAdvancedStub.h"
+#include "stub/DTAdvancedStub.hpp"
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.datatypes.advanced.TestInterface";
@@ -184,7 +183,7 @@ TEST_F(DTAdvanced, SendAndReceiveInvalid) {
     arrayTestValue.push_back("Test3");
 
     // put a deliberately invalid value to the enum data value
-    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(124);
 
     structTestValue.setBooleanMember(true);
     structTestValue.setUint8Member(42);
@@ -326,7 +325,7 @@ TEST_F(DTAdvanced, AttributeSetInvalid) {
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationTestValue;
 
     // put a deliberately invalid value to the enum data value
-    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(124);
 
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
 
@@ -371,7 +370,7 @@ TEST_F(DTAdvanced, AttributeSetAsyncInvalid) {
             std::bind(&DTAdvanced::recvInvalidEnumValue, this, std::placeholders::_1, std::placeholders::_2);
 
     // put a deliberately invalid value to the enum data value
-    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(1234);
+    enumerationTestValue = static_cast<const v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration::Literal>(124);
 
     v1_0::commonapi::datatypes::advanced::TestInterface::tEnumeration enumerationResultValue;
 
@@ -457,7 +456,7 @@ TEST_F(DTAdvanced, BroadcastReceive) {
 
     std::mutex m;
     CommonAPI::CallStatus callStatus;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
 
     {
         std::lock_guard<std::mutex> itsLock(m);

@@ -1,0 +1,142 @@
+package commonapi.datatypes.constants
+
+typeCollection TestTC {
+	const UInt8  i01 = 14
+	const Int8   i02 = -127
+	const UInt16 i03 = 1
+	const UInt16 i04 = 2+5*6
+	const UInt16 i05 = 0xA000
+	const UInt32 i06 = 0Xfedcba98
+	const UInt32 i07 = 0b01010001
+	const UInt32 i08 = 0B01010001
+	const UInt32 i09 = 100000
+	const Int32  i10 = -100000
+	const UInt64 i11 = 10000000
+	const Int64  i12 = -10000000
+
+	const Integer(1,10) i40 = 5
+
+	const String s1 = "abc"
+
+	const Boolean b1 = true
+	const Boolean b2 = false
+	const Boolean b3 = b1 && b2
+	const Boolean b4 = b3 || b1
+	const Boolean b5 = !b4
+	const Boolean b6 = 47 < 11
+	const Boolean b7 = i01 != 0
+
+	const Float f1 = 1.0f
+	const Float f2 = -1.0f
+	const Float f3 = 1.0e3f
+	const Float f4 = 1.0e-3f
+	const Float f5 = -1.0e-3f
+
+	const Double d1 = 1.0d
+	const Double d2 = -1.0d
+	const Double d3 = 1.0e3d
+	const Double d4 = 1.0e-3d
+	const Double d5 = -1.0e-12d
+
+	const UInt16 key1 = 123
+	const UInt16 key2 = 124
+	const UInt16 key3 = 125
+
+	const String skey1 = "123"
+	const String skey2 = "124"
+	const String skey3 = "125"
+
+	enumeration E1 {
+		Enum1 = key1
+        Enum2 = key2
+        Enum3 = key3
+	}
+
+	union U {
+		UInt16 e1
+		Boolean e2
+		String e3
+	}
+
+    struct CE {
+        String key
+        U value
+    }
+
+    const U v1 = {e3: skey1}
+    const U v2 = {e2: false}
+    const CE kv1 = {key: skey1, value: v1}
+    const CE kv2 = {key: skey2, value: v2}
+}
+
+interface TestInterface {
+    version { major 1 minor 0 }
+
+	const UInt8  i01 = 14
+	const Int8   i02 = -127
+	const UInt16 i03 = 1
+	const UInt16 i04 = 2+5*6
+	const UInt16 i05 = 0xA000
+	const UInt32 i06 = 0Xfedcba98
+	const UInt32 i07 = 0b01010001
+	const UInt32 i08 = 0B01010001
+	const UInt32 i09 = 100000
+	const Int32  i10 = -100000
+	const UInt64 i11 = 10000000
+	const Int64  i12 = -10000000
+
+	const Integer(1,10) i40 = 5
+
+	const String s1 = "abc"
+
+	const Boolean b1 = true
+	const Boolean b2 = false
+	const Boolean b3 = b1 && b2
+	const Boolean b4 = b3 || b1
+	const Boolean b5 = !b4
+	const Boolean b6 = 47 < 11
+	const Boolean b7 = i01 != 0
+
+	const Float f1 = 1.0f
+	const Float f2 = -1.0f
+	const Float f3 = 1.0e3f
+	const Float f4 = 1.0e-3f
+	const Float f5 = -1.0e-3f
+
+	const Double d1 = 1.0d
+	const Double d2 = -1.0d
+	const Double d3 = 1.0e3d
+	const Double d4 = 1.0e-3d
+	const Double d5 = -1.0e-12d
+
+	const UInt16 key1 = 123
+	const UInt16 key2 = 124
+	const UInt16 key3 = 125
+
+	const String skey1 = "123"
+	const String skey2 = "124"
+	const String skey3 = "125"
+
+	enumeration E1 {
+		Enum1 = key1
+        Enum2 = key2
+        Enum3 = key3
+	}
+
+	union U {
+		UInt16 e1
+		Boolean e2
+		String e3
+	}
+
+    struct CE {
+        String key
+        U value
+    }
+
+    const U v1 = {e3: skey1}
+    const U v2 = {e2: false}
+    const CE kv1 = {key: skey1, value: v1}
+    const CE kv2 = {key: skey2, value: v2}
+
+}

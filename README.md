@@ -1,8 +1,8 @@
 ### CommonAPI C++ Core Tools
 
 ##### Copyright
-Copyright (C) 2015,2016 Bayerische Motoren Werke Aktiengesellschaft (BMW AG).
-Copyright (C) 2015,2016 GENIVI Alliance, Inc.
+Copyright (C) 2015-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG).
+Copyright (C) 2015-202 GENIVI Alliance, Inc.
 
 This file is part of GENIVI Project IPC Common API C++.
 Contributions are licensed to the GENIVI Alliance under one or more Contribution License Agreements or MPL 2.0.
@@ -24,4 +24,4 @@ You can build all code generators by calling maven from the command-line. Open a
 mvn -Dtarget.id=org.genivi.commonapi.core.target clean verify
 ```
 
-After the successful build you will find the commond-line generators archived in `org.genivi.commonapi.core.cli.product/target/products/commonapi-generator.zip` and the update-sites in `org.genivi.commonapi.core.updatesite/target`.
+After the successful build you will find the commond-line generators archived in `org.genivi.commonapi.core.cli.product/target/products/commonapi_core_generator.zip` and the update-sites in `org.genivi.commonapi.core.updatesite/target`.

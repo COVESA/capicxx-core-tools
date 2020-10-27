@@ -221,7 +221,7 @@ struct PolymorphicStruct {
 
 ==== Enumerations
 
-Franca ((enumerations)) will be mapped to C++ structs which inherit from the base class +CommonAPI::Enumeration+. The Enum backing datatype and wire format by default is +uint32_t+. If needed, the wire format can be specified by a CommonAPI deployment file (enumeration backing type).
+Franca ((enumerations)) will be mapped to C++ structs which inherit from the base class +CommonAPI::Enumeration+. The Enum backing datatype and wire format by default is +uint8_t+. If needed, the wire format can be specified by a CommonAPI deployment file (enumeration backing type).
 
 Example:
 
@@ -240,18 +240,18 @@ enumeration MyEnumExtended extends MyEnum {
 .CommonAPI C++
 [source,{cppstr}]
 ----
-struct MyEnum : CommonAPI::Enumeration<int32_t> {
+struct MyEnum : CommonAPI::Enumeration<int8_t> {
     MyEnum() = default;
-    MyEnum(const int32_t &_value) 
-        : CommonAPI::Enumeration<int32_t>(_value) {}
-    static const int32_t E_UNKNOWN = 0;
+    MyEnum(const int8_t &_value) 
+        : CommonAPI::Enumeration<int8_t>(_value) {}
+    static const int8_t E_UNKNOWN = 0;
 };
 
 struct MyEnumExtended : MyEnum {
     MyEnumExtended() = default;
-    MyEnumExtended(const int32_t &_value) 
+    MyEnumExtended(const int8_t &_value) 
         : MyEnum(_value) {}
-    static const int32_t E_NEW = 1;
+    static const int8_t E_NEW = 1;
 };
 ----
 
@@ -515,7 +515,10 @@ enum class CallStatus {
     NOT_AVAILABLE,
     CONNECTION_FAILED,
     REMOTE_ERROR,
-	UNKNOWN
+    UNKNOWN,
+    INVALID_VALUE,
+    SUBSCRIPTION_REFUSED,
+    SERIALIZATION_ERROR
 };
 ----
 
@@ -1095,7 +1098,7 @@ The configuration file has at least the following sections; all sections are opt
 Settings for the internal CommonAPI logging.
 
 |+default+ |
-Default name of the binding.
+Default name of the binding and Call Timeout.
 
 |+proxy+ |
 This section defines for each required CommonAPI address the shared library with the binding specific, generated glue code which has to be loaded when the proxy is created: _<CommonAPI address>_=_<library name>_

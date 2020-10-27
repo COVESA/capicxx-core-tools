@@ -1,10 +1,9 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-#include "DTPrimitiveStub.h"
+#include "DTPrimitiveStub.hpp"
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -35,6 +34,7 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
         double _doubleIn,
         std::string _stringIn,
         CommonAPI::ByteBuffer _byteBufferIn,
+        CommonAPI::RangedInteger<5,15> _integerIn,
         fTestReply_t _reply) {
     (void)_client;
 
@@ -50,7 +50,8 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
            _floatIn,
            _doubleIn,
            _stringIn,
-           _byteBufferIn);
+           _byteBufferIn,
+           _integerIn);
 
     fireBTestEvent(
             _uint8In,
@@ -65,7 +66,8 @@ void DTPrimitiveStub::fTest(const std::shared_ptr<CommonAPI::ClientId> _client,
             _floatIn,
             _doubleIn,
             _stringIn,
-            _byteBufferIn
+            _byteBufferIn,
+            _integerIn
     );
 }
 

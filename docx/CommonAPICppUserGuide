@@ -305,14 +305,16 @@ level=verbose
 If the configured log level is higher than the maximum log level that was defined at compile time, the maximum log level will be used.
 
 ===== +default+
-Section for setting the default value for the used binding.
+Section for setting the default value for the used binding and optionally change the 5 seconds default call-timeouts while leaving the timeout of custom calls.
 
 - +binding=dbus/someip+
+- +callTimeout=+ _<timeout in ms>_
 
 Example:
 ----
 [default]
 binding=dbus
+callTimeout=3000
 ----
 
 ===== +proxy+
@@ -349,7 +351,7 @@ specification org.genivi.commonapi.core.deployment {
         /*
          * define the enumeration backing type on CommonAPI C++ level for whole interface.
          */
-        DefaultEnumBackingType : {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (default: UInt32);
+        DefaultEnumBackingType : {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (default: UInt8);
     }
 
     for providers {
@@ -434,7 +436,7 @@ interface Example {
 Possible deployment settings could look like:
 [source,java]
 ----
-import "CommonAPI_deployment_spec.fdepl"
+import "CommonAPI-4_deployment_spec.fdepl"
 import "Example.fidl"
 
 define org.genivi.commonapi.core.deployment for interface commonapi.examples.Example {

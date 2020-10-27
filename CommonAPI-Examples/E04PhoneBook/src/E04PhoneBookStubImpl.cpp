@@ -1,13 +1,12 @@
-/* Copyright (C) 2014, 2015 BMW Group
- * Author: Manfred Bathelt (manfred.bathelt@bmw.de)
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+// Copyright (C) 2014-2019 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+#include "E04PhoneBookStubImpl.hpp"
 
 #include <algorithm>
 
-#include "E04PhoneBookStubImpl.h"
 
 using namespace commonapi::examples;
 
@@ -39,10 +38,10 @@ void E04PhoneBookStubImpl::onPhoneBookDataSetSelectiveSubscriptionChanged(const 
     }
 }
 
-void E04PhoneBookStubImpl::setPhoneBookDataFilter(const std::shared_ptr<CommonAPI::ClientId> _client,
-                                                  E04PhoneBook::elementFilterStruct _elementFilter,
-                                                  std::vector<E04PhoneBook::contentFilterStruct> _contentFilter,
-                                                  setPhoneBookDataFilterReply_t _reply) {
+void E04PhoneBookStubImpl::setPhoneBookDataFilter(const std::shared_ptr<CommonAPI::ClientId> &_client,
+                                                  const E04PhoneBook::elementFilterStruct &_elementFilter,
+                                                  const std::vector<E04PhoneBook::contentFilterStruct> &_contentFilter,
+                                                  const setPhoneBookDataFilterReply_t &_reply) {
     std::shared_ptr < CommonAPI::ClientIdList > clientList = getSubscribersForPhoneBookDataSetSelective();
     std::cout << "setPhoneBookDataFilter called from client " << _client->hashCode() << " of ("
               << clientList->size() << ")" << std::endl;

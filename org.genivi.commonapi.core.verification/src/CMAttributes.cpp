@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -16,7 +15,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
-#include "stub/CMAttributesStub.h"
+#include "stub/CMAttributesStub.hpp"
 
 const std::string serviceId = "service-sample";
 const std::string clientId = "client-sample";
@@ -255,7 +254,7 @@ TEST_F(CMAttributes, AttributeSetAsynchronous) {
 */
 TEST_F(CMAttributes, AttributeSubscription) {
 
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     CommonAPI::CallStatus callStatus;
     std::function<void (uint8_t)> myCallback =
             std::bind(&CMAttributes::recvSubscribedValue, this, std::placeholders::_1);

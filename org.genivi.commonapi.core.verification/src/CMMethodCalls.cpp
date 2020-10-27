@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -13,7 +12,7 @@
 #include <gtest/gtest.h>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
-#include "stub/CMMethodCallsStub.h"
+#include "stub/CMMethodCallsStub.hpp"
 
 const std::string serviceId = "service-sample";
 const std::string clientId = "client-sample";
@@ -56,14 +55,14 @@ public:
     }
 
     void recvValue(const CommonAPI::CallStatus& callStatus, uint8_t y) {
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+        EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, callStatus);
         std::lock_guard<std::mutex> itsLock(values_mutex_);
         values_.push_back(y);
     }
 
     void recvTimeout(const CommonAPI::CallStatus& callStatus, uint8_t y) {
         std::lock_guard<std::mutex> timeoutsLock(timeoutsMutex_);
-        EXPECT_EQ(callStatus, CommonAPI::CallStatus::NOT_AVAILABLE);
+        EXPECT_EQ(CommonAPI::CallStatus::NOT_AVAILABLE, callStatus);
         timeoutsOccured_.push_back(true);
         (void)y;
     }
@@ -203,7 +202,7 @@ TEST_F(CMMethodCalls, SynchronousMethodCall) {
 TEST_F(CMMethodCalls, FireAndForget) {
     
     std::atomic<uint8_t> result;
-    std::atomic<CommonAPI::CallStatus> subStatus;
+    std::atomic<CommonAPI::CallStatus> subStatus(CommonAPI::CallStatus::UNKNOWN);
     testProxy_->getBTestEvent().subscribe([&](
         const uint8_t &y
     ) {
@@ -550,8 +549,9 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallProxyBecomesAvailable) {
     {
         std::lock_guard<std::mutex> itsLock(values_mutex_);
         EXPECT_EQ(1u, values_.size());
-        if (values_.size())
+        if (values_.size()) {
             EXPECT_EQ(x, values_[0]);
+        }
     }
 }
 
@@ -709,6 +709,149 @@ TEST_F(CMMethodCalls, AsynchronousMethodCallsProxyBecomesAvailable) {
         }
     }
 }
+
+#ifndef TESTS_BAT
+
+/**
+ * @test Call test method asynchronous when proxy is not available and delete proxy.
+ *   - Unregister service.
+ *   - Wait that proxy is not available.
+ *   - Test stub sets in-value of test method.
+ *   - Set timeout of asynchronous call.
+ *   - Make asynchronous call of test method.
+ *   - Start thread which deletes the proxy.
+ *   - Check if proxy could be deleted.
+ *   - Join created thread.
+ */
+TEST_F(CMMethodCalls, AsynchronousMethodCallProxyNotAvailableDeleteProxy) {
+    runtime_->unregisterService(domain, CMMethodCallsStub::StubInterface::getInterface(), testAddress);
+
+    int counter = 0;
+    while ( testProxy_->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        counter++;
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+
+    uint8_t x = 5;
+    int timeout = 1000;
+    CommonAPI::CallInfo info(timeout);
+
+    std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
+            std::bind(&CMMethodCalls::recvTimeout, this, std::placeholders::_1, std::placeholders::_2);
+
+    testProxy_->testMethodAsync(x, myCallback, &info);
+    std::future<void> proxyCompletionFuture = testProxy_->getCompletionFuture();
+    std::mutex m;
+    std::promise<bool> p;
+    auto future = p.get_future();
+
+    std::thread deleteThread([&] {
+        testProxy_.reset();
+        std::lock_guard<std::mutex> itsLock(m);
+        p.set_value(true);
+    });
+
+    auto status = future.wait_for(std::chrono::milliseconds(timeout / 2));
+    EXPECT_EQ(std::future_status::ready, status);
+    if (status == std::future_status::ready) {
+        std::lock_guard<std::mutex> itsLock(m);
+        auto result = future.get();
+        ASSERT_TRUE(result);
+    } else {
+        ADD_FAILURE() << "Future wasn't ready";
+    }
+
+    if (std::future_status::timeout == proxyCompletionFuture.wait_for(std::chrono::seconds(5))) {
+        ADD_FAILURE() << "Proxy wasn't destroyed within time";
+    }
+
+    if(deleteThread.joinable()) {
+        deleteThread.join();
+    }
+}
+
+/**
+* @test Call test method via two proxies multiple times asynchronously while the
+* service is unavailable and check if the provided callback is called with an
+* error for every method call done.
+*/
+
+TEST_F(CMMethodCalls, AsynchronousMethodCallsReceiveNotAvailable) {
+    // build second proxy to same service
+    testProxy2_ = runtime_->buildProxy<TestInterfaceProxy>(domain, testAddress, clientId);
+    ASSERT_TRUE((bool)testProxy2_);
+
+    int counter = 0;
+    while (!testProxy2_->isAvailable() && 100 > counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync*wf));
+    }
+    ASSERT_TRUE(testProxy2_->isAvailable());
+
+    runtime_->unregisterService(domain,
+            CMMethodCallsStub::StubInterface::getInterface(), testAddress);
+
+    for (int counter = 0; testProxy_->isAvailable() && counter < 100; counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_FALSE(testProxy_->isAvailable());
+    for (int counter = 0; testProxy2_->isAvailable() && counter < 100; counter++) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    ASSERT_FALSE(testProxy2_->isAvailable());
+
+    std::uint32_t numberCalls(250);
+    std::atomic<std::uint32_t> numberCallbackCalled(0);
+    std::atomic<std::uint32_t> numberCallbackCalled2(0);
+    std::promise<bool> p1, p2;
+
+
+    std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback =
+            [&](const CommonAPI::CallStatus& callStatus, uint8_t y) {
+        (void)y;
+        numberCallbackCalled++;
+        EXPECT_EQ(CommonAPI::CallStatus::NOT_AVAILABLE, callStatus);
+        if (numberCallbackCalled == numberCalls) {
+            try {
+                p1.set_value(true);
+            } catch (std::future_error &e) {
+                ADD_FAILURE() << "myCallBack catched exception" << e.what()
+                        << " " << std::dec << numberCallbackCalled;
+            }
+        }
+    };
+
+    std::function<void (const CommonAPI::CallStatus&, uint8_t)> myCallback2 =
+            [&](const CommonAPI::CallStatus& callStatus, uint8_t y) {
+        (void)y;
+        numberCallbackCalled2++;
+        EXPECT_EQ(CommonAPI::CallStatus::NOT_AVAILABLE, callStatus);
+        if (numberCallbackCalled2 == numberCalls) {
+            try {
+                p2.set_value(true);
+            } catch (std::future_error &e) {
+                ADD_FAILURE() << "myCallBack2 catched exception" << e.what()
+                        << " " << std::dec << numberCallbackCalled2;
+            }
+        }
+    };
+
+    CommonAPI::CallInfo its_info(100);
+
+    uint8_t x = 5;
+    for (std::uint32_t i = 0; i < numberCalls; i++ ) {
+        testProxy_->testMethodAsync(x, myCallback, &its_info);
+        testProxy2_->testMethodAsync(x, myCallback2, &its_info);
+    }
+
+    EXPECT_EQ(std::future_status::ready, p1.get_future().wait_for(std::chrono::seconds(10)));
+    EXPECT_EQ(std::future_status::ready, p2.get_future().wait_for(std::chrono::seconds(10)));
+    EXPECT_EQ(numberCalls, numberCallbackCalled);
+    EXPECT_EQ(numberCalls, numberCallbackCalled2);
+
+}
+
+#endif /* #ifndef TESTS_BAT */
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

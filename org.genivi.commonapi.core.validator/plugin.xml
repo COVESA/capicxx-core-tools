@@ -6,7 +6,7 @@
                 <validator
                       class="org.genivi.commonapi.core.validator.ValidatorCoreUi"
                       mode="FAST"
-                      name="ValidatorCore">
+                      name="Franca Core Validator">
                 </validator>
                </extension>
              <extension
@@ -14,7 +14,18 @@
                 <page
                       class="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
                       id="org.genivi.commonapi.core.validator.preferencepage.ValidatorCorePreferencesPage"
-                      name="CommonAPI Validator">
+                      name="CommonAPI Core Validator">
                 </page>
              </extension>
+             <!-->
+              <extension
+                point="org.franca.deploymodel.dsl.deploymentValidator">
+                <validator
+                      class="org.genivi.commonapi.core.validator.DeploymentValidatorCore"
+                      mode="FAST"
+                      name="Franca Core Deployment Validator">
+                </validator>
+               </extension>
+             </!-->
 </plugin>
+

@@ -1,3 +1,7 @@
+/* Copyright (C) 2013-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+   This Source Code Form is subject to the terms of the Mozilla Public
+   License, v. 2.0. If a copy of the MPL was not distributed with this
+   file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator
 
 import java.util.HashMap
@@ -7,13 +11,13 @@ import org.franca.core.franca.FType
 import javax.inject.Inject
 
 class FTypeCycleDetector {
-    @Inject
-    private extension FrancaGeneratorExtensions francaGeneratorExtensions
+	@Inject
+	extension FrancaGeneratorExtensions francaGeneratorExtensions
 
-    private val indices = new HashMap<FType, Integer>
-    private val lowlink = new HashMap<FType, Integer>
-    private val stack = new Stack<FType>
-    private var int index
+    val indices = new HashMap<FType, Integer>
+	val lowlink = new HashMap<FType, Integer>
+	val stack = new Stack<FType>
+	var int index
     public var String outErrorString
 
     new(FrancaGeneratorExtensions francaGeneratorExtensions) {
@@ -40,7 +44,7 @@ class FTypeCycleDetector {
 
         val typeWithCycle = types.findFirst[type|!indices.containsKey(type) && tarjan(type)]
 
-        return typeWithCycle != null
+        return typeWithCycle !== null
     }
 
     // Tarjan's Strongly Connected Components Algorithm

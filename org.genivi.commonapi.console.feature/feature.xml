@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="org.genivi.commonapi.console.feature"
-      label="Command Line Feature"
-      version="3.1.12.qualifier"
+      label="GENIVI CommonAPI Command Line Feature"
+      version="3.2.0.qualifier"
       provider-name="BMW AG">
 
    <description url="http://www.example.com/description">
@@ -18,7 +18,7 @@
    </license>
 
    <requires>
-      <import feature="org.genivi.commonapi.console.franca.feature" version="3.1.12" match="compatible"/>
+      <import feature="org.genivi.commonapi.console.franca.feature" version="3.2.0" match="compatible"/>
    </requires>
 
    <plugin

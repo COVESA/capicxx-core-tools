@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="org.genivi.commonapi.console.franca.feature"
-      label="Franca Core Dependencies Feature"
-      version="3.1.12.qualifier"
+      label="GENIVI CommonAPI Franca Core Dependencies Feature"
+      version="3.2.0.qualifier"
       provider-name="BMW AG">
 
    <description url="http://www.example.com/description">

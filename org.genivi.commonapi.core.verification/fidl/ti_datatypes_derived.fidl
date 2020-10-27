@@ -5,7 +5,7 @@ package commonapi.datatypes.derived
 
 interface TestInterface {
     version { major 1 minor 0 }
-    
+
     attribute tStructExt aStructExt
     attribute tEnumExt aEnumExt
     attribute tUnionExt aUnionExt
@@ -38,38 +38,56 @@ interface TestInterface {
     struct tStruct {
         UInt8 baseMember
     }
-    
+
     struct tStructExt extends tStruct {
         String extendedMember
     }
-    
+
     enumeration tEnum {
         VALUE1= 0
     }
-    
+
     enumeration tEnumExt extends tEnum {
         VALUE2= 1
         VALUE3= 2
     }
-    
+
     union tUnion {
         UInt8 baseMember
     }
-    
+
     union tUnionExt extends tUnion {
         String extendedMember
     }
-    
+
     struct tBaseStruct polymorphic {
     }
-    
+
     struct tBaseOneStruct extends tBaseStruct  {
         UInt8 number
     }
-    
+
     struct tBaseTwoStruct extends tBaseStruct {
         String name
-    }   
-    
+    }
+
+    attribute defUnionExtended adefUnionExtended
+
+    struct defStruct {
+        UInt8 v8
+    }
+    struct defStruct2 {
+        String v8
+        defStruct s1
+    }
+    union defUnion {
+        defStruct s1
+        String name
+    }
+    union defUnionExtended extends defUnion {
+        UInt16 v16
+        defStruct2 s2
+    }
+
 
 }

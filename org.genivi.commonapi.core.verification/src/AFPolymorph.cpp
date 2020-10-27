@@ -16,7 +16,7 @@
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/advanced/polymorph/TestInterfaceProxy.hpp"
-#include "stub/AFPolymorphStub.h"
+#include "stub/AFPolymorphStub.hpp"
 
 const std::string domain = "local";
 const std::string testAddress = "commonapi.advanced.polymorph.TestInterface";

@@ -1,8 +1,14 @@
 Changes
 =======
 
-v3.1.12.4
-- Fixed dependency to Eclipse Modeling Framework causing compilation error.
+v3.2.0
+- Adapted to CommonAPI 3.2.0
+- Upgrade to Franca 0.13.1
+- Improved evaluation of literal value expressions
+- Allow typedef´ed types within unions
+- Updated xtend to v2.20.0
+- Improve handling of derived enumerations
+- Removed some unnecessary warnings
 
 v3.1.12.3
 - Prevent crash due to concurrent attribute access from stub itself

@@ -1,5 +1,4 @@
-/* Copyright (C) 2014-2015 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -8,6 +7,7 @@
 * @file Runtime
 */
 
+#include <atomic>
 #include <functional>
 #include <fstream>
 #include <thread>
@@ -20,6 +20,8 @@ const std::string domain = "local";
 const std::string testAddress = "commonapi.runtime.TestInterface";
 const std::string applicationNameService = "service-sample";
 const std::string applicationNameClient = "client-sample";
+
+const int tasync = 20000;
 
 class Environment: public ::testing::Environment {
 public:
@@ -332,6 +334,76 @@ TEST_F(RTBuildProxiesAndStubs, WaitForProxyDestructionInTwoThreads) {
     if (t2.joinable()) {
        t2.join();
     }
+}
+
+/**
+* @test Loads Runtime, creates proxy, subscribes to proxy status event, does a blocking call and shutdown
+*   - Calls CommonAPI::Runtime::get() and checks if return value is true.
+*   - Checks if test proxy with domain and test instance can be created.
+*   - Subscribes to proxy status event and simulate a blocking call (simulated by sleep) when proxy is
+*     getting available
+*   - Register the test service
+*   - Initiate shutdown when blocking call was done
+*   - Unregister test service
+*   - Wait till proxy is getting unavailable
+*   - Destroy proxy
+*   - Wait till proxy was destroyed and proxy status event handler is finished
+*/
+TEST_F(RTBuildProxiesAndStubs, BuildProxySubscribeToProxyStatusEventBlockingCallAndShutdown) {
+    std::shared_ptr<CommonAPI::Runtime> runtime = CommonAPI::Runtime::get();
+    ASSERT_TRUE((bool)runtime);
+
+    std::shared_ptr<v1_0::commonapi::runtime::TestInterfaceProxy<>> testProxy = runtime->buildProxy<v1_0::commonapi::runtime::TestInterfaceProxy>(domain,testAddress, applicationNameClient);
+    ASSERT_TRUE((bool)testProxy);
+
+    std::atomic<bool> isBlockingCall, shutdown, handlerFinished;
+    isBlockingCall = false;
+    shutdown = false;
+    handlerFinished = false;
+
+    testProxy->getProxyStatusEvent().subscribe([&](const CommonAPI::AvailabilityStatus& val) {
+        if(val == CommonAPI::AvailabilityStatus::AVAILABLE) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+            isBlockingCall = true;
+            for (int i = 0; i < 100; i++) {
+                if (shutdown) break;
+                std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+            }
+            ASSERT_TRUE(shutdown);
+            handlerFinished = true;
+        }
+    });
+
+    auto testStub = std::make_shared<v1_0::commonapi::runtime::TestInterfaceStubDefault>();
+    ASSERT_TRUE((bool)testStub);
+
+    ASSERT_TRUE(runtime->registerService(domain,testAddress,testStub, applicationNameService));
+
+    for (int i = 0; i < 100; i++) {
+        if (isBlockingCall) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_TRUE(isBlockingCall);
+
+    ASSERT_TRUE(runtime->unregisterService(domain,v1_0::commonapi::runtime::TestInterfaceStub::StubInterface::getInterface(), testAddress));
+    shutdown = true;
+
+    int counter = 0;
+    while ( testProxy->isAvailable() && counter < 100 ) {
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        counter++;
+    }
+    ASSERT_FALSE(testProxy->isAvailable());
+
+    std::shared_future<void> proxy_destroyed = testProxy->getCompletionFuture();
+    testProxy.reset();
+    ASSERT_TRUE(std::future_status::ready == proxy_destroyed.wait_for(std::chrono::seconds(5)));
+
+    for (int i = 0; i < 100; i++) {
+        if (handlerFinished) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    ASSERT_TRUE(handlerFinished);
 }
 
 int main(int argc, char** argv) {

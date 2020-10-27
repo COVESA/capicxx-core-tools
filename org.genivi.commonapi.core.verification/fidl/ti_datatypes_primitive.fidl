@@ -19,6 +19,7 @@ interface TestInterface {
     attribute Double aDouble
     attribute String aString
     attribute ByteBuffer aByteBuffer
+    attribute Integer(5, 15) aInteger
 
     method fTest {
         in {
@@ -35,6 +36,7 @@ interface TestInterface {
             Double doubleIn
             String stringIn
             ByteBuffer byteBufferIn
+            Integer(5,15) integerIn
         }
         out {
             UInt8 uint8Out
@@ -50,6 +52,7 @@ interface TestInterface {
             Double doubleOut
             String stringOut
             ByteBuffer byteBufferOut
+            Integer(5,15) integerOut
         }
     }
 
@@ -71,6 +74,7 @@ interface TestInterface {
             Double doubleOut
             String stringOut
             ByteBuffer byteBufferOut
+            Integer(5, 15) integerOut
         }
     }
 

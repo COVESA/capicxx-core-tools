@@ -1,10 +1,10 @@
-/* Copyright (C) 2015 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
- * This Source Code Form is subject to the terms of the Mozilla Public
- * License, v. 2.0. If a copy of the MPL was not distributed with this
- * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+// Copyright (C) 2014-2019 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef E01HELLOWORLDSTUBIMPL_H_
-#define E01HELLOWORLDSTUBIMPL_H_
+#ifndef E01HELLOWORLDSTUBIMPL_HPP_
+#define E01HELLOWORLDSTUBIMPL_HPP_
 
 #include <CommonAPI/CommonAPI.hpp>
 #include <v0/commonapi/examples/E01HelloWorldStubDefault.hpp>
@@ -19,4 +19,4 @@ public:
 
 };
 
-#endif /* E01HELLOWORLDSTUBIMPL_H_ */
+#endif // E01HELLOWORLDSTUBIMPL_HPP_

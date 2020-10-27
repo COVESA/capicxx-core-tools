@@ -1,0 +1,113 @@
+/*
+ * Copyright (C) 2019 Bayerische Motoren Werke AG (BMW).
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ *
+ * Version 2.0
+ *
+ * This is the Franca deployment specification to be used for CommonAPI C++
+ * Core.
+ */
+
+specification org.genivi.commonapi.core.deployment {
+
+    for instances {
+        /*
+         * The CommonAPI address string has the format "domain:interfaceid:instanceid"
+         * according to CommonAPI specification.
+         * To avoid inconsistencies only domain and instance id can be specified during deployment,
+         * while the interface id is fixed by the interface the instance realizes.
+         */
+        Domain :     String (default: "local");  // the domain part of the CommonAPI address.
+        InstanceId : String;                     // the instance id of the CommonAPI address.
+
+        /*
+         * provide properties to register for instance. use "Name=Value" as format.
+         * This deployment property is currently not supported.
+         */
+        PreregisteredProperties : String [] (optional);
+
+        /*
+         * Variant of device (e.g. high, mid, base)
+         */
+        Variant: String (default: "any");
+
+        /*
+         * Year of usage, e.g. 2021
+         */
+        Year : String (default: "any");
+    }
+
+    for interfaces {
+        /*
+         * Define default timeout for all methods/getter/setter awaiting results of an instance in ms.
+         * -1 means no timeout/waiting forever.
+         * If the timeout elapsed without arrival of a valid result an error will be delivered to the application.
+         */
+        DefaultTimeout : Integer (optional);
+
+    }
+
+    for methods {
+        /*
+         * timeout for method calls in ms.
+         * If timeout is defined with a value > -1, then a method call will return with a timeout error
+         * in case no result arrived before the timeout elapsed.
+         * -1 means no timeout.
+         */
+        MethodTimeout : Integer (default: 0);
+
+        /*
+         * the set of errors that can be sent for this method. Enter the Franca names of the error broadcasts.
+         */
+        Errors : String [] (optional);
+    }
+
+    for attributes {
+        /*
+         * timeout for setter/getter calls in ms.
+         * If timeout is defined with value > -1, then the call will return with a timeout error
+         * in case no result arrived before the timeout elapsed.
+         * -1 means no timeout.
+         */
+        AttributeSetterTimeout          : Integer (default: 0);
+        AttributeGetterTimeout          : Integer (default: 0);
+        AttributeNotifierTimeout        : Integer (default: 0);
+        AttributeNotifierUpdateMode     : { Cyclic, OnChange } (default: OnChange);
+    }
+
+    for enumerations {
+        /*
+         * define the enumeration backing type on CommonAPI C++ level for a specific enumeration.
+         * If not specified use "ApiDefaultEnumBackingType".
+         */
+        EnumBackingType : {UInt8, UInt16, UInt32, UInt64, Int8, Int16, Int32, Int64} (default: UInt8);
+    }
+
+    for enumerators {
+        /*
+         * Enumerations may be used as error parameters in Franca / CommonAPI.
+         * In this case ErrorType may be used to specify the severity of each enumerator for use in
+         * trace analysis or viewer tools, e.g. to use different colors to highlight traces.
+         */
+        ErrorType : { Error, Warning, Info, NoError } (default: NoError);
+    }
+
+    for broadcasts {
+        /*
+         * define the broadcast type on CommonAPI C++ level for a specific broadcast.
+         * The default broadcast type is a regular signal broadcast. An 'error' broadcast signals
+         * an occurred error due to a method call.
+         */
+        BroadcastType: {signal, error} (default:signal);
+
+        /*
+         * the fully qualified name of the error broadcast type. If it is an error broadcast,
+         * this definition is required.
+         */
+        ErrorName : String (optional);
+    }
+
+}

@@ -1,5 +1,4 @@
-/* Copyright (C) 2014 BMW Group
- * Author: Juergen Gehring (juergen.gehring@bmw.de)
+/* Copyright (C) 2014-2019 BMW Group
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -12,9 +11,9 @@
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/performance/complex/TestInterfaceProxy.hpp"
-#include "stub/PFComplexStub.h"
+#include "stub/PFComplexStub.hpp"
 
-#include "utils/StopWatch.h"
+#include "utils/StopWatch.hpp"
 
 const int usecPerSecond = 1000000;
 
