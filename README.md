@@ -14,7 +14,7 @@ This Source Code Form is subject to the terms of the Mozilla Public License, v. 
 The specification document and the user guide can be found in the CommonAPI documentation directory of the CommonAPI-Tools project.
 
 ##### Further information
-https://genivi.github.io/capicxx-core-tools/
+https://COVESA.github.io/capicxx-core-tools/
 
 ##### Build Instructions for Linux
 
