@@ -11,7 +11,7 @@
 <repository location="http://download.eclipse.org/releases/2018-09"/>
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
-<unit id="org.eclipse.xtext.sdk.feature.group" version="2.11.0.v20170201-0242"/>
+<unit id="org.eclipse.xtext.sdk.feature.group" version="2.25.0.v20210301-1429"/>
 <repository location="http://download.eclipse.org/modeling/tmf/xtext/updates/composite/releases/"/>
 </location>
 <location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
@@ -23,6 +23,14 @@
 <unit id="org.franca.providers.sdk.feature.group" version="0.13.1.201807231814"/>
 <unit id="org.franca.ui.sdk.feature.group" version="0.13.1.201807231814"/>
 <repository location="http://franca.github.io/franca/update_site/releases"/>
+</location>
+<location includeAllPlatforms="false" includeConfigurePhase="false" includeMode="planner" includeSource="true" type="InstallableUnit">
+<unit id="com.google.guava" version="30.1.0.v20210127-2300"/>
+<unit id="org.apache.commons.cli" version="1.4.0.v20200417-1444"/>
+<unit id="org.eclipse.emf.mwe.core" version="1.7.0.v20220519-1115"/>
+<unit id="org.eclipse.emf.mwe.utils" version="1.7.0.v20220519-1115"/>
+<unit id="org.eclipse.emf.mwe2.runtime" version="2.13.0.v20220519-1115"/>	
+<repository location="http://download.eclipse.org/modeling/emft/mwe/updates/releases/2.13.0/"/>
 </location>
 </locations>
 <targetJRE path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>

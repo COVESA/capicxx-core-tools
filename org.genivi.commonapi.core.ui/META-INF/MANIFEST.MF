@@ -13,7 +13,7 @@ Require-Bundle: org.eclipse.core.runtime;bundle-version="[3.10.0,4.0.0)";visibil
  org.eclipse.xtext.ui.ecore;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
  org.eclipse.xtext.builder;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
  org.eclipse.xtext.generator;bundle-version="[2.7.0,3.0.0)";visibility:=reexport,
- com.google.inject;bundle-version="[3.0.0,4.0.0)";visibility:=reexport,
+ com.google.inject;bundle-version="[5.0.1,6.0.0)";visibility:=reexport,
  org.genivi.commonapi.core;bundle-version="3.2.0";visibility:=reexport,
  org.franca.core.dsl.ui;bundle-version="[0.13.1,0.14.0)",
  org.franca.deploymodel.dsl.ui;bundle-version="[0.13.1,0.14.0)",
