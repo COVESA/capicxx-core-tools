@@ -130,6 +130,7 @@ link_directories(
     ${COMMONAPI_LIBDIR}
     ${COMMONAPI_DBUS_LIBDIR}
     ${COMMONAPI_SOMEIP_CMAKE_DIR}/build
+    ${DBus_LIBRARY_DIRS}
     ${Boost_LIBRARY_DIR}
 )
 else()
