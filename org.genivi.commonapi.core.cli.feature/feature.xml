@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.core.cli.feature"
       label="GENIVI CommonAPI Core Console Interface Feature"
-      version="3.2.0.qualifier"
+      version="3.2.14.qualifier"
       provider-name="BMW AG">
 
    <plugin

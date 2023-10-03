@@ -7,12 +7,13 @@
 * @file Communication
 */
 
-#include <functional>
-#include <fstream>
 #include <algorithm>
+#include <fstream>
+#include <functional>
+#include <gtest/gtest.h>
 #include <random>
 #include <sstream>
-#include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/communication/TestInterfaceProxy.hpp"
 #include "stub/CMMethodCallsStub.hpp"

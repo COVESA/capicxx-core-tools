@@ -20,6 +20,7 @@ import org.eclipse.xtext.validation.ValidationMessageAcceptor;
 import org.franca.core.franca.FModel;
 import org.franca.core.franca.FrancaPackage;
 import org.franca.core.franca.Import;
+import org.genivi.commonapi.core.verification.ValidateElements;
 import org.genivi.commonapi.core.verification.ValidatorCore;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.ui.CommonApiUiPlugin;
@@ -31,7 +32,7 @@ public class ValidatorCoreUi extends ValidatorCore {
 
     private HashMap<String, HashSet<String>> importList = new HashMap<String, HashSet<String>>();
     private Boolean hasChanged = false;
-
+    private ValidateElements validateElements = new ValidateElements();
 
     @Override
     public void validateModel(FModel model,
@@ -40,6 +41,9 @@ public class ValidatorCoreUi extends ValidatorCore {
             if (!isValidatorEnabled()) {
                 return;
             }
+
+            validateElements.verifyEqualInOutAndAddSuffix(model);
+
             // call the super validation method
             super.validateModel(model, messageAcceptor);
 
@@ -194,12 +198,15 @@ public class ValidatorCoreUi extends ValidatorCore {
                             FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
                             messageAcceptor);
                 return;
-            } else {
+            }
+            //Commented out because the new catalogue allows cyclic imports, error disabled
+            /*
+            else {
                 acceptError("Cyclic Imports: " + errorString + filePath, imp,
                         FrancaPackage.Literals.IMPORT__IMPORT_URI, -1,
                         messageAcceptor);
                 return;
-            }
+            }*/
         } else {
             cyclicList.add(filePath);
             if (importList.containsKey(filePath)) {
@@ -222,5 +229,4 @@ public class ValidatorCoreUi extends ValidatorCore {
     	IPreferenceStore prefs = CommonApiUiPlugin.getValidatorPreferences();
     	return prefs != null && prefs.getBoolean(PreferenceConstants.P_ENABLE_CORE_VALIDATOR);
     }
-
 }

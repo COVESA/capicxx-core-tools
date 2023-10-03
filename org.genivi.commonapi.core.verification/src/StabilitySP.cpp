@@ -10,6 +10,7 @@
 #include <functional>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 #include "v1/commonapi/stability/sp/TestInterfaceProxy.hpp"
 #include "stub/StabilitySPStub.hpp"
@@ -217,7 +218,7 @@ public:
             return;
 
         asyncCounter++;
-//        std::cout << "asyncCounter<" << this << ">: " << asyncCounter << std::endl;
+        //std::cout << "asyncCounter<" << this << ">: " << asyncCounter << std::endl;
 
         TestInterface::tArray arrayTestValue;
 
@@ -324,7 +325,7 @@ public:
                 if (previousCount != asyncCounter) {
                     break;
                 }
-                std::this_thread::sleep_for(std::chrono::microseconds(10000));
+                std::this_thread::sleep_for(std::chrono::microseconds(20000));
             }
             if (previousCount == asyncCounter) {
                 break;
@@ -535,7 +536,7 @@ public:
         std::function<void (const CommonAPI::CallStatus&, TestInterface::tArray)> myCallback =
             std::bind(&ProxyThread::recvValue, this, std::placeholders::_1, std::placeholders::_2);
 
-        CommonAPI::CallInfo callInfo(50*1000);
+        CommonAPI::CallInfo callInfo(100*1000);
 
         proxy->getTestAttributeAttribute().getValueAsync(myCallback, &callInfo);
         return true;

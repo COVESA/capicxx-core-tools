@@ -8,6 +8,7 @@
 */
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 #include "stub/THMainLoopIntegrationStub.hpp"
 #include "utils/VerificationMainLoop.hpp"

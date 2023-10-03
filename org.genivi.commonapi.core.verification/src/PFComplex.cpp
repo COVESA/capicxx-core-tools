@@ -8,6 +8,7 @@
 */
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/performance/complex/TestInterfaceProxy.hpp"
@@ -208,20 +209,14 @@ TEST_F(PFComplex, Ping_Pong_Complex_Asynchronous) {
 
         watch_.reset();
 
-#ifdef _WIN32
         // DBus under Windows is way to slow at the moment (about 10 times slower than linux), so without an increase in timeout, this test never succeeds.
         // Only raising for WIN32, since linux should run with the default timeout without problems.
         CommonAPI::CallInfo callInfo(60000);
-#endif
 
         watch_.start();
         // Call commonAPI method loopCountPerPaylod times to calculate mean time
         for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
-#ifdef _WIN32
             testProxy_->testMethodAsync(in, myCallback_, &callInfo);
-#else
-            testProxy_->testMethodAsync(in, myCallback_);
-#endif
         }
         {
             std::unique_lock<std::mutex> uniqueLock(synchLock_);

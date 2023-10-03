@@ -169,7 +169,7 @@ class FInterfaceProxyGenerator {
             «fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate);
             ~«fInterface.proxyClassName»();
 
-            typedef «fInterface.getRelativeNameReference(fInterface)» InterfaceType;
+            typedef «fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.getRelativeNameReference(fInterface)» InterfaceType;
 
             «IF fInterface.base !== null»
                 inline static const char* getInterface() {

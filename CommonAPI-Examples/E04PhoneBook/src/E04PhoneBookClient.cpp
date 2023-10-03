@@ -9,6 +9,7 @@
 
 #include <map>
 #include <iostream>
+#include <thread>
 
 #include <CommonAPI/CommonAPI.hpp>
 #include <commonapi/examples/E04PhoneBook.hpp>

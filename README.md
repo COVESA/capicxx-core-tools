@@ -1,8 +1,8 @@
 ### CommonAPI C++ Core Tools
 
 ##### Copyright
-Copyright (C) 2015-2020 Bayerische Motoren Werke Aktiengesellschaft (BMW AG).
-Copyright (C) 2015-202 GENIVI Alliance, Inc.
+Copyright (C) 2015,2016 Bayerische Motoren Werke Aktiengesellschaft (BMW AG).
+Copyright (C) 2015,2016 GENIVI Alliance, Inc.
 
 This file is part of GENIVI Project IPC Common API C++.
 Contributions are licensed to the GENIVI Alliance under one or more Contribution License Agreements or MPL 2.0.
@@ -14,7 +14,7 @@ This Source Code Form is subject to the terms of the Mozilla Public License, v. 
 The specification document and the user guide can be found in the CommonAPI documentation directory of the CommonAPI-Tools project.
 
 ##### Further information
-https://COVESA.github.io/capicxx-core-tools/
+https://covesa.github.io/capicxx-core-tools/
 
 ##### Build Instructions for Linux
 

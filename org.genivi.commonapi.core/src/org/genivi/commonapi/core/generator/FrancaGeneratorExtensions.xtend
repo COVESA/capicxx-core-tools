@@ -309,7 +309,7 @@ class FrancaGeneratorExtensions {
 
     def getElementName(FModelElement fModelElement) {
         if ((fModelElement.name === null || fModelElement.name == "") && fModelElement instanceof FTypeCollection) {
-            return "__Anonymous__"
+            return fModelElement.model.directoryPath.replace('/', '_') + "__Types"
         }
         else {
             return fModelElement.name
@@ -659,14 +659,20 @@ class FrancaGeneratorExtensions {
         return signature
     }
     
-    def isErrorType(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {        
-        return (deploymentAccessor.getBroadcastType(fBroadcast) == PropertyAccessor.BroadcastType.error)
+    def isErrorType(FBroadcast fBroadcast, PropertyAccessor _accessor) {
+        if (_accessor === null)
+            return false
+
+        return (_accessor.getBroadcastType(fBroadcast) == PropertyAccessor.BroadcastType.error)
     }
     
-    def isErrorType(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor deploymentAccessor) {
-        return (fBroadcast.isErrorType(deploymentAccessor) &&
-            deploymentAccessor.getErrors(fMethod) !== null &&
-            deploymentAccessor.getErrors(fMethod).contains(fBroadcast.elementName))
+    def isErrorType(FBroadcast fBroadcast, FMethod fMethod, PropertyAccessor _accessor) {
+        if (_accessor === null)
+            return false
+
+        return (fBroadcast.isErrorType(_accessor) &&
+            _accessor.getErrors(fMethod) !== null &&
+            _accessor.getErrors(fMethod).contains(fBroadcast.elementName))
     }
     
     def errorName(FBroadcast fBroadcast, PropertyAccessor deploymentAccessor) {
@@ -1999,7 +2005,9 @@ class FrancaGeneratorExtensions {
         var String name = ""
         if (_container instanceof FTypeCollection) {
             name = _container.name
-            if (name === null) name = "__Anonymous__"
+            if (name === null) {
+                name = _container.model.directoryPath.replace('/', '_') + "__Types"
+            }
         } else if (_container instanceof FModelElement) {
             name = _container.name
         } else if (_container instanceof FModel) {

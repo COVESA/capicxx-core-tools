@@ -35,6 +35,7 @@ import org.franca.core.franca.Import;
 import org.franca.deploymodel.dsl.FDeployImportsProvider;
 import org.franca.deploymodel.dsl.fDeploy.FDModel;
 import org.genivi.commonapi.core.generator.StandaloneModelPersistenceHandler;
+import org.genivi.commonapi.core.verification.ValidateElements;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -44,10 +45,12 @@ public class CommandlineValidator {
 	private ValidationMessageAcceptor cliMessageAcceptor;
 	private List<String> ignoreList;
 	private List<String> ignoreMessageList;
+	private List<String> importsValidatedList;
 	protected static final String DEPLOYMENT_SPEC = "deployment_spec.fdepl";
 	protected static final String UNKNOWN_DEPLOYMENT_SPEC = "Couldn't resolve reference to FDSpecification";
 	private ResourceSet resourceSet;
 	private boolean hasError = false;
+	private ValidateElements validateElements = new ValidateElements();
 
 	public CommandlineValidator(ValidationMessageAcceptor cliMessageAcceptor) {
 		this.cliMessageAcceptor = cliMessageAcceptor;
@@ -55,6 +58,7 @@ public class CommandlineValidator {
 		ignoreList = new ArrayList<String>();
 		ignoreMessageList = new ArrayList<String>();
 		ignoreMessageList.add("Duplicate element type");
+		importsValidatedList = new ArrayList<String>();      
 	}
 
 	private void showError(String message) {
@@ -169,11 +173,19 @@ public class CommandlineValidator {
 				validateImports(fmodel, resource.getURI());
 
 				if (!hasError) {
+					importsValidatedList.add(resource.getURI().toString());
+
 					for (Import fimport : fmodel.getImports()) {
 						String uriString = fimport.getImportURI();
 						URI importUri = URI.createURI(uriString);
 						//System.out.println("Validating import " + importUri.lastSegment());
 						URI resolvedUri = importUri.resolve(resource.getURI());
+
+						// Check if fimport is already validated
+						if (importsValidatedList.contains(resolvedUri.toString())) {
+							continue;
+						}
+                        
 						Resource importedResource = resourceSet.getResource(
 								resolvedUri, true);
 						validateResourceWithImports(importedResource);
@@ -182,7 +194,6 @@ public class CommandlineValidator {
 			}
 		}
 	}
-
 
 	private boolean isErrorToIgnore(Issue issue) {
 		
@@ -217,6 +228,7 @@ public class CommandlineValidator {
             Injector injector = Guice.createInjector(new FrancaIDLRuntimeModule());
             StandaloneModelPersistenceHandler modelPersistenceHandler = new StandaloneModelPersistenceHandler(injector.getInstance(ResourceSet.class));
             modelPersistenceHandler.setIgnoreMissingDeploymentSpecs(true);
+            ResourceSet resourceSet = modelPersistenceHandler.getResourceSet();
 
             final BasicDiagnostic diagnostics = new BasicDiagnostic();
             ValidationMessageAcceptor messageAcceptor = new AbstractValidationMessageAcceptor() {
@@ -242,6 +254,14 @@ public class CommandlineValidator {
             if (!outputDiagnostics(diagnostics.getChildren(), false))
                 return false;
 
+			for (Resource resource : resourceSet.getResources()) {
+				for (EObject eObject : resource.getContents()) {
+					if (eObject instanceof FDModel) {
+						validateElements.verifyEqualInOutAndAddSuffix((FDModel)eObject);
+					}
+				}
+			}
+
             // Validate FDEPL/FIDL files with registered XText validators
             //
             if (!validate(modelPersistenceHandler.getResourceSet()))
@@ -258,6 +278,7 @@ public class CommandlineValidator {
 	protected boolean validate(ResourceSet resourceSet)
     {
         boolean hasValidationError = false;
+        
         for (Resource resource : resourceSet.getResources())
         {
             if (!validate(resource))

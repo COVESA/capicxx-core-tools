@@ -1,0 +1,56 @@
+{
+    "unicast" : "192.168.0.2",
+    "logging" :
+    { 
+        "level" : "debug",
+        "console" : "true",
+        "file" : { "enable" : "false", "path" : "/tmp/vsomeip.log" },
+        "dlt" : "false"
+    },
+    "applications" :
+    [
+        {
+            "name" : "service-sample",
+            "id" : "0x1277"
+        }
+    ],
+    "services" :
+    [
+        {
+            "service" : "0x1234",
+            "instance" : "0x5678",
+            "reliable" : { "port" : "30499", "enable-magic-cookies" : "false" }
+        }
+    ],
+    "e2e" :
+    {
+        "e2e_enabled" : "true",
+        "protected" :
+        [
+            {
+                "service_id" : "0x1234",
+                "event_id" : "0x80e9",
+                "profile" : "P04",
+                "variant" : "protector",
+                "crc_offset" : "64",
+                "data_id" : "0xFF"
+            },
+            {
+                "service_id" : "0x1234",
+                "event_id" : "0x80ea",
+                "profile" : "P04",
+                "variant" : "protector",
+                "crc_offset" : "64",
+                "data_id" : "0xFF"
+            }
+        ]
+    },
+    "routing" : "service-sample",
+    "service-discovery" :
+    {
+        "enable" : "true",
+        "multicast" : "224.244.224.245",
+        "port" : "30490",
+        "protocol" : "udp"
+    }
+}
