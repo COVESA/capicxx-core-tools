@@ -318,7 +318,7 @@ TEST_F(AFSelective, SelectiveMultiBroadcast) {
 /**
 * @test Test Destruction of Proxies but service stay online
 * There were an issue when a proxy which has nevery subscribed gets
-* destructed with SomeIP binding (GLIPCI-1081). Therefore i added this
+* destructed with SomeIP binding. Therefore i added this
 * test case.
 */
 TEST_F(AFSelective, ProxyBuildAndDestroy) {

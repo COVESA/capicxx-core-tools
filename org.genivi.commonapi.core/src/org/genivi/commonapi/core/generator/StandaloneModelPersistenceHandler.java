@@ -5,9 +5,11 @@
 package org.genivi.commonapi.core.generator;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
@@ -45,6 +47,11 @@ public class StandaloneModelPersistenceHandler {
      * Error handling.
      */
     private ValidationMessageAcceptor messageAcceptor;
+
+    /**
+     * List used to handle cyclic imports
+     */
+    private List<String> importsLoadedList = new ArrayList<String>();
 
     /**
      * Special handling for missing deployment specification files.
@@ -86,6 +93,9 @@ public class StandaloneModelPersistenceHandler {
         // resolve the input uri, in case it is a relative path
         URI absURI = uri.resolve(root);
 
+        // Add the URI to be loaded, to check the cyclic imports
+        importsLoadedList.add(absURI.toString());
+
         // load root model
         Resource resource = null;
         try {
@@ -119,6 +129,10 @@ public class StandaloneModelPersistenceHandler {
             String importURIStr = it.next();
             URI importURI = URI.createURI(importURIStr);
             URI resolvedURI = importURI.resolve(absURI);
+
+            if (importsLoadedList.contains(resolvedURI.toString())) {
+                continue;
+            }
             loadModel(resolvedURI, root);
         }
         return model;

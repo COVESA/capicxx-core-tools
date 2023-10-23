@@ -144,7 +144,7 @@
     <parent>
         <groupId>commonapi</groupId>
         <artifactId>org.genivi.commonapi.core.releng</artifactId>
-        <version>3.2.0-SNAPSHOT</version>
+        <version>3.2.14-SNAPSHOT</version>
         <relativePath>../org.genivi.commonapi.core.releng</relativePath>
     </parent>
 </project>

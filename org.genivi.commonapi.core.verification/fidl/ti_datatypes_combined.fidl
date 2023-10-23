@@ -42,6 +42,7 @@ interface TestInterface {
         UInt8 uint8Member
         String stringMember
         tEnum enumMember
+        tArray arrayMember
     }
     
     map tMap {

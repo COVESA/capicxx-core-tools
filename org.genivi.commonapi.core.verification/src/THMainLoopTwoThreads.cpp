@@ -8,6 +8,7 @@
 */
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 #include "utils/VerificationMainLoopWithQueue.hpp"
 #include "v1/commonapi/threading/TestInterfaceProxy.hpp"

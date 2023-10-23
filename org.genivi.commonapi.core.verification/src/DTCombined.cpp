@@ -231,9 +231,9 @@ TEST_F(DTCombined, CheckInitialValue) {
     u2 = false;
     // check that the union contains a good value
     // union is initialized with the first kind of value.
-    // here, that is a boolean, and its value type is '4' - the number
+    // here, that is a boolean, and its value type is '5' - the number
     //  of types in the union.
-    EXPECT_EQ(u1.getValueType(), 4);
+    EXPECT_EQ(u1.getValueType(), 5);
     EXPECT_EQ(u1, u2);
 
     TestInterface::tMap m1;
@@ -249,7 +249,7 @@ TEST_F(DTCombined, CheckInitialValue) {
     EXPECT_EQ(s_l1.getStructMember().getUint8Member(), 0);
     EXPECT_EQ(s_l1.getStructMember().getStringMember().size(), 0u);
     EXPECT_EQ(s_l1.getStructMember().getEnumMember(), TestInterface::tEnum::VALUE1);
-    EXPECT_EQ(s_l1.getUnionMember().getValueType(), 4);
+    EXPECT_EQ(s_l1.getUnionMember().getValueType(), 5);
     EXPECT_EQ(s_l1.getUnionMember(), u2);
     EXPECT_EQ(s_l1.getMapMember().size(), 0u);
 
@@ -267,7 +267,7 @@ TEST_F(DTCombined, CheckInitialValue) {
     EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getUint8Member(), 0);
     EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getStringMember().size(), 0u);
     EXPECT_EQ(s_l2.getStructL1Member().getStructMember().getEnumMember(), TestInterface::tEnum::VALUE1);
-    EXPECT_EQ(s_l2.getStructL1Member().getUnionMember().getValueType(), 4);
+    EXPECT_EQ(s_l2.getStructL1Member().getUnionMember().getValueType(), 5);
     EXPECT_EQ(s_l2.getStructL1Member().getUnionMember(), u2);
     EXPECT_EQ(s_l2.getStructL1Member().getMapMember().size(), 0u);
     EXPECT_EQ(s_l2.getUnionL1Member().getValueType(), 5);
@@ -302,6 +302,29 @@ TEST_F(DTCombined2, VariantWithLiteralEnum) {
       EXPECT_EQ(u_l2, u_l3);
       u_l2 = (uint8_t)5;
 }
+
+/**
+* @test Test self assignment of CommonAPI::Variant
+*   - create variant containing an array
+*   - check validity of Variant after calling assignment operator on itself
+*/
+TEST_F(DTCombined2, CheckVariantSelfAssignment) {
+    TestInterface::tArray myArray({"one", "two", "three"});
+
+    TestInterface::tUnion myVariant(myArray);
+
+    EXPECT_TRUE(myVariant.isType<TestInterface::tArray>());
+    EXPECT_EQ(myArray, myVariant.get<TestInterface::tArray>());
+
+    myVariant.operator=(myVariant);
+    EXPECT_TRUE(myVariant.isType<TestInterface::tArray>());
+    EXPECT_EQ(myArray, myVariant.get<TestInterface::tArray>());
+
+    myVariant.operator=(std::move(myVariant));
+    EXPECT_TRUE(myVariant.isType<TestInterface::tArray>());
+    EXPECT_EQ(myArray, myVariant.get<TestInterface::tArray>());
+}
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     ::testing::AddGlobalTestEnvironment(new Environment());

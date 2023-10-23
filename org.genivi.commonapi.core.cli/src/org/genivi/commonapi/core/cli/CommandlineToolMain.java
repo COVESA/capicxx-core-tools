@@ -27,6 +27,7 @@ import org.genivi.commonapi.core.generator.GeneratorFileSystemAccess;
 import org.genivi.commonapi.core.preferences.FPreferences;
 import org.genivi.commonapi.core.preferences.PreferenceConstants;
 import org.genivi.commonapi.core.verification.CommandlineValidator;
+import org.genivi.commonapi.core.verification.ValidateElements;
 import org.genivi.commonapi.core.verification.ValidatorCore;
 
 import com.google.inject.Guice;
@@ -43,6 +44,7 @@ public class CommandlineToolMain extends CommandlineTool {
 	protected Injector injector;
 	protected IGenerator francaGenerator;
 	protected String scope = "Core validation: ";
+	private ValidateElements validateElements = new ValidateElements();
 
 	private ValidationMessageAcceptor cliMessageAcceptor = new AbstractValidationMessageAcceptor() {
 
@@ -190,6 +192,8 @@ public class CommandlineToolMain extends CommandlineTool {
 		if (model != null) {
 			// check existence of imported fidl/fdepl files
 			if (model instanceof FModel) {
+				validateElements.verifyEqualInOutAndAddSuffix((FModel)model);
+
 				cliValidator.validateImports((FModel) model, resource.getURI());
 
 				// validate against GENIVI rules

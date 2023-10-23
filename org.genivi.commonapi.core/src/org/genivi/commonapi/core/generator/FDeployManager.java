@@ -4,6 +4,7 @@
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -22,6 +23,7 @@ import org.franca.deploymodel.dsl.FDeployImportsProvider;
 import org.franca.deploymodel.dsl.fDeploy.FDModel;
 import org.franca.deploymodel.dsl.fDeploy.FDSpecification;
 import org.franca.deploymodel.dsl.fDeploy.Import;
+import org.genivi.commonapi.core.verification.ValidateElements;
 
 /**
  * The FDeployManager loads models from fdepl files and from fidl files that are
@@ -45,6 +47,8 @@ public class FDeployManager {
 	private Map<String, FDModel> deploymentModels = new HashMap<String, FDModel>();
 	private Map<String, FModel> fidlModels = new HashMap<String, FModel>();
 	private Map<String, FDSpecification> specifications = new HashMap<String, FDSpecification>();
+	private List<String> importsLoadedList = new ArrayList<String>();
+	private ValidateElements validateElements = new ValidateElements();
 
 	public FDeployManager() {
 
@@ -69,6 +73,10 @@ public class FDeployManager {
 	 * @return the root model or null in case of an error.
 	 */
 	public EObject loadModel(URI uri, URI root) {
+
+		// Add the URI to be loaded, to check the cyclic imports
+		importsLoadedList.add(uri.toString());
+
 		// Check if this file is already loaded
 		if(deploymentModels.keySet().contains(uri.toString())
 				|| fidlModels.keySet().contains(uri.toString())) {
@@ -122,9 +130,15 @@ public class FDeployManager {
 //				resourceSet.getURIConverter().getURIMap()
 //						.put(importURI, resolvedURI);
 				String uriName = resolvedURI.toString();
-				EObject importModel = loadModel(resolvedURI, root);
+				EObject importModel = null;
+
+                if (!importsLoadedList.contains(uriName))
+                {
+                    importModel = loadModel(resolvedURI, root);
+                }
+
 				if (importModel != null) {
-					if(importModel instanceof FDModel) {
+					if (importModel instanceof FDModel) {
 						// CommonAPI models do _NOT_ contain specifications 
 						List<FDSpecification> itsSpecifications = ((FDModel)importModel).getSpecifications();
 						if (itsSpecifications.size() == 0) {
@@ -143,6 +157,17 @@ public class FDeployManager {
 				}
 			}
 		}
+
+		if (model instanceof FDModel) {
+			validateElements.validateFDModelElements((FDModel)model);
+		}
+		else if(model instanceof FModel) {
+			String rootUriString = root.toString();
+			if (rootUriString.endsWith("fidl")) {
+				validateElements.validateFModelElements((FModel)model);
+			}
+		}
+		importsLoadedList.clear();
 		return model;
 	}
 

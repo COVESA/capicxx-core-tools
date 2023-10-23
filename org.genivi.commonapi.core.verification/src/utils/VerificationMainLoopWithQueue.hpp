@@ -8,6 +8,7 @@
 
 #include <CommonAPI/CommonAPI.hpp>
 
+#include <thread>
 #include <vector>
 #include <set>
 #include <map>

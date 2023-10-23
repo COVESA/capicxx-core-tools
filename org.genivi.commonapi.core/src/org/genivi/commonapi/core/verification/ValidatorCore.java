@@ -307,11 +307,12 @@ public class ValidatorCore implements IFrancaExternalValidator {
         }
         for (FMethod fMethod : fInterface.getMethods()) {
             validateName(messageAcceptor, fMethod);
-            for (FArgument out : fMethod.getOutArgs()) {
-                validateName(messageAcceptor, out);
-            }
             for (FArgument in : fMethod.getInArgs()) {
                 validateName(messageAcceptor, in);
+            }
+
+            for (FArgument out : fMethod.getOutArgs()) {
+                validateName(messageAcceptor, out);
             }
         }
     }
@@ -322,13 +323,6 @@ public class ValidatorCore implements IFrancaExternalValidator {
         if (cppKeywords.keyWords.contains(name)) {
             acceptError("Name " + name
                     + " is a keyword in c++", eObject,
-                    FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
-                    messageAcceptor);
-            return;
-        }
-        if (cppKeywords.reservedWords.contains(name)) {
-            acceptError("Name " + name
-                    + " is a reserved identifier", eObject,
                     FrancaPackage.Literals.FMODEL_ELEMENT__NAME, -1,
                     messageAcceptor);
             return;

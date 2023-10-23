@@ -11,6 +11,7 @@
 #include <functional>
 #include <fstream>
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 #include "stub/AFExtendedStub.hpp"
 #include "v1/commonapi/advanced/extended/AFExtendedBaseProxy.hpp"

@@ -5,13 +5,14 @@
 package org.genivi.commonapi.core.verification;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 public class CppKeywords {
 
     public List<String> keyWords = new ArrayList<String>();
 
-    public List<String> reservedWords = new ArrayList<String>();
+    public HashMap<String, String> handleReservedWords = new HashMap<String, String>();
 
     public CppKeywords() {
 
@@ -100,10 +101,14 @@ public class CppKeywords {
         keyWords.add("xor");
         keyWords.add("xor_eq");
 
-        reservedWords.add("AnonymousTypeCollection");
-        reservedWords.add("instance");
-        reservedWords.add("attributes");
-        reservedWords.add("info");
+        handleReservedWords.put("AnonymousTypeCollection", "AnonymousTypeCollection_");
+        handleReservedWords.put("instance", "instance_");
+        handleReservedWords.put("attributes", "attributes_");
+        handleReservedWords.put("info", "info_");
+        handleReservedWords.put("callback", "callback_");
+        handleReservedWords.put("internalCallStatus", "internalCallStatus_");
+        handleReservedWords.put("new", "new_");
+        handleReservedWords.put("client", "client_");
+        handleReservedWords.put("InterfaceVersion", "ETSInterfaceVersion"); // This attribute's name is already used to access version information of the remote
     }
-
 }

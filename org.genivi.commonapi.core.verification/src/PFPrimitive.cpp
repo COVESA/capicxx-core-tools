@@ -8,6 +8,7 @@
 */
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "CommonAPI/CommonAPI.hpp"
 
 #include "v1/commonapi/performance/primitive/TestInterfaceProxy.hpp"
@@ -182,19 +183,13 @@ TEST_F(PFPrimitive, Ping_Pong_Primitive_Asynchronous) {
         // Initialize testData, call count stop watch for next iteration!
         TestInterface::TestArray in(arraySize_);
 
-#ifdef _WIN32
         // DBus under Windows is way to slow at the moment (about 10 times slower than linux), so without an increase in timeout, this test never succeeds.
         // Only raising for WIN32, since linux should run with the default timeout without problems.
         CommonAPI::CallInfo callInfo(60000);
-#endif
 
         watch_.start();
         for (uint32_t i = 0; i < loopCountPerPaylod; ++i) {
-#ifdef _WIN32
             testProxy_->testMethodAsync(in, myCallback_, &callInfo);
-#else
-            testProxy_->testMethodAsync(in, myCallback_);
-#endif
         }
         {
             std::unique_lock<std::mutex> uniqueLock(synchLock_);
@@ -218,4 +213,3 @@ int main(int argc, char** argv) {
     ::testing::AddGlobalTestEnvironment(new Environment());
     return RUN_ALL_TESTS();
 }
-

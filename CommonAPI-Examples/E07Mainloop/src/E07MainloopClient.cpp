@@ -10,6 +10,7 @@
 #endif
 
 #include <sstream>
+#include <thread>
 
 #include <glib.h>
 #include <gio/gio.h>

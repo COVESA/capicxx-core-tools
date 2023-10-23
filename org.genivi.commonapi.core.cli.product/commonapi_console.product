@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?pde version="3.5"?>
 
-<product name="GENIVI CommonAPI Code C++ Generator" uid="org.genivi.commonapi.core.cli.product" id="org.genivi.commonapi.console.product" application="org.genivi.commonapi.console.application" version="3.2.0" useFeatures="true" includeLaunchers="true">
+<product name="GENIVI CommonAPI Code C++ Generator" uid="org.genivi.commonapi.core.cli.product" id="org.genivi.commonapi.console.product" application="org.genivi.commonapi.console.application" version="3.2.14" useFeatures="true" includeLaunchers="true">
 
    <configIni use="default">
    </configIni>
 
    <launcherArgs>
-      <vmArgs>-Dosgi.requiredJavaVersion=1.8 -Xms512m -Xmx512m
+      <vmArgs>-Dosgi.requiredJavaVersion=1.8 -Xms768m -Xmx1024m
       </vmArgs>
       <vmArgsMac>-XstartOnFirstThread -Dorg.eclipse.swt.internal.carbon.smallFonts
       </vmArgsMac>

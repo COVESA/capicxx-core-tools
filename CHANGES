@@ -1,5 +1,58 @@
 Changes
 =======
+v3.2.14
+- Update README.md with correct github.io link
+- Fixed build of the examples with installed DBus
+
+v3.2.13
+- Enable Modify generation TypeColl without name
+- Fix several issues in the CommonAPI-Examples
+
+v3.2.12
+- Fix compilation error for word "client"
+- Revert Modify generation TypeColl without name
+
+v3.2.11
+- Reduce load models in validation
+- Impl changes in generator for Keywords
+- Enable Modify generation TypeColl without name
+
+v3.2.10
+- Fix typedef InterfaceType declaration
+- Revert Modify generation TypeColl without name"
+
+v3.2.9
+- Increase heap memory
+- Fix reserved identifier error
+- Modify generation TypeColl without name
+- Enumeration/Enumerator with same name
+
+v3.2.8
+- Increase maximum heap memory size
+- Accept enumeration/enumerator with same name
+- Update dependencies 
+- Accept duplicate arg names for method in/out
+- Create a CommonAPI Example for the E2E functionality
+
+v3.2.7
+- Update Generator to change the Parameter name "info"
+
+v3.2.6
+- Modify generation of TypeCollections without name
+- Accept Methods with Parameters with the same name
+- Accept duplicate argument names for method in and out
+
+v3.2.5
+- Accept an Interface with a method with the same name
+
+v3.2.4
+- Fix "com.google.inject" dependencies
+- Extend DTCombined with variant test case
+
+v3.2.2
+- Restore correct include path for AttributeCacheExtension in Example 02 Attributes
+- Adapt README to current generator name.
+- Check whether an accessor exists before using it.
 
 v3.2.0
 - Adapted to CommonAPI 3.2.0

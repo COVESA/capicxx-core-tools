@@ -8,6 +8,7 @@
 #endif
 
 #include <iostream>
+#include <thread>
 
 #include <CommonAPI/CommonAPI.hpp>
 #include <v1/commonapi/examples/E05ManagerProxy.hpp>

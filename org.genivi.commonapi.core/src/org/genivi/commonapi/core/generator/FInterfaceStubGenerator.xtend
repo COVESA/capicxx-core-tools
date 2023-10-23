@@ -343,7 +343,7 @@ class FInterfaceStubGenerator {
             typedef «fInterface.stubCommonAPIClassName»::StubAdapterType StubAdapterType;
             typedef «fInterface.stubCommonAPIClassName»::RemoteEventHandlerType RemoteEventHandlerType;
             typedef «fInterface.stubRemoteEventClassName» RemoteEventType;
-            typedef «fInterface.elementName» StubInterface;
+            typedef «fInterface.versionPrefix»«fInterface.model.generateCppNamespace»«fInterface.elementName» StubInterface;
         };
 
         «fInterface.model.generateNamespaceEndDeclaration»
