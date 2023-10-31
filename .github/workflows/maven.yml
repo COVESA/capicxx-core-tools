@@ -11,11 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-      with:
-        path: ${{ github.workspace }}/capicxx-core-tools
     - name: Set up JDK 8
       uses: actions/setup-java@v1
       with:
         java-version: 8
     - name: Build and package project
-      run: mvn -f ${{ github.workspace }}/capicxx-core-tools/org.genivi.commonapi.core.releng/pom.xml -Dtarget.id=${{ github.workspace }}/capicxx-core-tools/org.genivi.commonapi.core.target clean verify
+      run: mvn -f org.genivi.commonapi.core.releng/pom.xml -Dtarget.id=org.genivi.commonapi.core.target clean verify
