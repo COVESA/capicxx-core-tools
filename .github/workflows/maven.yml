@@ -18,4 +18,4 @@ jobs:
       with:
         java-version: 8
     - name: Build and package project
-      run: mvn -Dtarget.id='${{ github.workspace }}'/capicxx-core-tools/org.genivi.commonapi.core.target clean verify
+      run: mvn -Dtarget.id='${{ github.workspace }}/capicxx-core-tools/org.genivi.commonapi.core.target' clean verify
