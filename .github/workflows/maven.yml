@@ -11,9 +11,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Set up JDK 8
+      uses: actions/setup-java@v1
       with:
-        path: '${{ github.workspace }}/capicxx-core-tools'
-    - name: Run maven script
-      uses: guillonapa/action-maven-cli/jdk8@master
-      with:
-        lifecycle: '-Dtarget.id=${{ github.workspace }}/capicxx-core-tools/org.genivi.commonapi.core.target clean verify'
+        java-version: 8
+    - name: Show contents of the current working directory
+      run: ls -la
+    - name: Show contents of the target directory
+      run: ls -la target
+    - name: Build and package project
+      run: mvn -Dtarget.id=org.genivi.commonapi.core.target clean verify
