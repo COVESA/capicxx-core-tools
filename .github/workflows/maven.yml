@@ -13,4 +13,5 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run maven script
       uses: guillonapa/action-maven-cli/jdk8@master
-      run: mvn -Dtarget.id=org.genivi.commonapi.core.target clean verify
+      with:
+        lifecycle: '-Dtarget.id=org.genivi.commonapi.core.target clean verify'
