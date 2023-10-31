@@ -14,4 +14,4 @@ jobs:
     - name: Run maven script
       uses: guillonapa/action-maven-cli/jdk8@master
       with:
-        lifecycle: '-Dtarget.id=${{ github.workspace }}/../org.genivi.commonapi.core.target clean verify'
+        lifecycle: '-Dtarget.id=${{ github.workspace }}/capicxx-core-tools/org.genivi.commonapi.core.target clean verify'
