@@ -8,7 +8,10 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up JDK 8
@@ -16,4 +19,4 @@ jobs:
       with:
         java-version: 8
     - name: Build and package project
-      run: mvn -f org.genivi.commonapi.core.releng/pom.xml -Dtarget.id=org.genivi.commonapi.core.target clean verify
+      run: mvn -f org.genivi.commonapi.core.releng/pom.xml -D target.id=org.genivi.commonapi.core.target clean verify
