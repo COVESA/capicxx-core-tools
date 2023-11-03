@@ -1,0 +1,22 @@
+name: CI
+ 
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up JDK 8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 8
+    - name: Build and package project
+      run: mvn -f org.genivi.commonapi.core.releng/pom.xml -D target.id=org.genivi.commonapi.core.target clean verify
