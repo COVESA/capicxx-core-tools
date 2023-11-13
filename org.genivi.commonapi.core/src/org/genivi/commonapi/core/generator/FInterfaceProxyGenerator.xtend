@@ -159,12 +159,12 @@ class FInterfaceProxyGenerator {
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
-        template <typename ... _AttributeExtensions>
+        template <typename ... TAttributeExtensions>
         class «fInterface.proxyClassName»
             : virtual public «fInterface.elementName»,
               virtual public «fInterface.proxyBaseClassName»,«IF fInterface.base !== null»
-              public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<_AttributeExtensions...>,«ENDIF»
-              virtual public _AttributeExtensions... {
+              public «fInterface.base.getTypeCollectionName(fInterface)»Proxy<TAttributeExtensions...>,«ENDIF»
+              virtual public TAttributeExtensions... {
         public:
             «fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate);
             ~«fInterface.proxyClassName»();
@@ -276,25 +276,25 @@ class FInterfaceProxyGenerator {
         //
         // «fInterface.proxyClassName» Implementation
         //
-        template <typename ... _AttributeExtensions>
-        «fInterface.proxyClassName»<_AttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
+        template <typename ... TAttributeExtensions>
+        «fInterface.proxyClassName»<TAttributeExtensions...>::«fInterface.proxyClassName»(std::shared_ptr<CommonAPI::Proxy> delegate):
                 «IF fInterface.base !== null»
-                «fInterface.base.getFullName()»Proxy<_AttributeExtensions...>(delegate),
+                «fInterface.base.getFullName()»Proxy<TAttributeExtensions...>(delegate),
                 «ENDIF»
-                _AttributeExtensions(*(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)))...,
+                TAttributeExtensions(*(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)))...,
                 delegate_(std::dynamic_pointer_cast< «fInterface.proxyBaseClassName»>(delegate)) {
         }
 
-        template <typename ... _AttributeExtensions>
-        «fInterface.proxyClassName»<_AttributeExtensions...>::~«fInterface.proxyClassName»() {
+        template <typename ... TAttributeExtensions>
+        «fInterface.proxyClassName»<TAttributeExtensions...>::~«fInterface.proxyClassName»() {
         }
 
         «FOR itsElement : fInterface.elements»
             «IF itsElement instanceof FMethod»
                 «FTypeGenerator::generateComments(itsElement, false)»
                 «IF generateSyncCalls || itsElement.isFireAndForget»
-                template <typename ... _AttributeExtensions>
-                «itsElement.generateDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                template <typename ... TAttributeExtensions>
+                «itsElement.generateDefinitionWithin(fInterface.proxyClassName + '<TAttributeExtensions...>', false)» {
                     «FOR arg : itsElement.inArgs»
                         «IF !arg.array && arg.getType.supportsValidation»
                             if (!_«arg.elementName».validate()) {
@@ -308,8 +308,8 @@ class FInterfaceProxyGenerator {
                 «ENDIF»
                 «IF !itsElement.isFireAndForget»
 
-                    template <typename ... _AttributeExtensions>
-                    «itsElement.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<_AttributeExtensions...>', false)» {
+                    template <typename ... TAttributeExtensions>
+                    «itsElement.generateAsyncDefinitionWithin(fInterface.proxyClassName + '<TAttributeExtensions...>', false)» {
                         «FOR arg : itsElement.inArgs»
                             «IF !arg.array && arg.getType.supportsValidation»
                                 if (!_«arg.elementName».validate()) {
@@ -328,40 +328,40 @@ class FInterfaceProxyGenerator {
             «ENDIF»
         «ENDFOR»
 
-        template <typename ... _AttributeExtensions>
-        const CommonAPI::Address &«fInterface.proxyClassName»<_AttributeExtensions...>::getAddress() const {
+        template <typename ... TAttributeExtensions>
+        const CommonAPI::Address &«fInterface.proxyClassName»<TAttributeExtensions...>::getAddress() const {
             return delegate_->getAddress();
         }
 
-        template <typename ... _AttributeExtensions>
-        bool «fInterface.proxyClassName»<_AttributeExtensions...>::isAvailable() const {
+        template <typename ... TAttributeExtensions>
+        bool «fInterface.proxyClassName»<TAttributeExtensions...>::isAvailable() const {
             return delegate_->isAvailable();
         }
 
-        template <typename ... _AttributeExtensions>
-        bool «fInterface.proxyClassName»<_AttributeExtensions...>::isAvailableBlocking() const {
+        template <typename ... TAttributeExtensions>
+        bool «fInterface.proxyClassName»<TAttributeExtensions...>::isAvailableBlocking() const {
             return delegate_->isAvailableBlocking();
         }
 
-        template <typename ... _AttributeExtensions>
-        CommonAPI::ProxyStatusEvent& «fInterface.proxyClassName»<_AttributeExtensions...>::getProxyStatusEvent() {
+        template <typename ... TAttributeExtensions>
+        CommonAPI::ProxyStatusEvent& «fInterface.proxyClassName»<TAttributeExtensions...>::getProxyStatusEvent() {
             return delegate_->getProxyStatusEvent();
         }
 
-        template <typename ... _AttributeExtensions>
-        CommonAPI::InterfaceVersionAttribute& «fInterface.proxyClassName»<_AttributeExtensions...>::getInterfaceVersionAttribute() {
+        template <typename ... TAttributeExtensions>
+        CommonAPI::InterfaceVersionAttribute& «fInterface.proxyClassName»<TAttributeExtensions...>::getInterfaceVersionAttribute() {
             return delegate_->getInterfaceVersionAttribute();
         }
 
         «FOR managed : fInterface.managedInterfaces»
-            template <typename ... _AttributeExtensions>
-            CommonAPI::ProxyManager& «fInterface.proxyClassName»<_AttributeExtensions...>::«managed.proxyManagerGetterName»() {
+            template <typename ... TAttributeExtensions>
+            CommonAPI::ProxyManager& «fInterface.proxyClassName»<TAttributeExtensions...>::«managed.proxyManagerGetterName»() {
                 return delegate_->«managed.proxyManagerGetterName»();
             }
         «ENDFOR»
 
-        template <typename ... _AttributeExtensions>
-        std::future<void> «fInterface.proxyClassName»<_AttributeExtensions...>::getCompletionFuture() {
+        template <typename ... TAttributeExtensions>
+        std::future<void> «fInterface.proxyClassName»<TAttributeExtensions...>::getCompletionFuture() {
             return delegate_->getCompletionFuture();
         }
 

@@ -893,8 +893,8 @@ API for getting and setting configuration properties at runtime.
 
 [source,{cppstr}]
 ----
-template< template<typename ...> class _ProxyClass, typename ... _AttributeExtensions >
-std::shared_ptr< _ProxyClass<_AttributeExtensions...> > buildProxy(
+template< template<typename ...> class _ProxyClass, typename ... TAttributeExtensions >
+std::shared_ptr< _ProxyClass<TAttributeExtensions...> > buildProxy(
 	const std::string &_domain,
     const std::string &_instance,
     const ConnectionId_t &_connectionId = DEFAULT_CONNECTION_ID) {
@@ -909,8 +909,8 @@ The _buildProxy_ method is a factory method for instantiating a proxy class for 
 
 [source,{cppstr}]
 ----
-template<template<typename ...> class _ProxyClass, typename ... _AttributeExtensions >
-std::shared_ptr< _ProxyClass<_AttributeExtensions...> > buildProxy(
+template<template<typename ...> class _ProxyClass, typename ... TAttributeExtensions >
+std::shared_ptr< _ProxyClass<TAttributeExtensions...> > buildProxy(
 	const std::string &_domain,
     const std::string &_instance,
     std::shared_ptr<MainLoopContext> _context) {
