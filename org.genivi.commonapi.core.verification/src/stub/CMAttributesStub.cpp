@@ -22,6 +22,9 @@ void CMAttributesStub::setTestValues(uint8_t x) {
     setTestAAttribute(x);
     setTestBAttribute(x);
     setTestCAttribute(x);
+    setTestEAttribute(x);
+    setTestFAttribute(x);
+    setTestGAttribute(x);
 }
 
 } /* namespace v1 */

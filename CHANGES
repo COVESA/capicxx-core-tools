@@ -1,5 +1,12 @@
 Changes
 =======
+v3.2.15
+- Create verification test for noRead
+- Fix issues identified in the CommonAPI-Examples
+- Update gitignore and cleanup project
+- Verification test for vsomeip_sec host address
+- Added workflow to build the project in Ubuntu, Windows, and macOS
+
 v3.2.14
 - Update README.md with correct github.io link
 - Fixed build of the examples with installed DBus

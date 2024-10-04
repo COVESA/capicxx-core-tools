@@ -1,9 +1,5 @@
 *~
 *.o
 /.deps
-/.settings
-/.cproject
-/.project
 /build
 /Testing
-/src-gen

@@ -1,0 +1,21 @@
+package commonapi.vsomeipsec
+
+interface ClientIdService {
+
+	version { major 1 minor 0 }
+
+	attribute UInt32 a
+	broadcast b2 selective {
+		out {
+			UInt32 v
+		}
+	}
+	method m {
+		in {
+			UInt32 i
+		}
+		out {
+			UInt32 o
+		}
+	}
+}

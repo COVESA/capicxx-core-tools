@@ -1,0 +1,24 @@
+/* Copyright (C) 2023 Bayerische Motoren Werke Aktiengesellschaft (BMW AG)
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+package commonapi.examples
+
+interface E09CrcProtectionP01 {
+    version { major 1 minor 0 }
+
+    attribute CommonTypes.aStruct aOK
+    attribute CommonTypes.aStruct aERROR
+}
+
+typeCollection CommonTypes {
+    version { major 1 minor 0 }
+    
+    struct aStruct {
+          UInt8 CRC8 
+          UInt8 CRC8Counter
+          UInt8 value1
+          UInt8 value2
+    }
+}

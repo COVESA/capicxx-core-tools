@@ -100,6 +100,7 @@ protected:
 *     - Call getValue.
 *     - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
 *     - Check if value of is equal to expected value.
+*  Combinations to test synchronous getValue not allowed for noRead attributes.
 */
 TEST_F(CMAttributes, AttributeGetSynchronous) {
 
@@ -143,6 +144,7 @@ TEST_F(CMAttributes, AttributeGetSynchronous) {
 *   - Call getValue.
 *   - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
 *   - Check if value of is equal to expected value.
+*  Combinations to test asynchronous getValue not allowed for noRead attributes.
 */
 TEST_F(CMAttributes, AttributeGetAsynchronous) {
 
@@ -192,6 +194,13 @@ TEST_F(CMAttributes, AttributeGetAsynchronous) {
 *   - Set attribute to certain value on proxy side.
 *   - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
 *   - Check if returned value of setValue is equal to expected value.
+*  Test synchronous setValue API function for attributes with combinations of
+*  additional properties noRead and noSubscriptions (testE noRead, 
+*  testG noRead noSubscriptions).
+*   - Set attribute to certain value on proxy side.
+*   - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
+*   - Check if returned value of setValue is equal to expected value.
+*  Other combinations to test synchronous setValue not allowed.
 */
 TEST_F(CMAttributes, AttributeSetSynchronous) {
 
@@ -209,6 +218,17 @@ TEST_F(CMAttributes, AttributeSetSynchronous) {
     EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
     EXPECT_EQ(x, y);
 
+    x = 7;
+    y = 1;
+    testProxy_->getTestEAttribute().setValue(x, callStatus, y);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(x, y);
+
+    x = 9;
+    y = 3;
+    testProxy_->getTestGAttribute().setValue(x, callStatus, y);
+    EXPECT_EQ(callStatus, CommonAPI::CallStatus::SUCCESS);
+    EXPECT_EQ(x, y);
 }
 
 /**
@@ -217,6 +237,13 @@ TEST_F(CMAttributes, AttributeSetSynchronous) {
 *   - Set attribute to certain value on proxy side.
 *   - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
 *   - Check if returned value of setValue is equal to expected value.
+*  Test asynchronous setValue API function for attributes with combinations of
+*  additional properties noRead and noSubscriptions (testE noRead, 
+*  testG noRead noSubscriptions).
+*   - Set attribute to certain value on proxy side.
+*   - Check if returned call status is CommonAPI::CallStatus::SUCCESS.
+*   - Check if returned value of setValue is equal to expected value.
+*  Other combinations to test asynchronous setValue not allowed.
 */
 TEST_F(CMAttributes, AttributeSetAsynchronous) {
 
@@ -240,12 +267,28 @@ TEST_F(CMAttributes, AttributeSetAsynchronous) {
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));
     }
     EXPECT_EQ(x, value_);
+
+    x = 7;
+    testProxy_->getTestEAttribute().setValueAsync(x, myCallback);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(x, value_);
+
+    x = 9;
+    testProxy_->getTestGAttribute().setValueAsync(x, myCallback);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(x, value_);
 }
 
 /**
 * @test Test subscription API function for attributes
 *
-*   - Subscribe on testAttribute.
+*   - Subscribe on testAttribute and on testE.
 *   - Set attribute to certain value on stub side.
 *   - Do checks of call status (CommonAPI::CallStatus::SUCCESS) and returned value in callback function.
 *   - Checks if returned value of setValue is equal to expected value.
@@ -289,6 +332,41 @@ TEST_F(CMAttributes, AttributeSubscription) {
 
     x = 6;
     testProxy_->getTestAttributeAttribute().setValue(x, callStatus, y);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(x, value_);
+
+    testStub_->setTestValues(0);
+
+    y = 1;
+    x = 9;
+
+    value_ = 0;
+
+    testProxy_->getTestEAttribute().getChangedEvent().subscribe(myCallback,
+    [&](
+        const CommonAPI::CallStatus &status
+    ) {
+        subStatus = status;
+    });
+
+    for (int i = 0; i < 100; i++) {
+        if (subStatus == CommonAPI::CallStatus::SUCCESS) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(CommonAPI::CallStatus::SUCCESS, subStatus);
+
+    testStub_->setTestValues(x);
+    for (int i = 0; i < 100; i++) {
+        if (value_ == x) break;
+        std::this_thread::sleep_for(std::chrono::microseconds(tasync));
+    }
+    EXPECT_EQ(x, value_);
+
+    x = 12;
+    testProxy_->getTestEAttribute().setValue(x, callStatus, y);
     for (int i = 0; i < 100; i++) {
         if (value_ == x) break;
         std::this_thread::sleep_for(std::chrono::microseconds(tasync));

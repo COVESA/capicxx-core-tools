@@ -12,6 +12,9 @@ interface TestInterface {
     attribute UInt8 testB noSubscriptions
     attribute UInt8 testC readonly noSubscriptions
     attribute UInt8 testD
+    attribute UInt8 testE noRead
+    attribute UInt8 testF readonly noRead
+    attribute UInt8 testG noRead noSubscriptions
 
     method testMethod {
         in {

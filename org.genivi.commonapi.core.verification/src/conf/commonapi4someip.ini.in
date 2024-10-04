@@ -80,6 +80,7 @@ local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInter
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface37=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface38=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface39=@GLUECODE_SO_SOMEIP@
+local:commonapi.vsomeipsec.ClientIdService:v1_0:1=@GLUECODE_SO_SOMEIP@
 
 [stub]
 local:commonapi.runtime.TestInterface:v1_0:commonapi.runtime.TestInterface=@GLUECODE_SO_SOMEIP@
@@ -157,3 +158,4 @@ local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInter
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface37=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface38=@GLUECODE_SO_SOMEIP@
 local:commonapi.stability.sp.TestInterface:v1_0:commonapi.stability.sp.TestInterface39=@GLUECODE_SO_SOMEIP@
+local:commonapi.vsomeipsec.ClientIdService:v1_0:1=@GLUECODE_SO_SOMEIP@
