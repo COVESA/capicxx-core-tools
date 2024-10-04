@@ -68,7 +68,7 @@ Now see the implementation of the client. The simplest case is to get the curren
 [source,{cppstr}]
 ----
 #include <CommonAPI/CommonAPI.hpp>
-#include <CommonAPI/Extensions/AttributeCacheExtension.hpp>
+#include <CommonAPI/AttributeCacheExtension.hpp>
 #include <v1/commonapi/examples/E02AttributesProxy.hpp>
 using namespace v1::commonapi::examples;
 

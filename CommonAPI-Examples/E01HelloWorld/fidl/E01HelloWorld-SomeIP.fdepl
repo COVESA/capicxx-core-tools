@@ -25,7 +25,7 @@ define org.genivi.commonapi.someip.deployment for provider as Service {
     instance commonapi.examples.E01HelloWorld {
         InstanceId = "commonapi.examples.HelloWorld"
         
-        SomeIpInstanceID = 4660
+        SomeIpInstanceID = 22136
     
         SomeIpUnicastAddress = "192.168.0.2"
         SomeIpReliableUnicastPort = 30499

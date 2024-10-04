@@ -27,6 +27,8 @@ else()
   message("CMAKE_GLUECODE_SOMEIP_NAME specified: ${CMAKE_GLUECODE_SOMEIP_NAME}")
 endif()
 
+SET(CMAKE_CAPI_SOMEIP_GENERATOR_PATH "../../../capicxx-someip-tools" CACHE FILEPATH "Default path to capicxx-someip-generator")
+
 if("${CMAKE_GLUECODE_DBUS_NAME}" STREQUAL "na" AND "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
     message(FATAL_ERROR "Please specify at least one of CMAKE_GLUECODE_DBUS_NAME or CMAKE_GLUECODE_SOMEIP_NAME")
     return()
@@ -365,6 +367,12 @@ if (NOT ${TESTS_BAT})
         target_link_libraries(StabilitySP ${TEST_LINK_LIBRARIES})
 
     endif()
+
+    add_executable(VSomeIPSec
+        src/VSomeIPSec.cpp
+        src/stub/VSomeIPSecStub.cpp
+    )
+    target_link_libraries(VSomeIPSec ${TEST_LINK_LIBRARIES})
 endif()
 
 if (NOT ${TESTS_BAT})
@@ -391,6 +399,7 @@ if (NOT ${TESTS_BAT})
     add_dependencies(THMainLoopIntegration gtest)
     add_dependencies(THMainLoopIndependence gtest)
     add_dependencies(THMainLoopTwoThreads gtest)
+    add_dependencies(VSomeIPSec gtest)
     if(${TESTS_EXTRA})
         add_dependencies(PFPrimitive gtest)
         add_dependencies(PFComplex gtest)
@@ -421,6 +430,7 @@ if (NOT ${TESTS_BAT})
     add_dependencies(check THMainLoopIntegration)
     add_dependencies(check THMainLoopIndependence)
     add_dependencies(check THMainLoopTwoThreads)
+    add_dependencies(check VSomeIPSec)
     if(${TESTS_EXTRA})
         add_dependencies(check PFPrimitive)
         add_dependencies(check PFComplex)
@@ -493,11 +503,18 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
     # Construct the environment for the tests
     set(SOMEIP_COMMONAPI_CONFIG "COMMONAPI_CONFIG=commonapi4someip.ini")
     if ("${SOMEIP_VSOMEIP_JSON_FILE}" STREQUAL "")
-        set(SOMEIP_VSOMEIP_JSON_FILE "VSOMEIP_CONFIGURATION=../../../ascgit017.CommonAPI-SomeIP-Tools/org.genivi.commonapi.someip.verification/vsomeip.json")
+        set(SOMEIP_VSOMEIP_JSON_FILE "VSOMEIP_CONFIGURATION=${CMAKE_CAPI_SOMEIP_GENERATOR_PATH}/org.genivi.commonapi.someip.verification/vsomeip.json")
+    endif()
+    if ("${SOMEIP_VSOMEIP_LOCAL_TCP_JSON_FILE}" STREQUAL "")
+        set(SOMEIP_VSOMEIP_LOCAL_TCP_JSON_FILE "VSOMEIP_CONFIGURATION=${CMAKE_CAPI_SOMEIP_GENERATOR_PATH}/org.genivi.commonapi.someip.verification/vsomeip-local-tcp.json")
     endif()
     set(SOMEIP_TEST_ENVIRONMENT
         ${SOMEIP_COMMONAPI_CONFIG}
         ${SOMEIP_VSOMEIP_JSON_FILE}
+    )
+    set(SOMEIP_TEST_LOCAL_TCP_ENVIRONMENT
+        ${SOMEIP_COMMONAPI_CONFIG}
+        ${SOMEIP_VSOMEIP_LOCAL_TCP_JSON_FILE}
     )
 
     if (NOT ${TESTS_BAT})
@@ -543,6 +560,8 @@ if(NOT "${CMAKE_GLUECODE_SOMEIP_NAME}" STREQUAL "na")
         set_property(TEST THMainLoopIndependenceSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
         add_test(NAME THMainLoopTwoThreadsSomeIP COMMAND THMainLoopTwoThreads)
         set_property(TEST THMainLoopTwoThreadsSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})
+        add_test(NAME VSomeIPSecSomeIP COMMAND VSomeIPSec)
+        set_property(TEST VSomeIPSecSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_LOCAL_TCP_ENVIRONMENT})
         if(${TESTS_EXTRA})
             add_test(NAME PFPrimitiveSomeIP COMMAND PFPrimitive)
             set_property(TEST PFPrimitiveSomeIP APPEND PROPERTY ENVIRONMENT ${SOMEIP_TEST_ENVIRONMENT})

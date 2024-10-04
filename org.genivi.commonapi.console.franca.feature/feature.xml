@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.console.franca.feature"
       label="GENIVI CommonAPI Franca Core Dependencies Feature"
-      version="3.2.14.qualifier"
+      version="3.2.15.qualifier"
       provider-name="BMW AG">
 
    <description url="http://www.example.com/description">

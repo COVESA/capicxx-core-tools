@@ -2,7 +2,7 @@
 <feature
       id="org.genivi.commonapi.core.validator.feature"
       label="%featureName"
-      version="3.2.14.qualifier"
+      version="3.2.15.qualifier"
       provider-name="%providerName">
 
    <copyright>
@@ -14,7 +14,7 @@
    </license>
 
    <requires>
-      <import plugin="org.genivi.commonapi.core.ui" version="3.2.14" match="compatible"/>
+      <import plugin="org.genivi.commonapi.core.ui" version="3.2.15" match="compatible"/>
    </requires>
 
    <plugin
