@@ -381,13 +381,8 @@ class FTypeGenerator {
             «ENDFOR»
         «ENDIF»
             inline bool operator==(const «fStructType.name»& _other) const {
-            «IF fStructType.allElements.size > 0»
-                «FOR element : fStructType.allElements BEFORE
-                'return (' SEPARATOR ' && ' AFTER ');'»get«element.elementName.toFirstUpper»() == _other.get«element.elementName.toFirstUpper»()«ENDFOR»
-            «ELSE»
-                (void) _other;
-                return true;
-            «ENDIF»    }
+                return std::memcmp(this, &_other, sizeof(«fStructType.name»)) == 0;
+            }
             inline bool operator!=(const «fStructType.name» &_other) const {
                 return !((*this) == _other);
             }
@@ -653,7 +648,7 @@ class FTypeGenerator {
         if (fStructType.base !== null)
             generatedHeaders.add(fStructType.base.FTypeCollection.headerPath)
         else
-            libraryHeaders.addAll('CommonAPI/Deployment.hpp', 'CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp', 'CommonAPI/Struct.hpp')
+            libraryHeaders.addAll('CommonAPI/Deployment.hpp', 'CommonAPI/InputStream.hpp', 'CommonAPI/OutputStream.hpp', 'CommonAPI/Struct.hpp', 'cstring')
         if (fStructType.polymorphic || (fStructType.hasPolymorphicBase() && fStructType.hasDerivedTypes()))
             libraryHeaders.add('CommonAPI/Export.hpp')
         fStructType.elements.forEach[type.getRequiredHeaderPath(generatedHeaders, libraryHeaders)]
