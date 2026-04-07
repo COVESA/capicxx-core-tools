@@ -54,18 +54,19 @@ class FInterfaceGenerator {
         #ifndef «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
         #define «fInterface.defineName.toUpperCase»_INSTANCE_HPP_
 
-        #include <string>
+        #include <array>
+        #include <string_view>
 
         «fInterface.generateVersionNamespaceBegin»
         «fInterface.model.generateNamespaceBeginDeclaration»
 
         «FOR instanceId : deployedInstances»
-            const char * const «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')» = "«instanceId»";
+            inline constexpr std::string_view «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_').replace('-','_')» = "«instanceId»";
         «ENDFOR»
 
-        const std::string «fInterface.elementName»_INSTANCES[] = {
+        inline constexpr std::array<std::string_view, «deployedInstances.size»> «fInterface.elementName»_INSTANCES = {
             «FOR instanceId : deployedInstances»
-                «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_')»«IF instanceId != deployedInstances.last»,«ENDIF»
+                «fInterface.elementName.replace('.', '_')»_«instanceId.replace('.', '_').replace('-','_')»«IF instanceId != deployedInstances.last»,«ENDIF»
             «ENDFOR»
         };
 
