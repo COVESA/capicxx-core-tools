@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -42,7 +43,7 @@ public class FDeployManager {
 	/**
 	 * Map used to handle generically different model files.
 	 */
-	private static Map<String, ImportsProvider> fileHandlerRegistry = new HashMap<String, ImportsProvider>();
+	private static Map<String, ImportsProvider> fileHandlerRegistry = new ConcurrentHashMap<String, ImportsProvider>();
 
 	private Map<String, FDModel> deploymentModels = new HashMap<String, FDModel>();
 	private Map<String, FModel> fidlModels = new HashMap<String, FModel>();
