@@ -4,6 +4,7 @@
    file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 package org.genivi.commonapi.core.generator;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -101,10 +102,9 @@ public class FDeployManager {
 			// fdepl/fidl files
 			resource.unload();
 			resource.load(Collections.EMPTY_MAP);
-		} catch (Exception e) {
-			// Don't show an error message here, because code may be generated
-			// from an included fidl file.
-			// System.err.println("Failed to load model from : " + absURI + "(" + e.getMessage() +")");
+		} catch (IOException e) {
+			// Missing imports are expected: code may be generated from an included
+			// fidl file whose fdepl dependencies are not all present locally.
 			return null;
 		}
 
