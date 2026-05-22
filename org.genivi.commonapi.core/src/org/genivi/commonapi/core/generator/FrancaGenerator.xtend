@@ -43,6 +43,10 @@ class FrancaGenerator implements IGenerator {
     val String CORE_SPECIFICATION_TYPE = "core.deployment"
 
     override doGenerate(Resource input, IFileSystemAccess fileSystemAccess) {
+        // Flush stale accessor entries from previous runs to avoid memory leaks
+        // and incorrect accessor reuse across parallel or sequential build invocations.
+        accessors__.clear()
+
         if (!input.URI.fileExtension.equals(FrancaPersistenceManager.FRANCA_FILE_EXTENSION) &&
             !input.URI.fileExtension.equals(FDeployManager.fileExtension)) {
                 return

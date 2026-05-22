@@ -15,6 +15,7 @@ import java.util.ArrayList
 import java.util.Collection
 import java.util.HashMap
 import java.util.HashSet
+import java.util.concurrent.ConcurrentHashMap
 import java.util.LinkedHashMap
 import java.util.LinkedList
 import java.util.List
@@ -85,7 +86,7 @@ import static extension java.lang.Integer.*
 
 class FrancaGeneratorExtensions {
 
-    static Map<FTypeCollection, PropertyAccessor> accessors__ = new HashMap<FTypeCollection, PropertyAccessor>()
+    static Map<FTypeCollection, PropertyAccessor> accessors__ = new ConcurrentHashMap<FTypeCollection, PropertyAccessor>()
 
     def startInternalCompilation() '''
         #if !defined (COMMONAPI_INTERNAL_COMPILATION)
