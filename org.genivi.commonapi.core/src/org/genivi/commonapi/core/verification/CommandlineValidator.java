@@ -115,14 +115,15 @@ public class CommandlineValidator {
 			URI importUri = URI.createURI(inport.getImportURI());
 			URI fullImportUri = importUri.resolve(fdeplUri);
 			try {
-				new File(fullImportUri.toFileString());
-			} catch (Exception e) {
-				// - tolerate "import ..../xxx_deployment_spec.fdepl"
-				if (inport.getImportURI().endsWith(DEPLOYMENT_SPEC)) {
-					// dont log an error, if the deployment spec could not be found
-				} else {
-					showError("Imported file does not exist: " + inport.getImportURI());
+				File file = new File(fullImportUri.toFileString());
+				if (!file.exists()) {
+					// - tolerate "import ..../xxx_deployment_spec.fdepl"
+					if (!inport.getImportURI().endsWith(DEPLOYMENT_SPEC)) {
+						showError("Imported file does not exist: " + inport.getImportURI());
+					}
 				}
+			} catch (Exception e) {
+				// URI could not be converted to a file path (e.g. platform: URI)
 			}
 		}
 	}
