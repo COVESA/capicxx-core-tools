@@ -108,6 +108,7 @@ public class FDeployManager {
 			return null;
 		}
 
+		if (resource.getContents().isEmpty()) return null;
 		EObject model = resource.getContents().get(0);
 
 		// load all its imports recursively
@@ -202,7 +203,10 @@ public class FDeployManager {
 					// failed to load model from fidl
 					return null;
 				}
-				return (FModel) resource.getContents().get(0);
+				if (resource.getContents().isEmpty()) return null;
+				EObject obj = resource.getContents().get(0);
+				if (!(obj instanceof FModel)) return null;
+				return (FModel) obj;
 			}
 		}
 		return null;
