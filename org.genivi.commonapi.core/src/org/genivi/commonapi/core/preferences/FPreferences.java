@@ -16,7 +16,7 @@ import org.franca.core.franca.FModel;
 
 public class FPreferences {
 
-    private static FPreferences instance = null;
+    private static final FPreferences instance = new FPreferences();
     private Map<String, String> preferences = null;
 
     public Map<String, String> getPreferences() {
@@ -30,12 +30,10 @@ public class FPreferences {
 
     public void resetPreferences(){
         preferences.clear();
+        clidefPreferences();
     }
 
     public static FPreferences getInstance() {
-        if (instance == null) {
-            instance = new FPreferences();
-        }
         return instance;
     }
 
