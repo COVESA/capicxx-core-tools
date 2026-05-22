@@ -162,7 +162,8 @@ public class CommandlineTool {
 
 	public String getFrancaVersion()
 	{
-		return Platform.getBundle("org.franca.core").getVersion().toString();
+		org.osgi.framework.Bundle b = Platform.getBundle("org.franca.core");
+		return (b != null) ? b.getVersion().toString() : "unknown";
 	}
 
 	protected static FilenameFilter fidlFilter = new FilenameFilter() {
@@ -229,8 +230,11 @@ public class CommandlineTool {
 			try {
 				File searchDir = new File(dir);
 				if (searchDir.isDirectory()) {
-					for (File file : searchDir.listFiles(filter)) {
-						fileList.add(file.getPath());
+					File[] found = searchDir.listFiles(filter);
+					if (found != null) {
+						for (File file : found) {
+							fileList.add(file.getPath());
+						}
 					}
 				}
 			} catch (Exception e) {
