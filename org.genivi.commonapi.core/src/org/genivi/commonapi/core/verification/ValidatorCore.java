@@ -92,7 +92,7 @@ public class ValidatorCore implements IFrancaExternalValidator {
         for (FInterface managedInterface : fInterface.getManagedInterfaces()) {
         	// check that the interface name is not null
         	if(managedInterface.getName() == null) {
-        		acceptError("unknown managed interface: " + managedInterface.getName(), fInterface,
+        		acceptError("unknown managed interface: <unnamed>", fInterface,
                 FrancaPackage.Literals.FINTERFACE__MANAGED_INTERFACES, index, messageAcceptor);
         	} else {
         		// don't log the good case

@@ -1961,11 +1961,8 @@ class FrancaGeneratorExtensions {
 
     def Integer getTimeout(FMethod _method, PropertyAccessor _accessor) {
         var timeout = 0;
-        try {
+        if (_accessor !== null) {
             timeout = _accessor.getTimeout(_method)
-        }
-        catch (NullPointerException e) {
-            // intentionally empty
         }
         return timeout
     }
