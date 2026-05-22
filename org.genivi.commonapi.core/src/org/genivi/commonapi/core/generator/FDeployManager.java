@@ -111,8 +111,9 @@ public class FDeployManager {
 		EObject model = resource.getContents().get(0);
 
 		// load all its imports recursively
-		for (Iterator<String> it = fileHandlerRegistry.get(
-				absURI.fileExtension()).importsIterator(model); it.hasNext();) {
+		ImportsProvider handler = fileHandlerRegistry.get(absURI.fileExtension());
+		if (handler == null) return model;
+		for (Iterator<String> it = handler.importsIterator(model); it.hasNext();) {
 			String importURIStr = it.next();
 			if (importURIStr != null) {
 				if(!importURIStr.startsWith("platform")) {
