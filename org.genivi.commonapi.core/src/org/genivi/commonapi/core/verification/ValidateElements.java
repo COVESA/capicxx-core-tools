@@ -99,14 +99,16 @@ public class ValidateElements {
 		if (!listOfOutArguments.isEmpty()) {
 			// listOfOutArguments analyzed before add the suffix in order to remove the arguments that correspond to the FDArgument.target()
 			// Otherwise the FArgument would be changed twice - one throught the FDArgument.target() and other throught the FArgument that was previous added to the list
+			List<Object> toRemove = new ArrayList<>();
 			for (Object outArgument : listOfOutArguments) {
 				if (outArgument instanceof FDArgument) {
 					FArgument argumentTarget = ((FDArgument)outArgument).getTarget();
 					if (listOfOutArguments.contains(argumentTarget)) {
-						listOfOutArguments.remove(argumentTarget);
+						toRemove.add(argumentTarget);
 					}
 				}
 			}
+			listOfOutArguments.removeAll(toRemove);
 			addSuffixForEqualInOut();
 		}
 		// To all Enumerators in the list it will be added a suffix
